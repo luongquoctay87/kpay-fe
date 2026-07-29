@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+/*
+ * Kpay design tokens — single source for color + type.
+ * Use semantic utilities: text-ink, text-muted, bg-canvas, text-label, …
+ */
+
+:root {
+  /* Ink (text) */
+  --kpay-ink: #18181b; /* zinc-900 */
+  --kpay-ink-secondary: #3f3f46; /* zinc-700 */
+  --kpay-ink-muted: #71717a; /* zinc-500 */
+  --kpay-ink-subtle: #a1a1aa; /* zinc-400 */
+  --kpay-ink-inverse: #fafafa;
+
+  /* Surfaces */
+  --kpay-canvas: #ffffff;
+  --kpay-surface: #fafafa; /* zinc-50 */
+  --kpay-panel: #f4f4f5; /* zinc-100 */
+  --kpay-elevated: #ffffff;
+  --kpay-hover: #e4e4e7; /* zinc-200 */
+
+  /* Borders */
+  --kpay-edge-soft: #f1f1f3; /* hairline separators (sidebar, rails) */
+  --kpay-edge: #e4e4e7; /* zinc-200 */
+  --kpay-edge-strong: #d4d4d8; /* zinc-300 */
+
+  /* Accent (primary actions / active nav) */
+  --kpay-accent: #18181b;
+  --kpay-accent-hover: #27272a;
+  --kpay-on-accent: #ffffff;
+
+  /* Feedback */
+  --kpay-danger: #b91c1c;
+  --kpay-danger-bg: #fef2f2;
+  --kpay-danger-edge: #fecaca;
+  --kpay-success: #047857;
+  --kpay-success-bg: #ecfdf5;
+  --kpay-warning: #b45309;
+  --kpay-warning-bg: #fffbeb;
+
+  /* Type scale (rem @ 16px) */
+  --kpay-fs-caption: 0.6875rem; /* 11px */
+  --kpay-fs-label: 0.8125rem; /* 13px */
+  --kpay-fs-body: 0.875rem; /* 14px */
+  --kpay-fs-title: 0.9375rem; /* 15px */
+  --kpay-fs-heading: 1.25rem; /* 20px */
+  --kpay-fs-display: 1.5rem; /* 24px */
+
+  --kpay-lh-tight: 1.25;
+  --kpay-lh-snug: 1.375;
+  --kpay-lh-normal: 1.5;
+
+  --kpay-tracking-tight: -0.01em;
+  --kpay-tracking-wide: 0.05em;
+
+  --background: var(--kpay-surface);
+  --foreground: var(--kpay-ink);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-ink: var(--kpay-ink);
+  --color-ink-secondary: var(--kpay-ink-secondary);
+  --color-muted: var(--kpay-ink-muted);
+  --color-subtle: var(--kpay-ink-subtle);
+  --color-inverse: var(--kpay-ink-inverse);
+
+  --color-canvas: var(--kpay-canvas);
+  --color-surface: var(--kpay-surface);
+  --color-panel: var(--kpay-panel);
+  --color-elevated: var(--kpay-elevated);
+  --color-hover: var(--kpay-hover);
+
+  --color-edge-soft: var(--kpay-edge-soft);
+  --color-edge: var(--kpay-edge);
+  --color-edge-strong: var(--kpay-edge-strong);
+
+  --color-accent: var(--kpay-accent);
+  --color-accent-hover: var(--kpay-accent-hover);
+  --color-on-accent: var(--kpay-on-accent);
+
+  --color-danger: var(--kpay-danger);
+  --color-danger-bg: var(--kpay-danger-bg);
+  --color-danger-edge: var(--kpay-danger-edge);
+  --color-success: var(--kpay-success);
+  --color-success-bg: var(--kpay-success-bg);
+  --color-warning: var(--kpay-warning);
+  --color-warning-bg: var(--kpay-warning-bg);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --text-caption: var(--kpay-fs-caption);
+  --text-caption--line-height: 1rem;
+  --text-label: var(--kpay-fs-label);
+  --text-label--line-height: 1.25rem;
+  --text-body: var(--kpay-fs-body);
+  --text-body--line-height: 1.375rem;
+  --text-title: var(--kpay-fs-title);
+  --text-title--line-height: 1.25rem;
+  --text-heading: var(--kpay-fs-heading);
+  --text-heading--line-height: 1.75rem;
+  --text-display: var(--kpay-fs-display);
+  --text-display--line-height: 2rem;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--kpay-surface);
+  color: var(--kpay-ink);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--kpay-fs-body);
+  line-height: var(--kpay-lh-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+}
+
+/* —— Typography roles —— */
+.kpay-text-display {
+  font-size: var(--kpay-fs-display);
+  line-height: var(--kpay-lh-tight);
+  font-weight: 600;
+  letter-spacing: var(--kpay-tracking-tight);
+  color: var(--kpay-ink);
+}
+
+.kpay-text-heading {
+  font-size: var(--kpay-fs-heading);
+  line-height: var(--kpay-lh-tight);
+  font-weight: 600;
+  letter-spacing: var(--kpay-tracking-tight);
+  color: var(--kpay-ink);
+}
+
+.kpay-text-title {
+  font-size: var(--kpay-fs-title);
+  line-height: var(--kpay-lh-snug);
+  font-weight: 600;
+  letter-spacing: var(--kpay-tracking-tight);
+  color: var(--kpay-ink);
+}
+
+.kpay-text-body {
+  font-size: var(--kpay-fs-body);
+  line-height: var(--kpay-lh-normal);
+  font-weight: 400;
+  color: var(--kpay-ink);
+}
+
+.kpay-text-body-muted {
+  font-size: var(--kpay-fs-body);
+  line-height: var(--kpay-lh-normal);
+  font-weight: 400;
+  color: var(--kpay-ink-muted);
+}
+
+.kpay-text-label {
+  font-size: var(--kpay-fs-label);
+  line-height: var(--kpay-lh-snug);
+  font-weight: 500;
+  color: var(--kpay-ink-secondary);
+}
+
+.kpay-text-caption {
+  font-size: var(--kpay-fs-caption);
+  line-height: 1rem;
+  font-weight: 500;
+  color: var(--kpay-ink-muted);
+}
+
+.kpay-text-overline {
+  font-size: var(--kpay-fs-caption);
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: var(--kpay-tracking-wide);
+  text-transform: uppercase;
+  color: var(--kpay-ink-subtle);
+}
+
+/* —— Shell / Ant Design link reset —— */
+.kpay-shell a {
+  color: inherit !important;
+  text-decoration: none;
+}
+
+.kpay-shell a:hover {
+  color: inherit !important;
+}
+
+/* Align Ant Design base type with Geist + our scale */
+.kpay-shell .ant-typography,
+.kpay-shell .ant-btn,
+.kpay-shell .ant-input,
+.kpay-shell .ant-select,
+.kpay-shell .ant-table {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}

@@ -1,0 +1,293 @@
+"use client";
+
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
+import { controlClassName, type FieldSize } from "@/components/ui/field-styles";
+import { useI18n } from "@/i18n/use-i18n";
+import { cn } from "@/lib/cn";
+
+export type SelectOption<T extends string = string> = {
+  value: T;
+  label: ReactNode;
+  disabled?: boolean;
+};
+
+export type SelectProps<T extends string = string> = {
+  options: SelectOption<T>[];
+  value?: T | null;
+  defaultValue?: T | null;
+  onChange?: (value: T | null) => void;
+  placeholder?: string;
+  size?: FieldSize;
+  invalid?: boolean;
+  disabled?: boolean;
+  clearable?: boolean;
+  fullWidth?: boolean;
+  /** Open list above the trigger (useful for bottom pagination). */
+  placement?: "bottom" | "top";
+  className?: string;
+  triggerClassName?: string;
+  id?: string;
+  name?: string;
+  "aria-label"?: string;
+};
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={cn("text-muted transition-transform", open && "rotate-180")}
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+function ClearIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
+export function Select<T extends string = string>({
+  options,
+  value: valueProp,
+  defaultValue = null,
+  onChange,
+  placeholder,
+  size = "md",
+  invalid,
+  disabled,
+  clearable,
+  fullWidth = true,
+  placement = "bottom",
+  className,
+  triggerClassName,
+  id,
+  name,
+  "aria-label": ariaLabel,
+}: SelectProps<T>) {
+  const { t } = useI18n();
+  const reactId = useId();
+  const listboxId = `${reactId}-listbox`;
+  const isControlled = valueProp !== undefined;
+  const [uncontrolled, setUncontrolled] = useState<T | null>(defaultValue);
+  const value = isControlled ? (valueProp ?? null) : uncontrolled;
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const selected = useMemo(
+    () => options.find((o) => o.value === value) ?? null,
+    [options, value],
+  );
+
+  const enabledIndexes = useMemo(
+    () =>
+      options
+        .map((o, i) => (o.disabled ? -1 : i))
+        .filter((i) => i >= 0),
+    [options],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const idx = options.findIndex((o) => o.value === value && !o.disabled);
+    setActiveIndex(idx >= 0 ? idx : (enabledIndexes[0] ?? -1));
+  }, [open, options, value, enabledIndexes]);
+
+  function commit(next: T | null) {
+    if (!isControlled) setUncontrolled(next);
+    onChange?.(next);
+    setOpen(false);
+    buttonRef.current?.focus();
+  }
+
+  function moveActive(delta: number) {
+    if (enabledIndexes.length === 0) return;
+    const pos = enabledIndexes.indexOf(activeIndex);
+    const nextPos =
+      pos < 0
+        ? delta > 0
+          ? 0
+          : enabledIndexes.length - 1
+        : (pos + delta + enabledIndexes.length) % enabledIndexes.length;
+    setActiveIndex(enabledIndexes[nextPos]!);
+  }
+
+  function onKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
+    if (disabled) return;
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        if (!open) setOpen(true);
+        else moveActive(1);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        if (!open) setOpen(true);
+        else moveActive(-1);
+        break;
+      case "Enter":
+      case " ":
+        e.preventDefault();
+        if (!open) setOpen(true);
+        else if (activeIndex >= 0) {
+          const opt = options[activeIndex];
+          if (opt && !opt.disabled) commit(opt.value);
+        }
+        break;
+      case "Escape":
+        if (open) {
+          e.preventDefault();
+          setOpen(false);
+        }
+        break;
+      case "Tab":
+        setOpen(false);
+        break;
+      default:
+        break;
+    }
+  }
+
+  return (
+    <div
+      ref={rootRef}
+      className={cn("relative", fullWidth && "w-full", className)}
+    >
+      {name ? (
+        <input type="hidden" name={name} value={value ?? ""} readOnly />
+      ) : null}
+
+      <button
+        ref={buttonRef}
+        type="button"
+        id={id}
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        aria-invalid={invalid || undefined}
+        aria-label={ariaLabel}
+        className={controlClassName({
+          size,
+          invalid,
+          fullWidth,
+          className: cn(
+            "flex items-center justify-between gap-2 text-left font-normal",
+            !selected && "text-subtle",
+            triggerClassName,
+          ),
+        })}
+        onClick={() => !disabled && setOpen((v) => !v)}
+        onKeyDown={onKeyDown}
+      >
+        <span className="min-w-0 flex-1 truncate">
+          {selected ? selected.label : (placeholder ?? t("common.selectPlaceholder"))}
+        </span>
+        <span className="flex shrink-0 items-center gap-1">
+          {clearable && value != null ? (
+            <span
+              role="button"
+              tabIndex={-1}
+              aria-label={t("common.selectClear")}
+              className="rounded p-0.5 text-muted hover:bg-hover hover:text-ink"
+              onClick={(e) => {
+                e.stopPropagation();
+                commit(null);
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <ClearIcon />
+            </span>
+          ) : null}
+          <Chevron open={open} />
+        </span>
+      </button>
+
+      {open ? (
+        <ul
+          id={listboxId}
+          role="listbox"
+          aria-activedescendant={
+            activeIndex >= 0 ? `${listboxId}-opt-${activeIndex}` : undefined
+          }
+          className={cn(
+            "absolute z-30 max-h-60 w-full overflow-auto rounded-md border border-edge bg-elevated py-1 shadow-lg",
+            placement === "top" ? "bottom-full mb-1" : "mt-1",
+          )}
+        >
+          {options.length === 0 ? (
+            <li className="px-3 py-2 text-label text-muted">{t("common.selectNoOptions")}</li>
+          ) : (
+            options.map((opt, i) => {
+              const isSelected = opt.value === value;
+              const isActive = i === activeIndex;
+              return (
+                <li
+                  key={opt.value}
+                  id={`${listboxId}-opt-${i}`}
+                  role="option"
+                  aria-selected={isSelected}
+                  aria-disabled={opt.disabled || undefined}
+                  className={cn(
+                    "cursor-pointer px-3 py-1.5 text-label transition-colors",
+                    opt.disabled && "cursor-not-allowed opacity-40",
+                    isActive && !opt.disabled && "bg-panel",
+                    isSelected && "font-medium text-ink",
+                    !isSelected && "text-ink-secondary",
+                  )}
+                  onMouseEnter={() => !opt.disabled && setActiveIndex(i)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    if (!opt.disabled) commit(opt.value);
+                  }}
+                >
+                  {opt.label}
+                </li>
+              );
+            })
+          )}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
