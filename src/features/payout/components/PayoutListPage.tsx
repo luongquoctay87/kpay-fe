@@ -155,21 +155,6 @@ function localToIso(value: string): string | undefined {
   return d.toISOString();
 }
 
-function formatLocalDateTime(date: Date): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function getTodayLocalDateTimeRange() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  return {
-    start: formatLocalDateTime(start),
-    end: formatLocalDateTime(end),
-  };
-}
-
 function FilterField({
   label,
   htmlFor,
@@ -200,7 +185,6 @@ const dateTimeControlClass = `${fieldControlClass} min-w-0 max-w-full text-[13px
 
 export function PayoutListPage() {
   const { t } = useI18n();
-  const [todayRange] = useState(getTodayLocalDateTimeRange);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<PayoutOrderListItem[]>([]);
@@ -220,15 +204,12 @@ export function PayoutListPage() {
   const [callbackDraft, setCallbackDraft] = useState<OrderCallbackStatus | null>(null);
   const [realStatusDraft, setRealStatusDraft] = useState("");
   const [reasonDraft, setReasonDraft] = useState("");
-  const [createdFromDraft, setCreatedFromDraft] = useState(todayRange.start);
-  const [createdToDraft, setCreatedToDraft] = useState(todayRange.end);
+  const [createdFromDraft, setCreatedFromDraft] = useState("");
+  const [createdToDraft, setCreatedToDraft] = useState("");
   const [updatedFromDraft, setUpdatedFromDraft] = useState("");
   const [updatedToDraft, setUpdatedToDraft] = useState("");
 
-  const [filters, setFilters] = useState<Omit<PayoutOrderListParams, "page" | "size">>({
-    createdFrom: localToIso(todayRange.start),
-    createdTo: localToIso(todayRange.end),
-  });
+  const [filters, setFilters] = useState<Omit<PayoutOrderListParams, "page" | "size">>({});
 
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
     defaultColumnVisibility,

@@ -492,7 +492,7 @@ export const en = {
     filterRealStatus: "Real status",
     filterRealStatusPlaceholder: "Enter real status",
     filterReason: "Reason",
-    filterReasonPlaceholder: "Search reject reason",
+    filterReasonPlaceholder: "Select error code",
     filterCreatedFrom: "Created from",
     filterCreatedTo: "Created to",
     filterUpdatedFrom: "Updated from",

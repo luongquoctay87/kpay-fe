@@ -489,7 +489,7 @@ export const vi = {
     filterRealStatus: "Trạng thái thật",
     filterRealStatusPlaceholder: "Nhập trạng thái thật",
     filterReason: "Lý do",
-    filterReasonPlaceholder: "Gõ từ khóa trong lý do lỗi",
+    filterReasonPlaceholder: "Chọn mã lỗi",
     filterCreatedFrom: "Tạo từ",
     filterCreatedTo: "Tạo đến",
     filterUpdatedFrom: "Cập nhật từ",
