@@ -133,7 +133,7 @@ export type ColumnVisibility = Record<PayinColumn, boolean>;
 
 /** Sum of visible column mins — drives horizontal scroll when wider than viewport. */
 export function payinTableMinWidth(visibility: ColumnVisibility): number {
-  let total = PAYIN_COLUMN_MIN_PX.stt;
+  let total = PAYIN_COLUMN_MIN_PX.stt + 96;
   for (const col of PAYIN_COLUMNS) {
     if (visibility[col]) total += PAYIN_COLUMN_MIN_PX[col];
   }
@@ -175,6 +175,6 @@ export function saveColumnVisibility(visibility: ColumnVisibility) {
 }
 
 export function visibleColumnCount(visibility: ColumnVisibility): number {
-  // +1 for always-visible STT
-  return PAYIN_COLUMNS.reduce((n, col) => n + (visibility[col] ? 1 : 0), 1);
+  // +1 STT +1 Actions (always visible)
+  return PAYIN_COLUMNS.reduce((n, col) => n + (visibility[col] ? 1 : 0), 2);
 }

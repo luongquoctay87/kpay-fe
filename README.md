@@ -1,184 +1,141 @@
 # Kpay Frontend
 
-Admin Portal + Pay URL — Next.js 15 · React 19 · TypeScript · Ant Design.
+Admin Portal and public Pay URL for the Kpay payment platform.
 
-Khớp `docs/ROLE_PLAN.md` (FE-01 … FE-11). API: `kpay-backend` dưới context-path `/api` (`/api/auth`, `/api/merchants`, …).
+| | |
+|---|---|
+| **Stack** | Next.js 15 · React 19 · TypeScript · Ant Design 6 · Tailwind 4 |
+| **Backend** | [`kpay-backend`](../kpay-backend) — Spring Boot, context-path `/api` |
+| **Node** | `>=20 <25` |
 
-## Prerequisite
+---
 
-- Node.js 20+
-- `kpay-backend` chạy local (mặc định `http://localhost:8756`)
+## What it covers
 
-## Setup
+| Surface | Audience | Routes |
+|---------|----------|--------|
+| **Admin Portal** | Operators (JWT + TOTP) | Merchants, Agents, Payin, Payout, Bank accounts, Callback logs, Profile |
+| **Pay URL** | End-users (public) | `/pay/[token]` — VietQR + transfer details |
+
+Auth: Login → TOTP enroll/verify → access token + session cookie → portal shell.
+
+---
+
+## Quick start
 
 ```bash
+# 1. Backend must be up (default http://localhost:8756)
+# 2. Frontend
 cp .env.local.example .env.local
 npm install
 npm run dev
 ```
 
-Mở [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000).
 
-Backend CORS: `FE_URI=http://localhost:3000`.
+On the backend, set `FE_URI=http://localhost:3000` so CORS allows the portal origin.
 
-Path mapping 1:1 — không strip prefix:
+---
 
-| Browser | Next rewrite | Spring Boot |
-|---------|--------------|-------------|
-| `/api/merchants` | `BACKEND_ORIGIN/api/merchants` | `server.servlet.context-path=/api` + `@RequestMapping("/merchants")` |
+## Environment
 
-`BACKEND_ORIGIN` chỉ là origin (`http://localhost:8756`), `next.config.ts` tự thêm `/api`. Swagger: `http://localhost:8756/api/swagger-ui.html`.
+Copy from `.env.local.example`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NEXT_PUBLIC_API_BASE` | `/api` | Browser API prefix (same-origin) |
+| `BACKEND_ORIGIN` | `http://localhost:8756` | Backend origin only — do **not** append `/api` |
+
+`next.config.ts` rewrites `/api/*` → `${BACKEND_ORIGIN}/api/*` (1:1 with Spring `context-path`).
+
+```
+Browser          Next rewrite              Spring Boot
+/api/merchants → localhost:8756/api/merchants → /api + /merchants
+```
+
+`NEXT_PUBLIC_*` is baked at **build** time for Docker/production images. Change API base or origin → rebuild.
+
+Restart `npm run dev` only when you change `.env*` or `next.config.ts`. Edits under `src/` hot-reload automatically (Turbopack).
+
+---
 
 ## Scripts
 
-| Script | Mô tả |
-|--------|--------|
-| `npm run dev` | Dev server + **Turbopack HMR** — chạy **một lần**, để chạy nền |
-| `npm run dev:webpack` | Dev bằng Webpack (fallback) |
-| `npm run build` | Production build |
-| `npm start` | Chạy build |
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Dev server (Turbopack) |
+| `npm run dev:webpack` | Dev server (Webpack fallback) |
+| `npm run build` | Production build (`output: "standalone"`) |
+| `npm start` | Serve production build |
 | `npm run lint` | ESLint |
 
-### Hot reload (không cần chạy lại `npm run dev`)
+---
 
-1. Mở terminal, chạy **một lần**: `npm run dev`
-2. Để terminal đó chạy — **đừng** Ctrl+C mỗi lần sửa code
-3. Sửa file trong `src/` → lưu → browser tự refresh (Fast Refresh)
+## Product routes
 
-**Chỉ cần restart** khi đổi:
+| Path | Description |
+|------|-------------|
+| `/login`, `/totp` | Authentication |
+| `/` | Dashboard |
+| `/merchants`, `/merchants/new`, `/merchants/[id]` | Merchant CRUD, API key, IP whitelist |
+| `/agents`, `/agents/new` | Agent management |
+| `/payin` | Payin orders (search, finalize) |
+| `/payout` | Payout orders (search, finalize) |
+| `/bank-accounts` | Collect / payout bank accounts |
+| `/callback-logs` | Outbound webhook logs + resend |
+| `/profile` | Operator profile |
+| `/pay/[token]` | Public payment page |
 
-- `.env` / `.env.local`
-- `next.config.ts`
-- `package.json` (sau `npm install`)
+---
 
-## Cấu trúc
+## Project layout
 
 ```
 src/
-  app/                      # Next.js App Router — page mỏng (re-export feature)
-    (portal)/               # Shell + auth guard
-    login/ totp/            # Auth routes
-    pay/[token]/           # Pay URL public
-  middleware.ts             # Soft gate qua cookie kpay_session
-  components/
-    layout/                 # Sidebar, Header, PortalShell
-    providers/              # Ant Design + locale
-    common/                 # PageHeader, TableCard, ColumnPicker, StatCard, …
-  features/                 # Domain modules (api + types + UI)
-    auth/
-    merchants/
-    agents/
-    dashboard/ payin/ payout/ callback-logs/ bank-accounts/ pay/
-  i18n/                     # VI/EN catalogs + useI18n (đa ngôn ngữ)
-  lib/
-    api/client.ts           # Axios + refresh interceptor
-    types/api.ts            # Resp envelope + ApiError
-    constants/              # routes, auth cookie name
-    format/                 # money / datetime
-    theme/tokens.ts         # Design tokens (sync Ant Design)
+  app/                 # App Router — thin pages (re-export features)
+    (portal)/          # Authenticated shell
+    login/ totp/       # Auth
+    pay/[token]/      # Public Pay URL
+  middleware.ts        # Soft session gate (cookie)
+  components/          # Layout, shared UI, providers
+  features/            # Domain modules (api + types + UI)
+  i18n/                # VI / EN catalogs
+  lib/                 # Axios client, formatters, theme tokens, constants
 ```
 
-### Design tokens (màu + chữ)
+**Conventions**
 
-Nguồn: `src/app/globals.css` + `src/lib/theme/tokens.ts`.
+- Routes stay thin; business UI lives in `features/<domain>/`.
+- Shared HTTP client: `src/lib/api/client.ts` (Axios + refresh interceptor).
+- Status enums match the backend (`pending` \| `active` \| `suspended` \| …).
+- UI copy goes through i18n (`useI18n()` / `nav.*` keys) — avoid hardcoded strings.
+- Prefer design tokens + `@/components/ui` (`Button`, `Field`, `Input`, `Select`) over raw Ant/HTML form controls.
 
-| Role | Size | Weight | Color util |
-|------|------|--------|------------|
-| Display | 24px | 600 | `.kpay-text-display` / `text-ink` |
-| Heading | 20px | 600 | `.kpay-text-heading` |
-| Title | 14px | 600 | `.kpay-text-title` |
-| Body | 14px | 400 | `.kpay-text-body` / `text-body` |
-| Label | 13px | 500 | `.kpay-text-label` / `text-label` |
-| Caption | 11px | 500 | `.kpay-text-caption` / `text-caption` |
-| Overline | 11px | 500 | `.kpay-text-overline` |
+---
 
-Màu semantic: `ink` / `ink-secondary` / `muted` / `subtle` · `canvas` / `surface` / `panel` · `edge` · `accent` / `on-accent` · `danger` / `success` / `warning`.
+## Docker
 
-### Buttons (`@/components/ui`)
+Standalone Next.js image. `BACKEND_ORIGIN` is baked at **build** time (used by `next.config.ts` rewrites):
 
-```tsx
-import { Button } from "@/components/ui";
+```bash
+docker build \
+  --build-arg BACKEND_ORIGIN=http://backend:8756 \
+  -t kpay/frontend:latest .
 
-<Button variant="primary">Lưu</Button>
-<Button variant="secondary">Huỷ</Button>
-<Button variant="ghost">Thu gọn</Button>
-<Button variant="danger">Xoá</Button>
-<Button variant="danger-ghost" iconOnly leftIcon={…} />
-<Button variant="link">Chi tiết</Button>
-<Button shape="pill" size="lg" fullWidth loading>Đăng nhập</Button>
-<Button href="/merchants/new" leftIcon={…}>Add</Button>
+docker run --rm -p 3000:3000 kpay/frontend:latest
 ```
 
-| Variant | Dùng khi |
-|---------|----------|
-| `primary` | CTA chính (submit, tạo mới) |
-| `secondary` | Hành động phụ (làm mới, reset) |
-| `ghost` | Toolbar nhẹ / menu |
-| `danger` | Huỷ / xoá có nền |
-| `danger-ghost` | Xoá trên bảng |
-| `link` | Điều hướng dạng text |
+Compose (portal + API): [`kpay-backend`](../kpay-backend) `docker-compose.test.yml` / `docker-compose.prod.yml`.
 
-Size: `sm` \| `md` \| `lg` · Shape: `default` \| `pill`
+---
 
-### Inputs & Select (`@/components/ui`)
+## Related docs
 
-```tsx
-import { Field, Input, Select, Textarea } from "@/components/ui";
-
-<Field label="Merchant Name" htmlFor="name" error={err}>
-  <Input id="name" size="md" placeholder="…" />
-</Field>
-
-<Field label="Status" htmlFor="status">
-  <Select
-    id="status"
-    options={[{ value: "active", label: "Active" }]}
-    value={status}
-    onChange={setStatus}
-    clearable
-    placeholder="Vui lòng chọn"
-  />
-</Field>
-
-<Textarea rows={4} />
-```
-
-| Component | Ghi chú |
-|-----------|---------|
-| `Field` | Label + hint/error wrapper |
-| `Input` | Text/password; `leftAddon` / `rightAddon`; `invalid` |
-| `Select` | Dropdown custom (keyboard + clearable) |
-| `Textarea` | Multi-line, cùng size/invalid |
-
-Size field: `sm` \| `md` \| `lg` (khớp chiều cao Button)
-
-Tránh hardcode `text-zinc-*` / `text-[13px]` / raw `<button className=…>` / raw `<input>` cho form — dùng token + `Button` / `Field` / `Input` / `Select`.
-
-### i18n
-
-- Catalog: `src/i18n/messages/vi.ts` + `en.ts` (thêm locale mới = thêm file + entry `LOCALES`)
-- Hook: `const { t, locale, setLocale } = useI18n()` — key dạng `nav.overview`
-- Switcher VI/EN trên header + login; lưu `localStorage` (`kpay_locale`)
-- Ant Design locale theo ngôn ngữ đang chọn
-- **Không hardcode** copy UI trong component — thêm key vào catalog trước
-
-### Quy ước
-
-- **Route** (`app/**/page.tsx`) chỉ mount feature component — không chứa business UI.
-- **Feature** giữ `api.ts`, `types.ts`, `components/*` theo domain.
-- **Shared** (layout, axios, format) nằm `components/` + `lib/`.
-- Enum/status **khớp BE** (vd merchant: `pending|active|suspended|disabled`).
-
-## Auth flow
-
-`Login` → `TOTP enroll|verify` → JWT access (localStorage) + session cookie + refresh cookie → Portal.
-
-## Phase 1 routes
-
-| Path | Status |
-|------|--------|
-| `/login`, `/totp` | UI sẵn |
-| `/`, `/merchants` | Shell + list API |
-| `/merchants/new`, `/merchants/[id]` | Stub (feature scaffold) |
-| `/agents`, `/payin`, `/payout`, `/callback-logs`, `/bank-accounts` | Stub |
-| `/pay/[token]` | Pay URL stub |
+| Doc | Topic |
+|-----|--------|
+| [`kpay-backend/README.md`](../kpay-backend/README.md) | API run, profiles, deploy |
+| [`docs/PAYIN_API_TEST.md`](../docs/PAYIN_API_TEST.md) | Merchant payin HMAC QC |
+| [`docs/PAYOUT_API_TEST.md`](../docs/PAYOUT_API_TEST.md) | Merchant payout HMAC QC |
+| [`docs/CALLBACK_OUTBOUND.md`](../docs/CALLBACK_OUTBOUND.md) | Callback retry / resend |
+| [`docs/BALANCE_IP_WHITELIST.md`](../docs/BALANCE_IP_WHITELIST.md) | Balance API + IP whitelist |
+| Backend Swagger (dev) | `http://localhost:8756/api/swagger-ui.html` |

@@ -37,6 +37,7 @@ import {
 import { Button, Input, Select, StatusBadge } from "@/components/ui";
 import { merchantApi } from "@/features/merchants/api";
 import { payinApi } from "@/features/payin/api";
+import { FinalizePayinModal } from "@/features/payin/components/FinalizePayinModal";
 import { ColumnPicker } from "@/features/payin/components/ColumnPicker";
 import {
   PAYIN_COLUMN_ALIGN,
@@ -81,6 +82,8 @@ export function PayinListPage() {
   const [size, setSize] = useState(20);
   const [expanded, setExpanded] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [finalizeRow, setFinalizeRow] = useState<PayinOrderListItem | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const [transIdDraft, setTransIdDraft] = useState("");
   const [contentDraft, setContentDraft] = useState("");
@@ -288,6 +291,12 @@ export function PayinListPage() {
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-6 py-5 sm:px-8 lg:px-10">
       <PageHeader title={t("payin.listTitle")} />
+
+      {notice ? (
+        <p className="rounded-md bg-success/10 px-3 py-2 text-label text-success" role="status">
+          {notice}
+        </p>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
@@ -702,6 +711,7 @@ export function PayinListPage() {
                   <ColumnHeader align="center">{t("payin.colGateway")}</ColumnHeader>
                 </th>
               ) : null}
+              <th className="w-[96px] px-3 py-3 text-center">{t("payin.colActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -847,6 +857,20 @@ export function PayinListPage() {
                     {row.gateway ?? "—"}
                   </td>
                 ) : null}
+                <td className="px-3 py-3 text-center">
+                  {row.status === "created" || row.status === "pending" ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setFinalizeRow(row)}
+                    >
+                      {t("payin.btnFinalize")}
+                    </Button>
+                  ) : (
+                    <span className="text-label text-muted">—</span>
+                  )}
+                </td>
               </tr>
             ))}
 
@@ -894,11 +918,23 @@ export function PayinListPage() {
                 {show.updatedAt ? <td /> : null}
                 {show.processedBy ? <td /> : null}
                 {show.gateway ? <td /> : null}
+                <td />
               </tr>
             ) : null}
           </tbody>
         </table>
       </TableCard>
+
+      {finalizeRow ? (
+        <FinalizePayinModal
+          row={finalizeRow}
+          onClose={() => setFinalizeRow(null)}
+          onDone={() => {
+            setNotice(t("payin.finalizeOk"));
+            void fetchList();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

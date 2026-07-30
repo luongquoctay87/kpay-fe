@@ -5,6 +5,7 @@ import type {
   CreateMerchantResp,
   MerchantCredentialsResp,
   MerchantDetail,
+  MerchantIpWhitelistItem,
   MerchantListParams,
   MerchantListResp,
   MerchantStatus,
@@ -93,6 +94,21 @@ export const merchantApi = {
 
   updateVietpmBot(id: string, body: MerchantVietpmBot): Promise<MerchantDetail> {
     return unwrap(apiClient.put(`/merchants/${id}/vietpm-bot`, body));
+  },
+
+  listIpWhitelist(id: string): Promise<MerchantIpWhitelistItem[]> {
+    return unwrap(apiClient.get(`/merchants/${id}/ip-whitelist`));
+  },
+
+  addIpWhitelist(
+    id: string,
+    body: { cidr: string; note?: string },
+  ): Promise<MerchantIpWhitelistItem> {
+    return unwrap(apiClient.post(`/merchants/${id}/ip-whitelist`, body));
+  },
+
+  deleteIpWhitelist(id: string, entryId: string): Promise<void> {
+    return unwrap(apiClient.delete(`/merchants/${id}/ip-whitelist/${entryId}`));
   },
 
   resetPassword(id: string, body: { newPassword: string }): Promise<void> {

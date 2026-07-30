@@ -78,6 +78,9 @@ export interface UpdateBankAccountBody {
   rotationGroup?: number | null;
   clearRotation?: boolean;
   note?: string | null;
+  webConfigured?: boolean;
+  appConfigured?: boolean;
+  notificationConfigured?: boolean;
 }
 
 export const BANK_ACCOUNT_STATUS_OPTIONS: BankAccountStatus[] = [

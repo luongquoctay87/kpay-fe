@@ -56,6 +56,7 @@ import {
 } from "@/features/callback-logs/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { ApiError } from "@/lib/types/api";
+import { useAuthStore } from "@/features/auth/store";
 
 type JsonModalState = {
   title: string;
@@ -101,8 +102,15 @@ function truncateUrl(url: string, max = 36): string {
 
 export function CallbackLogsPage() {
   const { t } = useI18n();
+  const permissions = useAuthStore((s) => s.user?.permissions);
+  const canResend =
+    !permissions ||
+    permissions.length === 0 ||
+    permissions.includes("callbacks:resend");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const [rows, setRows] = useState<CallbackLogListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -250,6 +258,22 @@ export function CallbackLogsPage() {
     });
   }
 
+  async function onResend(row: CallbackLogListItem) {
+    if (row.direction !== "outbound" || resendingId) return;
+    setResendingId(row.id);
+    setNotice(null);
+    setError(null);
+    try {
+      await callbackLogApi.resend(row.id);
+      setNotice(t("callbackLogs.resendOk"));
+      await fetchList();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : t("callbackLogs.resendError"));
+    } finally {
+      setResendingId(null);
+    }
+  }
+
   return (
     <div className="flex w-full flex-col gap-5 px-6 py-5 sm:px-8 lg:px-10">
       <PageHeader
@@ -259,6 +283,12 @@ export function CallbackLogsPage() {
           { label: t("callbackLogs.listTitle"), icon: <IconWebhook /> },
         ]}
       />
+
+      {notice ? (
+        <p className="rounded-md bg-success/10 px-3 py-2 text-label text-success" role="status">
+          {notice}
+        </p>
+      ) : null}
 
       <FilterBar
         onSearch={onSearch}
@@ -445,6 +475,13 @@ export function CallbackLogsPage() {
                   </ColumnHeader>
                 </th>
               ) : null}
+              {show.actions ? (
+                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.actions} ${CALLBACK_LOG_COLUMN_ALIGN.actions} px-4 py-2.5 font-medium`}>
+                  <ColumnHeader align="center" icon={<IconRepeat width={14} height={14} />}>
+                    {t("callbackLogs.colActions")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -569,6 +606,23 @@ export function CallbackLogsPage() {
                 {show.time ? (
                   <td className="whitespace-nowrap px-4 py-2.5 text-center text-label text-muted">
                     {formatCallbackTime(row.createdAt)}
+                  </td>
+                ) : null}
+                {show.actions ? (
+                  <td className="px-4 py-2.5 text-center">
+                    {canResend && row.direction === "outbound" ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={resendingId === row.id || loading}
+                        onClick={() => void onResend(row)}
+                      >
+                        {t("callbackLogs.resend")}
+                      </Button>
+                    ) : (
+                      <span className="text-label text-muted">—</span>
+                    )}
                   </td>
                 ) : null}
               </tr>

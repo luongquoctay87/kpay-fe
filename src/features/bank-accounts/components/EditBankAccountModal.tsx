@@ -46,6 +46,11 @@ export function EditBankAccountModal({
     account.rotationGroup != null ? String(account.rotationGroup) : "",
   );
   const [note, setNote] = useState(account.note ?? "");
+  const [webConfigured, setWebConfigured] = useState(account.webConfigured);
+  const [appConfigured, setAppConfigured] = useState(account.appConfigured);
+  const [notificationConfigured, setNotificationConfigured] = useState(
+    account.notificationConfigured,
+  );
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,6 +131,9 @@ export function EditBankAccountModal({
       clearRotation: rotationNum == null,
       rotationGroup: rotationNum ?? undefined,
       note: note.trim(),
+      webConfigured,
+      appConfigured,
+      notificationConfigured,
     };
 
     setSubmitting(true);
@@ -294,6 +302,42 @@ export function EditBankAccountModal({
                 disabled={submitting}
               />
             </Field>
+
+            <div className="rounded-lg border border-edge bg-surface px-3.5 py-3">
+              <p className="mb-3 text-label font-medium text-ink">
+                {t("bankAccounts.sectionSources")}
+              </p>
+              <p className="mb-3 text-caption text-muted">{t("bankAccounts.hintSources")}</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label={t("bankAccounts.colWeb")} htmlFor="ba-edit-web">
+                  <Select
+                    id="ba-edit-web"
+                    options={boolOptions}
+                    value={webConfigured ? "true" : "false"}
+                    onChange={(v) => setWebConfigured(v === "true")}
+                    disabled={submitting}
+                  />
+                </Field>
+                <Field label={t("bankAccounts.colApp")} htmlFor="ba-edit-app">
+                  <Select
+                    id="ba-edit-app"
+                    options={boolOptions}
+                    value={appConfigured ? "true" : "false"}
+                    onChange={(v) => setAppConfigured(v === "true")}
+                    disabled={submitting}
+                  />
+                </Field>
+                <Field label={t("bankAccounts.colNotif")} htmlFor="ba-edit-notif">
+                  <Select
+                    id="ba-edit-notif"
+                    options={boolOptions}
+                    value={notificationConfigured ? "true" : "false"}
+                    onChange={(v) => setNotificationConfigured(v === "true")}
+                    disabled={submitting}
+                  />
+                </Field>
+              </div>
+            </div>
 
             <Field label={t("bankAccounts.labelNote")} htmlFor="ba-edit-note">
               <Textarea

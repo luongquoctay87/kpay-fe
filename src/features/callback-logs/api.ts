@@ -1,5 +1,6 @@
 import { apiClient, unwrap } from "@/lib/api/client";
 import type {
+  CallbackLogListItem,
   CallbackLogListParams,
   CallbackLogListResp,
 } from "@/features/callback-logs/types";
@@ -18,5 +19,9 @@ export const callbackLogApi = {
         },
       }),
     );
+  },
+
+  resend(id: string): Promise<CallbackLogListItem> {
+    return unwrap(apiClient.post(`/callback-logs/${id}/resend`));
   },
 };

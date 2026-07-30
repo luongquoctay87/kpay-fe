@@ -2,9 +2,16 @@ import { apiClient, unwrap } from "@/lib/api/client";
 import { downloadXlsx } from "@/lib/api/download-blob";
 import type {
   PayinChannelOption,
+  PayinOrderListItem,
   PayinOrderListParams,
   PayinOrderListResp,
 } from "@/features/payin/types";
+
+export type PayinFinalizeOutcome =
+  | "success"
+  | "expired"
+  | "failure"
+  | "wrong_denomination";
 
 export const payinApi = {
   list(params: PayinOrderListParams = {}): Promise<PayinOrderListResp> {
@@ -49,5 +56,12 @@ export const payinApi = {
 
   listChannels(): Promise<PayinChannelOption[]> {
     return unwrap(apiClient.get("/payin-orders/channels"));
+  },
+
+  finalize(
+    id: string,
+    body: { outcome: PayinFinalizeOutcome; receivedAmount?: number },
+  ): Promise<PayinOrderListItem> {
+    return unwrap(apiClient.post(`/payin-orders/${id}/finalize`, body));
   },
 };

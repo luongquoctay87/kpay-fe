@@ -14,6 +14,7 @@ import type {
   MerchantCredentialsResp,
   MerchantDetail,
   MerchantFee,
+  MerchantIpWhitelistItem,
   UpdateChannelItem,
   UpdateFeeItem,
 } from "@/features/merchants/types";
@@ -225,18 +226,31 @@ function SectionBasic({
     key: "autoFinalizeWrongDenomination" | "includeInStatistics" | "ipWhitelistEnabled",
     value: boolean,
   ) {
-    if (editing) {
+    // IP whitelist is security-sensitive: always persist immediately so UI sections stay in sync.
+    if (editing && key !== "ipWhitelistEnabled") {
       if (key === "autoFinalizeWrongDenomination") setAutoFinalize(value);
       if (key === "includeInStatistics") setIncludeStats(value);
-      if (key === "ipWhitelistEnabled") setIpWhitelist(value);
       return;
     }
+    if (key === "ipWhitelistEnabled") setIpWhitelist(value);
+    if (key === "autoFinalizeWrongDenomination") setAutoFinalize(value);
+    if (key === "includeInStatistics") setIncludeStats(value);
+
     setSaving(true);
     setError(null);
     try {
       const res = await merchantApi.update(merchantId, { [key]: value });
       onUpdated(res);
+      if (key === "ipWhitelistEnabled") setIpWhitelist(res.ipWhitelistEnabled);
+      if (key === "autoFinalizeWrongDenomination") {
+        setAutoFinalize(res.autoFinalizeWrongDenomination);
+      }
+      if (key === "includeInStatistics") setIncludeStats(res.includeInStatistics);
     } catch (e) {
+      // revert optimistic local flip
+      if (key === "ipWhitelistEnabled") setIpWhitelist(!value);
+      if (key === "autoFinalizeWrongDenomination") setAutoFinalize(!value);
+      if (key === "includeInStatistics") setIncludeStats(!value);
       setError(e instanceof ApiError ? e.message : t("merchantDetail.saveError"));
     } finally {
       setSaving(false);
@@ -400,6 +414,153 @@ function SectionWallet({
             </span>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+/* ─── Section: IP whitelist ────────────────────────────────────────────── */
+function SectionIpWhitelist({
+  merchantId,
+  enabled,
+  initial,
+  onUpdated,
+}: {
+  merchantId: string;
+  enabled: boolean;
+  initial: MerchantIpWhitelistItem[];
+  onUpdated: (m: MerchantDetail) => void;
+}) {
+  const { t } = useI18n();
+  const [entries, setEntries] = useState(initial);
+  const [cidr, setCidr] = useState("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEntries(initial);
+  }, [initial]);
+
+  async function refreshDetail() {
+    const detail = await merchantApi.getById(merchantId);
+    onUpdated(detail);
+    setEntries(detail.ipWhitelist ?? []);
+  }
+
+  async function onAdd() {
+    const value = cidr.trim();
+    if (!value) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await merchantApi.addIpWhitelist(merchantId, {
+        cidr: value,
+        note: note.trim() || undefined,
+      });
+      setCidr("");
+      setNote("");
+      await refreshDetail();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : t("merchantDetail.ipAddError"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onDelete(entryId: string) {
+    setSaving(true);
+    setError(null);
+    try {
+      await merchantApi.deleteIpWhitelist(merchantId, entryId);
+      await refreshDetail();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : t("merchantDetail.ipDeleteError"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="rounded-lg border border-edge bg-elevated">
+      <div className="border-b border-edge px-5 py-3">
+        <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionIpWhitelist")}</p>
+        <p className="mt-1 text-caption text-muted">
+          {enabled
+            ? t("merchantDetail.ipWhitelistOnHint")
+            : t("merchantDetail.ipWhitelistOffHint")}
+        </p>
+      </div>
+      <div className="flex flex-col gap-4 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <Field label={t("merchantDetail.labelCidr")} htmlFor="ip-cidr" required>
+              <Input
+                id="ip-cidr"
+                value={cidr}
+                onChange={(e) => setCidr(e.target.value)}
+                placeholder={t("merchantDetail.placeholderCidr")}
+                disabled={saving}
+              />
+            </Field>
+          </div>
+          <div className="min-w-0 flex-1">
+            <Field label={t("merchantDetail.labelIpNote")} htmlFor="ip-note">
+              <Input
+                id="ip-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={t("merchantDetail.placeholderIpNote")}
+                disabled={saving}
+              />
+            </Field>
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            loading={saving}
+            disabled={!cidr.trim()}
+            onClick={() => void onAdd()}
+          >
+            {t("merchantDetail.btnAddIp")}
+          </Button>
+        </div>
+
+        {error ? (
+          <p role="alert" className="text-label text-danger">
+            {error}
+          </p>
+        ) : null}
+
+        {entries.length === 0 ? (
+          <p className="text-label text-muted">{t("merchantDetail.ipEmpty")}</p>
+        ) : (
+          <ul className="divide-y divide-edge rounded-md border border-edge">
+            {entries.map((row) => (
+              <li
+                key={row.id}
+                className="flex items-center justify-between gap-3 px-4 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-label text-ink">{row.cidr}</p>
+                  {row.note ? (
+                    <p className="truncate text-caption text-muted">{row.note}</p>
+                  ) : null}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={saving}
+                  onClick={() => void onDelete(row.id)}
+                >
+                  {t("merchantDetail.btnRemoveIp")}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );
@@ -933,6 +1094,13 @@ export function MerchantDetailPage({ id }: { id: string }) {
         <SectionBasic m={merchant} merchantId={id} onUpdated={setMerchant} />
         <SectionWallet wallet={merchant.wallet} onEdit={() => setShowAdjust(true)} />
       </div>
+
+      <SectionIpWhitelist
+        merchantId={id}
+        enabled={merchant.ipWhitelistEnabled}
+        initial={merchant.ipWhitelist ?? []}
+        onUpdated={setMerchant}
+      />
 
       {/* Channels */}
       <SectionChannels

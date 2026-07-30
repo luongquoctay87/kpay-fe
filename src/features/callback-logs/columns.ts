@@ -13,6 +13,7 @@ export const CALLBACK_LOG_COLUMNS = [
   "attempt",
   "duration",
   "time",
+  "actions",
 ] as const;
 
 export type CallbackLogColumn = (typeof CALLBACK_LOG_COLUMNS)[number];
@@ -30,6 +31,7 @@ export const CALLBACK_LOG_COLUMN_LABEL_KEY: Record<CallbackLogColumn, MessageKey
   attempt: "callbackLogs.colAttempt",
   duration: "callbackLogs.colDuration",
   time: "callbackLogs.colTime",
+  actions: "callbackLogs.colActions",
 };
 
 /** Header width classes — tuned so the default 7 columns fill the row evenly. */
@@ -46,6 +48,7 @@ export const CALLBACK_LOG_COLUMN_WIDTH: Record<CallbackLogColumn, string> = {
   attempt: "w-[8%]",
   duration: "w-[10%]",
   time: "w-[18%]",
+  actions: "w-[10%]",
 };
 
 /** Header alignment (body cells follow the same). */
@@ -62,6 +65,7 @@ export const CALLBACK_LOG_COLUMN_ALIGN: Record<CallbackLogColumn, string> = {
   attempt: "text-center",
   duration: "text-right",
   time: "text-center",
+  actions: "text-center",
 };
 
 /** Columns shown when the user has not customized visibility. */
@@ -73,6 +77,7 @@ export const DEFAULT_VISIBLE_COLUMNS: readonly CallbackLogColumn[] = [
   "attempt",
   "duration",
   "time",
+  "actions",
 ];
 
 export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.callback-logs.columns";

@@ -123,6 +123,13 @@ export interface MerchantVietpmBot {
   replyDelaySeconds?: number | null;
 }
 
+export interface MerchantIpWhitelistItem {
+  id: string;
+  cidr: string;
+  note?: string | null;
+  createdAt?: string | null;
+}
+
 export interface MerchantDetail {
   id: string;
   code: string;
@@ -137,6 +144,7 @@ export interface MerchantDetail {
   createdAt?: string | null;
   updatedAt?: string | null;
   wallet: MerchantWallet;
+  ipWhitelist?: MerchantIpWhitelistItem[];
   channels: MerchantChannelConfig[];
   fees: MerchantFee[];
   credentials?: MerchantCredentialSummary | null;
