@@ -70,13 +70,13 @@ export function AppHeader() {
   };
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b-[0.5px] border-edge-soft bg-canvas px-5">
-      <div className="flex min-w-0 items-center gap-2.5">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b-[0.5px] border-edge-soft bg-canvas px-3 sm:gap-4 sm:px-5">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
         <h1 className="kpay-text-title truncate">{pageTitle}</h1>
         <EnvBadge env={APP_ENV} />
       </div>
 
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         <LocaleSwitcher />
         <time className="kpay-text-caption hidden tabular-nums sm:block">
           {now.format("DD/MM/YYYY HH:mm")}
@@ -86,12 +86,12 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            className="flex items-center gap-2 rounded-full border border-edge py-1 pl-1 pr-2.5 text-body transition hover:bg-surface"
+            className="flex items-center gap-2 rounded-full border border-edge py-1 pl-1 pr-1.5 text-body transition hover:bg-surface sm:pr-2.5"
           >
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-on-accent">
               <IconUser width={14} height={14} />
             </span>
-            <span className="max-w-[120px] truncate text-label font-medium text-ink">
+            <span className="hidden max-w-[120px] truncate text-label font-medium text-ink sm:inline">
               {user?.username ?? "—"}
             </span>
           </button>

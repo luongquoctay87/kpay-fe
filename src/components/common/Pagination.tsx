@@ -56,7 +56,7 @@ export function Pagination({
   );
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-edge px-5 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-edge px-3 py-3 sm:px-5">
       <span className="text-label text-muted">{rangeLabel}</span>
 
       <div className="flex flex-wrap items-center gap-3">

@@ -62,41 +62,45 @@ export function OverviewPage() {
   ] as const;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-8 sm:px-8">
+    <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-6 px-4 py-5 sm:gap-8 sm:px-8 lg:px-10">
       <header>
         <p className="kpay-text-body-muted">{t("overview.subtitle")}</p>
       </header>
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4">
         {stats.map((item) => (
           <div
             key={item.label}
-            className="rounded-lg border border-edge bg-elevated px-4 py-4"
+            className="min-w-0 rounded-lg border border-edge bg-elevated px-3.5 py-3.5 sm:px-4 sm:py-4"
           >
-            <p className="kpay-text-caption">{item.label}</p>
+            <p className="kpay-text-caption break-words">{item.label}</p>
             <p className="kpay-text-display mt-2 tabular-nums">{item.value}</p>
             <p className="mt-1 text-caption text-subtle">{item.hint}</p>
           </div>
         ))}
       </section>
 
-      <section>
-        <div className="mb-3 flex items-baseline justify-between gap-3">
+      <section className="min-w-0">
+        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
           <h2 className="kpay-text-title">{t("overview.queueTitle")}</h2>
-          <p className="kpay-text-caption text-subtle">{t("overview.queueHint")}</p>
+          <p className="kpay-text-caption shrink-0 text-subtle">
+            {t("overview.queueHint")}
+          </p>
         </div>
         <ul className="divide-y divide-edge overflow-hidden rounded-lg border border-edge bg-elevated">
           {queues.map((q) => (
             <li key={q.href}>
               <Link
                 href={q.href}
-                className="flex items-center justify-between gap-4 px-4 py-3.5 transition hover:bg-surface"
+                className="flex items-start justify-between gap-3 px-3.5 py-3.5 transition hover:bg-surface sm:items-center sm:gap-4 sm:px-4"
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-body font-medium text-ink">{q.title}</p>
-                  <p className="mt-0.5 truncate text-caption text-muted">{q.description}</p>
+                  <p className="mt-0.5 text-caption text-muted sm:truncate">
+                    {q.description}
+                  </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
+                <div className="flex shrink-0 items-center gap-2 pt-0.5 sm:gap-3 sm:pt-0">
                   <span className="text-body font-semibold tabular-nums text-ink">
                     {q.count}
                   </span>
@@ -110,14 +114,14 @@ export function OverviewPage() {
         </ul>
       </section>
 
-      <section>
+      <section className="min-w-0">
         <h2 className="kpay-text-title mb-3">{t("overview.shortcutsTitle")}</h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           {shortcuts.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="inline-flex h-8 items-center rounded-md border border-edge bg-elevated px-3 text-label font-medium text-ink-secondary transition hover:border-edge-strong hover:bg-surface hover:text-ink"
+              className="inline-flex h-9 items-center justify-center rounded-md border border-edge bg-elevated px-3 text-center text-label font-medium text-ink-secondary transition hover:border-edge-strong hover:bg-surface hover:text-ink sm:h-8 sm:justify-start sm:text-left"
             >
               {item.label}
             </Link>

@@ -15,8 +15,8 @@ type Step = "password" | "otp";
 
 /**
  * Login UI kiểu Next.js starter (HTML + Tailwind), không Ant Design.
- * - Có totpEnrolled + twoFaToken → bước OTP.
- * - Có accessToken → vào portal.
+ * - twoFaToken + totpEnrolled → bước OTP trên form.
+ * - twoFaToken + !totpEnrolled → /totp?step=enroll (bắt buộc trước access JWT).
  */
 export function LoginForm() {
   const router = useRouter();
@@ -24,7 +24,6 @@ export function LoginForm() {
   const { t } = useI18n();
   const login = useAuthStore((s) => s.login);
   const verifyTotp = useAuthStore((s) => s.verifyTotp);
-  const completeSession = useAuthStore((s) => s.completeSession);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,15 +62,16 @@ export function LoginForm() {
         rememberMe,
       });
 
-      if (result.totpEnrolled && result.twoFaToken) {
-        setStep("otp");
-        setUseBackup(false);
-        return;
-      }
-
-      if (result.accessToken) {
-        completeSession(result, rememberMe);
-        router.replace(nextPath);
+      if (result.twoFaToken) {
+        if (result.totpEnrolled) {
+          setStep("otp");
+          setUseBackup(false);
+          return;
+        }
+        // Password ok but TOTP not enrolled — force server-side enroll before any access JWT.
+        const qs = new URLSearchParams({ step: "enroll" });
+        if (nextPath && nextPath !== ROUTES.home) qs.set("next", nextPath);
+        router.replace(`${ROUTES.totp}?${qs.toString()}`);
         return;
       }
 

@@ -135,7 +135,7 @@ export function AgentListPage() {
   }
 
   return (
-    <div className="flex w-full flex-col gap-5 px-6 py-5 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-5 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader
         title={t("agents.listTitle")}
         breadcrumbs={[
@@ -151,7 +151,7 @@ export function AgentListPage() {
         searchLabel={t("agents.search")}
         resetLabel={t("agents.reset")}
       >
-        <div className="w-full min-w-[280px] max-w-md sm:w-[320px]">
+        <div className="w-full min-w-0 max-w-md sm:min-w-[280px] sm:w-[320px]">
           <SearchInput
             id="agent-name"
             value={nameDraft}
@@ -160,7 +160,7 @@ export function AgentListPage() {
             label={t("agents.filterName")}
           />
         </div>
-        <div className="w-[200px]">
+        <div className="w-full min-w-0 sm:w-[200px]">
           <Select
             id="agent-active"
             size="md"
@@ -219,35 +219,35 @@ export function AgentListPage() {
           />
         }
       >
-        <table className="w-full table-fixed border-collapse text-left">
+        <table className="w-full min-w-[720px] table-fixed border-collapse text-left">
           <thead>
             <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-              <th className="w-[30%] px-5 py-2.5 font-medium">
+              <th className="w-[30%] px-3 py-2.5 font-medium sm:px-5">
                 <ColumnHeader icon={<IconUser width={14} height={14} />}>
                   {t("agents.colName")}
                 </ColumnHeader>
               </th>
-              <th className="w-[16%] px-5 py-2.5 font-medium">
+              <th className="w-[16%] px-3 py-2.5 font-medium sm:px-5">
                 <ColumnHeader icon={<IconPhone width={14} height={14} />}>
                   {t("agents.colPhone")}
                 </ColumnHeader>
               </th>
-              <th className="w-[14%] px-5 py-2.5 text-right font-medium">
+              <th className="w-[14%] px-3 py-2.5 text-right font-medium sm:px-5">
                 <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
                   {t("agents.colBalance")}
                 </ColumnHeader>
               </th>
-              <th className="w-[12%] px-5 py-2.5 text-center font-medium">
+              <th className="w-[12%] px-3 py-2.5 text-center font-medium sm:px-5">
                 <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
                   {t("agents.colStatus")}
                 </ColumnHeader>
               </th>
-              <th className="w-[16%] px-5 py-2.5 text-center font-medium">
+              <th className="w-[16%] px-3 py-2.5 text-center font-medium sm:px-5">
                 <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                   {t("agents.colCreated")}
                 </ColumnHeader>
               </th>
-              <th className="w-[12%] px-5 py-2.5 text-center font-medium">
+              <th className="w-[12%] px-3 py-2.5 text-center font-medium sm:px-5">
                 <ColumnHeader align="center" icon={<IconMoreHorizontal width={14} height={14} />}>
                   {t("agents.colActions")}
                 </ColumnHeader>
@@ -257,7 +257,7 @@ export function AgentListPage() {
           <tbody>
             {loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-16 text-center text-label text-muted">
+                <td colSpan={6} className="px-3 py-16 text-center text-label text-muted sm:px-5">
                   {t("agents.loading")}
                 </td>
               </tr>
@@ -265,7 +265,7 @@ export function AgentListPage() {
 
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-16 text-center text-label text-muted">
+                <td colSpan={6} className="px-3 py-16 text-center text-label text-muted sm:px-5">
                   {error
                     ? t("agents.loadError")
                     : hasFilters
@@ -277,24 +277,24 @@ export function AgentListPage() {
 
             {rows.map((row) => (
               <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
-                <td className="truncate px-5 py-2.5">
+                <td className="truncate px-3 py-2.5 sm:px-5">
                   <span className="text-label font-medium text-ink">{row.name}</span>
                 </td>
-                <td className="truncate px-5 py-2.5 text-label text-ink">
+                <td className="truncate px-3 py-2.5 text-label text-ink sm:px-5">
                   {row.phone ?? "—"}
                 </td>
-                <td className="px-5 py-2.5 text-right font-mono text-label tabular-nums text-ink">
+                <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink sm:px-5">
                   {formatMoney(row.balance)}
                 </td>
-                <td className="px-5 py-2.5 text-center">
+                <td className="px-3 py-2.5 text-center sm:px-5">
                   <StatusBadge tone={row.active ? "active" : "disabled"}>
                     {row.active ? t("agents.statusActive") : t("agents.statusInactive")}
                   </StatusBadge>
                 </td>
-                <td className="px-5 py-2.5 text-center text-label text-muted">
+                <td className="px-3 py-2.5 text-center text-label text-muted sm:px-5">
                   {formatDate(row.createdAt)}
                 </td>
-                <td className="px-5 py-2.5 text-center">
+                <td className="px-3 py-2.5 text-center sm:px-5">
                   <div className="flex items-center justify-center gap-1">
                     <Button
                       type="button"

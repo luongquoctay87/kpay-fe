@@ -25,9 +25,23 @@ export function PortalShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     void (async () => {
       await hydrate();
-      setCollapsed(readSidebarCollapsed());
+      const narrow =
+        typeof window !== "undefined" &&
+        window.matchMedia("(max-width: 767px)").matches;
+      // Prefer collapsed rail on narrow screens so page content has room.
+      setCollapsed(narrow || readSidebarCollapsed());
     })();
   }, [hydrate]);
+
+  // Keep rail collapsed while viewport stays narrow (e.g. rotate / resize).
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const apply = () => {
+      if (mq.matches) setCollapsed(true);
+    };
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   useEffect(() => {
     if (!hydrated) return;

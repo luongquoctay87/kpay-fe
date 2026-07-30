@@ -30,6 +30,7 @@ import { JsonViewModal } from "@/features/callback-logs/components/JsonViewModal
 import {
   CALLBACK_LOG_COLUMN_ALIGN,
   CALLBACK_LOG_COLUMN_WIDTH,
+  callbackLogsTableMinWidth,
   defaultColumnVisibility,
   loadColumnVisibility,
   saveColumnVisibility,
@@ -275,7 +276,7 @@ export function CallbackLogsPage() {
   }
 
   return (
-    <div className="flex w-full flex-col gap-5 px-6 py-5 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-5 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader
         title={t("callbackLogs.listTitle")}
         breadcrumbs={[
@@ -297,7 +298,7 @@ export function CallbackLogsPage() {
         searchLabel={t("callbackLogs.search")}
         resetLabel={t("callbackLogs.reset")}
       >
-        <div className="w-full min-w-[280px] max-w-md sm:w-[320px]">
+        <div className="w-full min-w-0 max-w-md sm:min-w-[280px] sm:w-[320px]">
           <SearchInput
             id="cb-external-id"
             value={externalIdDraft}
@@ -306,7 +307,7 @@ export function CallbackLogsPage() {
             label={t("callbackLogs.filterExternalId")}
           />
         </div>
-        <div className="w-[180px]">
+        <div className="w-full min-w-0 sm:w-[180px]">
           <Select
             id="cb-type"
             size="md"
@@ -322,7 +323,7 @@ export function CallbackLogsPage() {
             triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
           />
         </div>
-        <div className="w-[180px]">
+        <div className="w-full min-w-0 sm:w-[180px]">
           <Select
             id="cb-direction"
             size="md"
@@ -338,7 +339,7 @@ export function CallbackLogsPage() {
             triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
           />
         </div>
-        <div className="w-[180px]">
+        <div className="w-full min-w-0 sm:w-[180px]">
           <Select
             id="cb-status"
             size="md"
@@ -385,9 +386,8 @@ export function CallbackLogsPage() {
         }
       >
         <table
-          className={`w-full table-fixed border-collapse text-left ${
-            colSpan > 7 ? "min-w-[1100px]" : ""
-          }`}
+          className="w-full table-fixed border-collapse text-left"
+          style={{ minWidth: callbackLogsTableMinWidth(columnVisibility) }}
         >
           <thead>
             <tr className="border-b border-edge bg-surface text-label font-medium text-muted">

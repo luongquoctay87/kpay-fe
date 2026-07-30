@@ -23,12 +23,14 @@ type PageHeaderProps = {
  */
 export function PageHeader({ title, breadcrumbs, actions }: PageHeaderProps) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-3 pb-2">
-      <div className="space-y-3">
+    <header className="flex min-w-0 flex-wrap items-end justify-between gap-3 pb-2">
+      <div className="min-w-0 space-y-3">
         {breadcrumbs?.length ? <Breadcrumbs items={breadcrumbs} /> : null}
-        <h1 className="kpay-text-heading">{title}</h1>
+        <h1 className="kpay-text-heading break-words">{title}</h1>
       </div>
-      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">{actions}</div>
+      ) : null}
     </header>
   );
 }

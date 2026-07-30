@@ -349,6 +349,13 @@ export const en = {
     labelSecretKey: "Secret Key",
     btnReveal: "Reveal",
     btnResetKey: "Reset Key",
+    stepUpRevealTitle: "Reveal API credentials",
+    stepUpResetTitle: "Reset API credentials",
+    stepUpHint:
+      "Confirm your admin password to continue. Stolen session cookies alone are not enough.",
+    stepUpPassword: "Admin password",
+    stepUpTotp: "Authenticator code",
+    stepUpError: "Could not verify identity.",
     sectionTelegramPayout: "Payout confirmation via Telegram",
     sectionVietpmBot: "VietPM Bot config",
     labelTelegramGroup: "Telegram Group ID",

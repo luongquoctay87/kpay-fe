@@ -209,7 +209,7 @@ export function MerchantCreatePage() {
   }
 
   return (
-    <div className="flex w-full flex-col gap-6 px-6 py-5 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-8 lg:px-10">
       <PageHeader
         title={t("merchantNew.title")}
         breadcrumbs={[
@@ -219,13 +219,13 @@ export function MerchantCreatePage() {
         ]}
       />
 
-      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
+      <form onSubmit={onSubmit} noValidate className="flex min-w-0 flex-col gap-5 sm:gap-6">
         {/* ── Basic info ─────────────────────────────────────────────────── */}
-        <section className="rounded-lg border border-edge bg-elevated">
-          <div className="border-b border-edge px-5 py-3">
+        <section className="min-w-0 rounded-lg border border-edge bg-elevated">
+          <div className="border-b border-edge px-4 py-3 sm:px-5">
             <p className="kpay-text-title font-semibold">{t("merchantNew.sectionBasic")}</p>
           </div>
-          <div className="grid gap-5 p-5 sm:grid-cols-2">
+          <div className="grid gap-5 p-4 sm:grid-cols-2 sm:p-5">
             {/* Merchant Code */}
             <Field
               label={t("merchantNew.labelCode")}
@@ -279,11 +279,11 @@ export function MerchantCreatePage() {
         </section>
 
         {/* ── Login credentials ──────────────────────────────────────────── */}
-        <section className="rounded-lg border border-edge bg-elevated">
-          <div className="border-b border-edge px-5 py-3">
+        <section className="min-w-0 rounded-lg border border-edge bg-elevated">
+          <div className="border-b border-edge px-4 py-3 sm:px-5">
             <p className="kpay-text-title font-semibold">{t("merchantNew.sectionCredentials")}</p>
           </div>
-          <div className="grid gap-5 p-5 sm:grid-cols-2">
+          <div className="grid gap-5 p-4 sm:grid-cols-2 sm:p-5">
             <Field
               label={t("merchantNew.labelUsername")}
               htmlFor="mc-username"
@@ -359,20 +359,22 @@ export function MerchantCreatePage() {
         </section>
 
         {/* ── Fee configuration ─────────────────────────────────────────── */}
-        <section className="rounded-lg border border-edge bg-elevated">
-          <div className="border-b border-edge px-5 py-3">
+        <section className="min-w-0 rounded-lg border border-edge bg-elevated">
+          <div className="border-b border-edge px-4 py-3 sm:px-5">
             <p className="kpay-text-title font-semibold">{t("merchantNew.sectionFees")}</p>
           </div>
-          <div className="grid gap-5 p-5 sm:grid-cols-2">
+          <div className="grid gap-5 p-4 sm:grid-cols-2 sm:p-5">
             {FEE_GROUPS.map((group) => (
-              <div key={group.key} className="flex flex-col gap-2">
+              <div key={group.key} className="flex min-w-0 flex-col gap-2">
                 <p className="text-label font-semibold text-ink">{t(group.labelKey)}</p>
-                <div className="overflow-hidden rounded-lg border border-edge">
-                  <table className="w-full border-collapse text-left">
+                <div className="min-w-0 overflow-x-auto rounded-lg border border-edge">
+                  <table className="w-full min-w-[260px] border-collapse text-left">
                     <thead>
                       <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
                         <th className="px-3 py-2 font-medium">{t("merchantNew.colChannel")}</th>
-                        <th className="w-[140px] px-3 py-2 font-medium">{t("merchantNew.colFeeRate")}</th>
+                        <th className="w-[110px] px-3 py-2 font-medium sm:w-[140px]">
+                          {t("merchantNew.colFeeRate")}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -415,11 +417,12 @@ export function MerchantCreatePage() {
           </p>
         ) : null}
 
-        <div className="flex items-center justify-end gap-3 border-t border-edge pt-4">
+        <div className="flex flex-col-reverse gap-2 border-t border-edge pt-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
           <Button
             type="button"
             variant="secondary"
             size="md"
+            className="w-full sm:w-auto"
             leftIcon={
               <svg
                 width="15"
@@ -444,6 +447,7 @@ export function MerchantCreatePage() {
             type="submit"
             variant="primary"
             size="md"
+            className="w-full sm:w-auto"
             loading={submitting}
             leftIcon={<IconPlus width={15} height={15} />}
           >

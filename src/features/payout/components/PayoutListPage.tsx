@@ -320,184 +320,190 @@ export function PayoutListPage() {
 
       <form
         onSubmit={onSearch}
-        className="rounded-xl border border-edge bg-elevated px-5 py-4"
+        className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5"
       >
         {expanded ? (
-          <div className="grid grid-cols-1 gap-x-5 gap-y-3.5 md:grid-cols-2 xl:grid-cols-4">
-            <FilterField label={t("payout.filterTransId")} htmlFor="payout-trans-id">
-              <Input
-                id="payout-trans-id"
-                size="md"
-                value={transIdDraft}
-                onChange={(e) => setTransIdDraft(e.target.value)}
-                placeholder={t("payout.filterTransIdPlaceholder")}
-                className={filterControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payout.filterContent")} htmlFor="payout-content">
-              <Input
-                id="payout-content"
-                size="md"
-                value={transferContentDraft}
-                onChange={(e) => setTransferContentDraft(e.target.value)}
-                placeholder={t("payout.filterContentPlaceholder")}
-                className={filterControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payout.filterMerchant")} htmlFor="payout-merchant">
-              <Select
-                id="payout-merchant"
-                size="md"
-                options={merchantOptions}
-                value={merchantDraft}
-                onChange={setMerchantDraft}
-                placeholder={t("payout.filterMerchantPlaceholder")}
-                clearable
-                triggerClassName={filterControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payout.filterAccount")} htmlFor="payout-account">
-              <Input
-                id="payout-account"
-                size="md"
-                value={accountDraft}
-                onChange={(e) => setAccountDraft(e.target.value)}
-                placeholder={t("payout.filterAccountPlaceholder")}
-                className={filterControlClass}
-              />
-            </FilterField>
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">
+              <FilterField label={t("payout.filterTransId")} htmlFor="payout-trans-id">
+                <Input
+                  id="payout-trans-id"
+                  size="md"
+                  value={transIdDraft}
+                  onChange={(e) => setTransIdDraft(e.target.value)}
+                  placeholder={t("payout.filterTransIdPlaceholder")}
+                  className={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payout.filterContent")} htmlFor="payout-content">
+                <Input
+                  id="payout-content"
+                  size="md"
+                  value={transferContentDraft}
+                  onChange={(e) => setTransferContentDraft(e.target.value)}
+                  placeholder={t("payout.filterContentPlaceholder")}
+                  className={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payout.filterMerchant")} htmlFor="payout-merchant">
+                <Select
+                  id="payout-merchant"
+                  size="md"
+                  options={merchantOptions}
+                  value={merchantDraft}
+                  onChange={setMerchantDraft}
+                  placeholder={t("payout.filterMerchantPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payout.filterAccount")} htmlFor="payout-account">
+                <Input
+                  id="payout-account"
+                  size="md"
+                  value={accountDraft}
+                  onChange={(e) => setAccountDraft(e.target.value)}
+                  placeholder={t("payout.filterAccountPlaceholder")}
+                  className={filterControlClass}
+                />
+              </FilterField>
 
-            <FilterField
-              label={t("payout.filterSourceAccount")}
-              htmlFor="payout-source-account"
-            >
-              <Select
-                id="payout-source-account"
-                size="md"
-                options={sourceAccountOptions}
-                value={sourceAccountDraft}
-                onChange={setSourceAccountDraft}
-                placeholder={t("payout.filterSourceAccountPlaceholder")}
-                clearable
-                triggerClassName={filterControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payout.filterStatus")} htmlFor="payout-status">
-              <Select
-                id="payout-status"
-                size="md"
-                options={statusOptions}
-                value={statusDraft}
-                onChange={setStatusDraft}
-                placeholder={t("payout.filterStatusPlaceholder")}
-                clearable
-                triggerClassName={filterControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payout.filterCallback")} htmlFor="payout-callback">
-              <Select
-                id="payout-callback"
-                size="md"
-                options={callbackOptions}
-                value={callbackDraft}
-                onChange={setCallbackDraft}
-                placeholder={t("payout.filterCallbackPlaceholder")}
-                clearable
-                triggerClassName={filterControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payout.filterCreatedFrom")} htmlFor="payout-created-from">
-              <Input
-                id="payout-created-from"
-                type="datetime-local"
-                size="md"
-                value={createdFromDraft}
-                onChange={(e) => setCreatedFromDraft(e.target.value)}
-                placeholder={t("payout.filterTimePlaceholder")}
-                className={dateTimeControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payout.filterCreatedTo")} htmlFor="payout-created-to">
-              <Input
-                id="payout-created-to"
-                type="datetime-local"
-                size="md"
-                value={createdToDraft}
-                onChange={(e) => setCreatedToDraft(e.target.value)}
-                placeholder={t("payout.filterTimePlaceholder")}
-                className={dateTimeControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payout.filterUpdatedFrom")} htmlFor="payout-updated-from">
-              <Input
-                id="payout-updated-from"
-                type="datetime-local"
-                size="md"
-                value={updatedFromDraft}
-                onChange={(e) => setUpdatedFromDraft(e.target.value)}
-                placeholder={t("payout.filterTimePlaceholder")}
-                className={dateTimeControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payout.filterUpdatedTo")} htmlFor="payout-updated-to">
-              <Input
-                id="payout-updated-to"
-                type="datetime-local"
-                size="md"
-                value={updatedToDraft}
-                onChange={(e) => setUpdatedToDraft(e.target.value)}
-                placeholder={t("payout.filterTimePlaceholder")}
-                className={dateTimeControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payout.filterRealStatus")} htmlFor="payout-real-status">
-              <Input
-                id="payout-real-status"
-                size="md"
-                value={realStatusDraft}
-                onChange={(e) => setRealStatusDraft(e.target.value)}
-                placeholder={t("payout.filterRealStatusPlaceholder")}
-                className={filterControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payout.filterReason")} htmlFor="payout-reason">
-              <Input
-                id="payout-reason"
-                size="md"
-                value={reasonDraft}
-                onChange={(e) => setReasonDraft(e.target.value)}
-                placeholder={t("payout.filterReasonPlaceholder")}
-                className={filterControlClass}
-              />
-            </FilterField>
+              <FilterField
+                label={t("payout.filterSourceAccount")}
+                htmlFor="payout-source-account"
+              >
+                <Select
+                  id="payout-source-account"
+                  size="md"
+                  options={sourceAccountOptions}
+                  value={sourceAccountDraft}
+                  onChange={setSourceAccountDraft}
+                  placeholder={t("payout.filterSourceAccountPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payout.filterStatus")} htmlFor="payout-status">
+                <Select
+                  id="payout-status"
+                  size="md"
+                  options={statusOptions}
+                  value={statusDraft}
+                  onChange={setStatusDraft}
+                  placeholder={t("payout.filterStatusPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payout.filterCallback")} htmlFor="payout-callback">
+                <Select
+                  id="payout-callback"
+                  size="md"
+                  options={callbackOptions}
+                  value={callbackDraft}
+                  onChange={setCallbackDraft}
+                  placeholder={t("payout.filterCallbackPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payout.filterCreatedFrom")} htmlFor="payout-created-from">
+                <Input
+                  id="payout-created-from"
+                  type="datetime-local"
+                  size="md"
+                  value={createdFromDraft}
+                  onChange={(e) => setCreatedFromDraft(e.target.value)}
+                  placeholder={t("payout.filterTimePlaceholder")}
+                  className={dateTimeControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payout.filterCreatedTo")} htmlFor="payout-created-to">
+                <Input
+                  id="payout-created-to"
+                  type="datetime-local"
+                  size="md"
+                  value={createdToDraft}
+                  onChange={(e) => setCreatedToDraft(e.target.value)}
+                  placeholder={t("payout.filterTimePlaceholder")}
+                  className={dateTimeControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payout.filterUpdatedFrom")} htmlFor="payout-updated-from">
+                <Input
+                  id="payout-updated-from"
+                  type="datetime-local"
+                  size="md"
+                  value={updatedFromDraft}
+                  onChange={(e) => setUpdatedFromDraft(e.target.value)}
+                  placeholder={t("payout.filterTimePlaceholder")}
+                  className={dateTimeControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payout.filterUpdatedTo")} htmlFor="payout-updated-to">
+                <Input
+                  id="payout-updated-to"
+                  type="datetime-local"
+                  size="md"
+                  value={updatedToDraft}
+                  onChange={(e) => setUpdatedToDraft(e.target.value)}
+                  placeholder={t("payout.filterTimePlaceholder")}
+                  className={dateTimeControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payout.filterRealStatus")} htmlFor="payout-real-status">
+                <Input
+                  id="payout-real-status"
+                  size="md"
+                  value={realStatusDraft}
+                  onChange={(e) => setRealStatusDraft(e.target.value)}
+                  placeholder={t("payout.filterRealStatusPlaceholder")}
+                  className={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payout.filterReason")} htmlFor="payout-reason">
+                <Input
+                  id="payout-reason"
+                  size="md"
+                  value={reasonDraft}
+                  onChange={(e) => setReasonDraft(e.target.value)}
+                  placeholder={t("payout.filterReasonPlaceholder")}
+                  className={filterControlClass}
+                />
+              </FilterField>
+            </div>
 
-            <div className="flex h-9 flex-wrap items-center justify-end gap-2 md:col-span-2 xl:col-span-3">
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={onReset}
-                disabled={!canReset}
-                leftIcon={<IconRefresh width={15} height={15} />}
-              >
-                {t("payout.reset")}
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                leftIcon={<IconSearch width={15} height={15} />}
-              >
-                {t("payout.search")}
-              </Button>
+            <div className="flex flex-col-reverse gap-2 border-t border-edge pt-3 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
                 onClick={() => setExpanded(false)}
-                className="inline-flex h-9 items-center gap-1 px-1.5 text-label font-medium text-ink transition hover:opacity-70"
+                className="inline-flex h-9 items-center justify-center gap-1 px-1.5 text-label font-medium text-ink transition hover:opacity-70 sm:justify-start"
               >
                 {t("payout.collapse")}
                 <IconChevron className="rotate-180" width={14} height={14} />
               </button>
+              <div className="flex w-full gap-2 sm:w-auto">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  className="flex-1 sm:flex-none"
+                  onClick={onReset}
+                  disabled={!canReset}
+                  leftIcon={<IconRefresh width={15} height={15} />}
+                >
+                  {t("payout.reset")}
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  className="flex-1 sm:flex-none"
+                  leftIcon={<IconSearch width={15} height={15} />}
+                >
+                  {t("payout.search")}
+                </Button>
+              </div>
             </div>
           </div>
         ) : (

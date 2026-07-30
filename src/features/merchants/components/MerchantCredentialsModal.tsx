@@ -39,28 +39,30 @@ function CredentialRow({
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <label htmlFor={id} className="w-[76px] shrink-0 text-label text-muted">
+    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+      <label htmlFor={id} className="shrink-0 text-label text-muted sm:w-[76px]">
         {label}
       </label>
-      <Input
-        id={id}
-        value={value}
-        readOnly
-        size="sm"
-        className="font-mono"
-        onFocus={(e) => e.currentTarget.select()}
-      />
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        onClick={() => void onCopy()}
-        leftIcon={<IconCopy />}
-        className="shrink-0"
-      >
-        {copied ? t("merchantNew.modalKeyCopied") : t("merchantNew.modalKeyCopy")}
-      </Button>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <Input
+          id={id}
+          value={value}
+          readOnly
+          size="sm"
+          className="min-w-0 font-mono"
+          onFocus={(e) => e.currentTarget.select()}
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => void onCopy()}
+          leftIcon={<IconCopy />}
+          className="shrink-0"
+        >
+          {copied ? t("merchantNew.modalKeyCopied") : t("merchantNew.modalKeyCopy")}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -105,14 +107,14 @@ export function MerchantCredentialsModal({ merchant, onClose }: MerchantCredenti
 
   return (
     // No backdrop-click dismiss: a stray click would lose the secret for good.
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="mc-creds-title"
-        className="w-full max-w-lg rounded-xl border border-edge bg-elevated shadow-xl"
+        className="flex max-h-[min(100dvh-1.5rem,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
       >
-        <div className="flex items-start justify-between gap-3 border-b border-edge px-5 py-4">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-edge px-4 py-4 sm:px-5">
           <p id="mc-creds-title" className="kpay-text-title font-semibold">
             {t("merchantNew.modalKeyTitle")}
           </p>
@@ -129,7 +131,7 @@ export function MerchantCredentialsModal({ merchant, onClose }: MerchantCredenti
           </button>
         </div>
 
-        <div className="flex flex-col gap-4 p-5">
+        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4 sm:p-5">
           <p
             role="alert"
             className="rounded-lg border border-danger-edge bg-danger-bg px-3.5 py-2.5 text-label leading-relaxed text-danger"
@@ -151,17 +153,25 @@ export function MerchantCredentialsModal({ merchant, onClose }: MerchantCredenti
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-edge px-5 py-3">
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
           <Button
             type="button"
             variant="secondary"
             size="md"
+            className="w-full sm:w-auto"
             onClick={onDownload}
             leftIcon={<IconDownload width={16} height={16} />}
           >
             {t("merchantNew.modalKeyDownload")}
           </Button>
-          <Button type="button" variant="primary" size="md" onClick={onClose} leftIcon={<IconCheckCircle width={16} height={16} />}>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            className="w-full sm:w-auto"
+            onClick={onClose}
+            leftIcon={<IconCheckCircle width={16} height={16} />}
+          >
             {t("merchantNew.modalKeyDone")}
           </Button>
         </div>

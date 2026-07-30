@@ -54,7 +54,7 @@ export function TableCard({
     <section className="relative z-0 w-full min-w-0 rounded-lg border border-edge bg-elevated">
       {/* Toolbar */}
       {(toolbar || onRefresh) ? (
-        <div className="flex items-center justify-end gap-2 border-b border-edge px-5 py-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-b border-edge px-3 py-3 sm:px-5">
           {toolbar}
           {onRefresh ? (
             <Button

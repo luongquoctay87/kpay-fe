@@ -151,7 +151,7 @@ export function MerchantListPage() {
   }
 
   return (
-    <div className="flex w-full flex-col gap-5 px-6 py-5 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-5 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader
         title={t("merchants.listTitle")}
         breadcrumbs={[
@@ -167,7 +167,7 @@ export function MerchantListPage() {
         searchLabel={t("merchants.search")}
         resetLabel={t("merchants.reset")}
       >
-        <div className="w-full min-w-[280px] max-w-md sm:w-[320px]">
+        <div className="w-full min-w-0 max-w-md sm:min-w-[280px] sm:w-[320px]">
           <SearchInput
             id="merchant-name"
             value={nameDraft}
@@ -176,7 +176,7 @@ export function MerchantListPage() {
             label={t("merchants.filterName")}
           />
         </div>
-        <div className="w-[200px]">
+        <div className="w-full min-w-0 sm:w-[200px]">
           <Select
             id="merchant-status"
             size="md"
@@ -232,35 +232,35 @@ export function MerchantListPage() {
           />
         }
       >
-        <table className="w-full table-fixed border-collapse text-left">
+        <table className="w-full min-w-[720px] table-fixed border-collapse text-left">
           <thead>
             <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-              <th className="w-[14%] px-5 py-2.5 font-medium">
+              <th className="w-[14%] px-3 py-2.5 font-medium sm:px-5">
                 <ColumnHeader icon={<IconHash width={14} height={14} />}>
                   {t("merchants.colCode")}
                 </ColumnHeader>
               </th>
-              <th className="w-[28%] px-5 py-2.5 font-medium">
+              <th className="w-[28%] px-3 py-2.5 font-medium sm:px-5">
                 <ColumnHeader icon={<IconStore width={14} height={14} />}>
                   {t("merchants.colName")}
                 </ColumnHeader>
               </th>
-              <th className="w-[16%] px-5 py-2.5 text-right font-medium">
+              <th className="w-[16%] px-3 py-2.5 text-right font-medium sm:px-5">
                 <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
                   {t("merchants.colBalance")}
                 </ColumnHeader>
               </th>
-              <th className="w-[14%] px-5 py-2.5 text-center font-medium">
+              <th className="w-[14%] px-3 py-2.5 text-center font-medium sm:px-5">
                 <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
                   {t("merchants.colStatus")}
                 </ColumnHeader>
               </th>
-              <th className="w-[16%] px-5 py-2.5 text-center font-medium">
+              <th className="w-[16%] px-3 py-2.5 text-center font-medium sm:px-5">
                 <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                   {t("merchants.colCreated")}
                 </ColumnHeader>
               </th>
-              <th className="w-[12%] px-5 py-2.5 text-center font-medium">
+              <th className="w-[12%] px-3 py-2.5 text-center font-medium sm:px-5">
                 <ColumnHeader align="center" icon={<IconMoreHorizontal width={14} height={14} />}>
                   {t("merchants.colActions")}
                 </ColumnHeader>
@@ -290,7 +290,7 @@ export function MerchantListPage() {
 
             {rows.map((row) => (
               <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
-                <td className="truncate px-5 py-2.5">
+                <td className="truncate px-3 py-2.5 sm:px-5">
                   <Link
                     href={ROUTES.merchantDetail(row.id)}
                     className="text-label font-medium !text-ink hover:underline"
@@ -298,19 +298,19 @@ export function MerchantListPage() {
                     {row.code}
                   </Link>
                 </td>
-                <td className="truncate px-5 py-2.5 text-label text-ink">{row.name}</td>
-                <td className="px-5 py-2.5 text-right font-mono text-label tabular-nums text-ink">
+                <td className="truncate px-3 py-2.5 text-label text-ink sm:px-5">{row.name}</td>
+                <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink sm:px-5">
                   {formatMoney(row.availableBalance)}
                 </td>
-                <td className="px-5 py-2.5 text-center">
+                <td className="px-3 py-2.5 text-center sm:px-5">
                   <StatusBadge tone={MERCHANT_STATUS_TONE[row.status]}>
                     {t(MERCHANT_STATUS_LABEL_KEY[row.status])}
                   </StatusBadge>
                 </td>
-                <td className="px-5 py-2.5 text-center text-label text-muted">
+                <td className="px-3 py-2.5 text-center text-label text-muted sm:px-5">
                   {formatDate(row.createdAt)}
                 </td>
-                <td className="px-5 py-2.5 text-center">
+                <td className="px-3 py-2.5 text-center sm:px-5">
                   <div className="flex items-center justify-center gap-1">
                     {row.status === "active" ? (
                       <Button
@@ -347,10 +347,10 @@ export function MerchantListPage() {
 
             {!loading && rows.length > 0 ? (
               <tr className="border-t border-edge bg-surface/50">
-                <td colSpan={2} className="px-5 py-2.5 text-label font-semibold text-ink">
+                <td colSpan={2} className="px-3 py-2.5 text-label font-semibold text-ink sm:px-5">
                   {t("merchants.totalRow")}
                 </td>
-                <td className="px-5 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink">
+                <td className="px-3 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink sm:px-5">
                   {formatMoney(totalBalance)}
                 </td>
                 <td colSpan={3} />

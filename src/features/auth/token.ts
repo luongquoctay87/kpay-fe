@@ -4,7 +4,7 @@ const ACCESS_TOKEN_KEY = "kpay_access_token";
 const ACCESS_EXPIRES_AT_KEY = "kpay_access_expires_at";
 const TWO_FA_TOKEN_KEY = "kpay_two_fa_token";
 const USER_KEY = "kpay_user";
-/** Active session mode: "1" = persist across browser restarts. */
+/** Active session mode: "1" = persist across browser restarts (refresh cookie TTL). */
 const REMEMBER_ME_KEY = "kpay_remember_me";
 /** Last checkbox preference on the login form (survives logout). */
 const REMEMBER_PREFERENCE_KEY = "kpay_remember_preference";
@@ -17,7 +17,28 @@ export const REMEMBER_SESSION_MAX_AGE_SEC = 14 * 24 * 60 * 60;
 
 export { SESSION_COOKIE };
 
-function authStorage(): Storage {
+/**
+ * Access JWT lives only in page memory — never localStorage/sessionStorage.
+ * XSS cannot exfiltrate a persisted bearer; reload restores via HttpOnly refresh cookie.
+ */
+let memoryAccessToken: string | null = null;
+let memoryAccessExpiresAt: number | null = null;
+let memoryTwoFaToken: string | null = null;
+let memoryUserJson: string | null = null;
+
+/** Wipe legacy persisted JWTs from older builds (one-time hygiene on every write/clear). */
+function purgeLegacyPersistedTokens(): void {
+  if (typeof window === "undefined") return;
+  for (const store of [localStorage, sessionStorage]) {
+    store.removeItem(ACCESS_TOKEN_KEY);
+    store.removeItem(ACCESS_EXPIRES_AT_KEY);
+    store.removeItem(TWO_FA_TOKEN_KEY);
+  }
+}
+
+function authUserStorage(): Storage {
+  // Profile JSON is not a bearer credential; remember-me may keep it across restarts
+  // so the shell can render a name before refresh completes.
   return isRememberMe() ? localStorage : sessionStorage;
 }
 
@@ -34,15 +55,10 @@ export function setRememberMePreference(remember: boolean): void {
 
 export function isRememberMe(): boolean {
   if (typeof window === "undefined") return true;
-  const raw = localStorage.getItem(REMEMBER_ME_KEY);
-  if (raw === null) {
-    // Legacy sessions: access lived in localStorage without an explicit flag.
-    return Boolean(localStorage.getItem(ACCESS_TOKEN_KEY));
-  }
-  return raw === "1";
+  return localStorage.getItem(REMEMBER_ME_KEY) === "1";
 }
 
-/** Call before writing tokens so access/user land in the correct storage. */
+/** Call before writing tokens so remember-me session markers land correctly. */
 export function setRememberMe(remember: boolean): void {
   localStorage.setItem(REMEMBER_ME_KEY, remember ? "1" : "0");
   setRememberMePreference(remember);
@@ -53,18 +69,11 @@ export function clearRememberMe(): void {
 }
 
 export function getAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(ACCESS_TOKEN_KEY) ?? sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  return memoryAccessToken;
 }
 
 export function getAccessExpiresAt(): number | null {
-  if (typeof window === "undefined") return null;
-  const raw =
-    localStorage.getItem(ACCESS_EXPIRES_AT_KEY) ?? sessionStorage.getItem(ACCESS_EXPIRES_AT_KEY);
-  if (raw) {
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : null;
-  }
+  if (memoryAccessExpiresAt != null) return memoryAccessExpiresAt;
   const token = getAccessToken();
   return token ? readJwtExpMs(token) : null;
 }
@@ -79,56 +88,55 @@ export function isAccessTokenFresh(skewMs = ACCESS_TOKEN_SKEW_MS): boolean {
 }
 
 export function setAccessToken(token: string, expiresInSeconds?: number): void {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(ACCESS_EXPIRES_AT_KEY);
-  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-  sessionStorage.removeItem(ACCESS_EXPIRES_AT_KEY);
-
-  const store = authStorage();
-  store.setItem(ACCESS_TOKEN_KEY, token);
+  purgeLegacyPersistedTokens();
+  memoryAccessToken = token;
   const fromTtl =
     expiresInSeconds != null && expiresInSeconds > 0
       ? Date.now() + expiresInSeconds * 1000
       : null;
-  const expiresAt = fromTtl ?? readJwtExpMs(token);
-  if (expiresAt != null) {
-    store.setItem(ACCESS_EXPIRES_AT_KEY, String(expiresAt));
-  }
+  memoryAccessExpiresAt = fromTtl ?? readJwtExpMs(token);
   setSessionCookie();
 }
 
 export function clearAccessToken(): void {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(ACCESS_EXPIRES_AT_KEY);
-  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-  sessionStorage.removeItem(ACCESS_EXPIRES_AT_KEY);
+  memoryAccessToken = null;
+  memoryAccessExpiresAt = null;
+  purgeLegacyPersistedTokens();
 }
 
 export function getTwoFaToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(TWO_FA_TOKEN_KEY);
+  return memoryTwoFaToken;
 }
 
 export function setTwoFaToken(token: string): void {
-  sessionStorage.setItem(TWO_FA_TOKEN_KEY, token);
+  purgeLegacyPersistedTokens();
+  memoryTwoFaToken = token;
 }
 
 export function clearTwoFaToken(): void {
-  sessionStorage.removeItem(TWO_FA_TOKEN_KEY);
+  memoryTwoFaToken = null;
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem(TWO_FA_TOKEN_KEY);
+  }
 }
 
 export function getStoredUserJson(): string | null {
+  if (memoryUserJson) return memoryUserJson;
   if (typeof window === "undefined") return null;
   return localStorage.getItem(USER_KEY) ?? sessionStorage.getItem(USER_KEY);
 }
 
 export function setStoredUserJson(json: string): void {
+  memoryUserJson = json;
+  if (typeof window === "undefined") return;
   localStorage.removeItem(USER_KEY);
   sessionStorage.removeItem(USER_KEY);
-  authStorage().setItem(USER_KEY, json);
+  authUserStorage().setItem(USER_KEY, json);
 }
 
 export function clearStoredUser(): void {
+  memoryUserJson = null;
+  if (typeof window === "undefined") return;
   localStorage.removeItem(USER_KEY);
   sessionStorage.removeItem(USER_KEY);
 }
@@ -138,18 +146,33 @@ export function hasSessionMarker(): boolean {
   return document.cookie.split(";").some((part) => part.trim().startsWith(`${SESSION_COOKIE}=1`));
 }
 
+/** Soft marker only (not HttpOnly) — still must not ride cleartext HTTP on real hosts. */
+function cookieSecureAttr(): string {
+  if (typeof window === "undefined") return "";
+  if (process.env.NEXT_PUBLIC_COOKIE_SECURE === "true") return "; Secure";
+  if (process.env.NEXT_PUBLIC_COOKIE_SECURE === "false") return "";
+  return window.location.protocol === "https:" ? "; Secure" : "";
+}
+
 export function setSessionCookie(): void {
   if (typeof document === "undefined") return;
+  // Drop any legacy non-Secure twin before writing the current flags.
+  document.cookie = `${SESSION_COOKIE}=; path=/; Max-Age=0; SameSite=Lax`;
+  document.cookie = `${SESSION_COOKIE}=; path=/; Max-Age=0; SameSite=Lax; Secure`;
+
+  const secure = cookieSecureAttr();
   if (isRememberMe()) {
-    document.cookie = `${SESSION_COOKIE}=1; path=/; Max-Age=${REMEMBER_SESSION_MAX_AGE_SEC}; SameSite=Lax`;
+    document.cookie = `${SESSION_COOKIE}=1; path=/; Max-Age=${REMEMBER_SESSION_MAX_AGE_SEC}; SameSite=Lax${secure}`;
   } else {
-    document.cookie = `${SESSION_COOKIE}=1; path=/; SameSite=Lax`;
+    document.cookie = `${SESSION_COOKIE}=1; path=/; SameSite=Lax${secure}`;
   }
 }
 
 export function clearSessionCookie(): void {
   if (typeof document === "undefined") return;
+  // Clear both variants — Secure is part of the cookie identity in modern browsers.
   document.cookie = `${SESSION_COOKIE}=; path=/; Max-Age=0; SameSite=Lax`;
+  document.cookie = `${SESSION_COOKIE}=; path=/; Max-Age=0; SameSite=Lax; Secure`;
 }
 
 export function clearAuthStorage(): void {

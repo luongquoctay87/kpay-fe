@@ -70,7 +70,7 @@ export function AgentCreatePage() {
   }
 
   return (
-    <div className="flex w-full flex-col gap-6 px-6 py-5 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-8 lg:px-10">
       <PageHeader
         title={t("agentNew.title")}
         breadcrumbs={[
@@ -80,13 +80,13 @@ export function AgentCreatePage() {
         ]}
       />
 
-      <form onSubmit={onSubmit} noValidate className="mx-auto w-full max-w-2xl">
+      <form onSubmit={onSubmit} noValidate className="mx-auto w-full min-w-0 max-w-2xl">
         {/* ── Required fields ── */}
-        <section className="rounded-lg border border-edge bg-elevated">
-          <div className="border-b border-edge px-5 py-3">
+        <section className="min-w-0 rounded-lg border border-edge bg-elevated">
+          <div className="border-b border-edge px-4 py-3 sm:px-5">
             <p className="kpay-text-title font-semibold">{t("agentNew.sectionBasic")}</p>
           </div>
-          <div className="grid gap-5 p-5 sm:grid-cols-2">
+          <div className="grid gap-5 p-4 sm:grid-cols-2 sm:p-5">
             <Field
               label={t("agentNew.labelName")}
               htmlFor="ag-name"
@@ -165,11 +165,11 @@ export function AgentCreatePage() {
         </section>
 
         {/* ── Optional fields ── */}
-        <section className="mt-4 rounded-lg border border-edge bg-elevated">
-          <div className="border-b border-edge px-5 py-3">
+        <section className="mt-4 min-w-0 rounded-lg border border-edge bg-elevated">
+          <div className="border-b border-edge px-4 py-3 sm:px-5">
             <p className="kpay-text-title font-semibold">{t("agentNew.sectionContact")}</p>
           </div>
-          <div className="grid gap-5 p-5 sm:grid-cols-2">
+          <div className="grid gap-5 p-4 sm:grid-cols-2 sm:p-5">
             <Field label={t("agentNew.labelEmail")} htmlFor="ag-email" error={emailError}>
               <Input
                 id="ag-email"
@@ -213,11 +213,12 @@ export function AgentCreatePage() {
           </p>
         ) : null}
 
-        <div className="mt-4 flex items-center justify-end gap-3 border-t border-edge pt-4">
+        <div className="mt-4 flex flex-col-reverse gap-2 border-t border-edge pt-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
           <Button
             type="button"
             variant="secondary"
             size="md"
+            className="w-full sm:w-auto"
             leftIcon={
               <svg
                 width="15"
@@ -242,6 +243,7 @@ export function AgentCreatePage() {
             type="submit"
             variant="primary"
             size="md"
+            className="w-full sm:w-auto"
             loading={submitting}
             leftIcon={<IconSave width={15} height={15} />}
           >

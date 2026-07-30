@@ -289,7 +289,7 @@ export function PayinListPage() {
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-4 px-6 py-5 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader title={t("payin.listTitle")} />
 
       {notice ? (
@@ -298,7 +298,7 @@ export function PayinListPage() {
         </p>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label={t("payin.statSuccessCount")}
           value={formatMoney(stats.successCount)}
@@ -322,160 +322,167 @@ export function PayinListPage() {
 
       <form
         onSubmit={onSearch}
-        className="rounded-xl border border-edge bg-elevated px-5 py-4"
+        className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5"
       >
         {expanded ? (
-          <div className="grid grid-cols-1 gap-x-5 gap-y-3.5 md:grid-cols-2 xl:grid-cols-4">
-            <FilterField label={t("payin.filterTransId")} htmlFor="payin-trans-id">
-              <Input
-                id="payin-trans-id"
-                size="md"
-                value={transIdDraft}
-                onChange={(e) => setTransIdDraft(e.target.value)}
-                placeholder={t("payin.filterTransIdPlaceholder")}
-                className={filterControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payin.filterContent")} htmlFor="payin-content">
-              <Input
-                id="payin-content"
-                size="md"
-                value={contentDraft}
-                onChange={(e) => setContentDraft(e.target.value)}
-                placeholder={t("payin.filterContentPlaceholder")}
-                className={filterControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payin.filterMerchant")} htmlFor="payin-merchant">
-              <Select
-                id="payin-merchant"
-                size="md"
-                options={merchantOptions}
-                value={merchantDraft}
-                onChange={setMerchantDraft}
-                placeholder={t("payin.filterMerchantPlaceholder")}
-                clearable
-                triggerClassName={filterControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payin.filterChannel")} htmlFor="payin-channel">
-              <Select
-                id="payin-channel"
-                size="md"
-                options={channelSelectOptions}
-                value={channelDraft}
-                onChange={setChannelDraft}
-                placeholder={t("payin.filterChannelPlaceholder")}
-                clearable
-                triggerClassName={filterControlClass}
-              />
-            </FilterField>
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">
+              <FilterField label={t("payin.filterTransId")} htmlFor="payin-trans-id">
+                <Input
+                  id="payin-trans-id"
+                  size="md"
+                  value={transIdDraft}
+                  onChange={(e) => setTransIdDraft(e.target.value)}
+                  placeholder={t("payin.filterTransIdPlaceholder")}
+                  className={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payin.filterContent")} htmlFor="payin-content">
+                <Input
+                  id="payin-content"
+                  size="md"
+                  value={contentDraft}
+                  onChange={(e) => setContentDraft(e.target.value)}
+                  placeholder={t("payin.filterContentPlaceholder")}
+                  className={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payin.filterMerchant")} htmlFor="payin-merchant">
+                <Select
+                  id="payin-merchant"
+                  size="md"
+                  options={merchantOptions}
+                  value={merchantDraft}
+                  onChange={setMerchantDraft}
+                  placeholder={t("payin.filterMerchantPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payin.filterChannel")} htmlFor="payin-channel">
+                <Select
+                  id="payin-channel"
+                  size="md"
+                  options={channelSelectOptions}
+                  value={channelDraft}
+                  onChange={setChannelDraft}
+                  placeholder={t("payin.filterChannelPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
 
-            <FilterField label={t("payin.filterStatus")} htmlFor="payin-status">
-              <Select
-                id="payin-status"
-                size="md"
-                options={statusOptions}
-                value={statusDraft}
-                onChange={setStatusDraft}
-                placeholder={t("payin.filterStatusPlaceholder")}
-                clearable
-                triggerClassName={filterControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payin.filterCallback")} htmlFor="payin-callback">
-              <Select
-                id="payin-callback"
-                size="md"
-                options={callbackOptions}
-                value={callbackDraft}
-                onChange={setCallbackDraft}
-                placeholder={t("payin.filterCallbackPlaceholder")}
-                clearable
-                triggerClassName={filterControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payin.filterCreatedFrom")} htmlFor="payin-created-from">
-              <Input
-                id="payin-created-from"
-                type="datetime-local"
-                size="md"
-                value={createdFromDraft}
-                onChange={(e) => setCreatedFromDraft(e.target.value)}
-                placeholder={t("payin.filterTimePlaceholder")}
-                aria-label={t("payin.filterCreatedFrom")}
-                className={dateTimeControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payin.filterCreatedTo")} htmlFor="payin-created-to">
-              <Input
-                id="payin-created-to"
-                type="datetime-local"
-                size="md"
-                value={createdToDraft}
-                onChange={(e) => setCreatedToDraft(e.target.value)}
-                placeholder={t("payin.filterTimePlaceholder")}
-                aria-label={t("payin.filterCreatedTo")}
-                className={dateTimeControlClass}
-              />
-            </FilterField>
+              <FilterField label={t("payin.filterStatus")} htmlFor="payin-status">
+                <Select
+                  id="payin-status"
+                  size="md"
+                  options={statusOptions}
+                  value={statusDraft}
+                  onChange={setStatusDraft}
+                  placeholder={t("payin.filterStatusPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payin.filterCallback")} htmlFor="payin-callback">
+                <Select
+                  id="payin-callback"
+                  size="md"
+                  options={callbackOptions}
+                  value={callbackDraft}
+                  onChange={setCallbackDraft}
+                  placeholder={t("payin.filterCallbackPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payin.filterCreatedFrom")} htmlFor="payin-created-from">
+                <Input
+                  id="payin-created-from"
+                  type="datetime-local"
+                  size="md"
+                  value={createdFromDraft}
+                  onChange={(e) => setCreatedFromDraft(e.target.value)}
+                  placeholder={t("payin.filterTimePlaceholder")}
+                  aria-label={t("payin.filterCreatedFrom")}
+                  className={dateTimeControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payin.filterCreatedTo")} htmlFor="payin-created-to">
+                <Input
+                  id="payin-created-to"
+                  type="datetime-local"
+                  size="md"
+                  value={createdToDraft}
+                  onChange={(e) => setCreatedToDraft(e.target.value)}
+                  placeholder={t("payin.filterTimePlaceholder")}
+                  aria-label={t("payin.filterCreatedTo")}
+                  className={dateTimeControlClass}
+                />
+              </FilterField>
 
-            <FilterField label={t("payin.filterUpdatedFrom")} htmlFor="payin-updated-from">
-              <Input
-                id="payin-updated-from"
-                type="datetime-local"
-                size="md"
-                value={updatedFromDraft}
-                onChange={(e) => setUpdatedFromDraft(e.target.value)}
-                placeholder={t("payin.filterTimePlaceholder")}
-                aria-label={t("payin.filterUpdatedFrom")}
-                className={dateTimeControlClass}
-              />
-            </FilterField>
-            <FilterField label={t("payin.filterUpdatedTo")} htmlFor="payin-updated-to">
-              <Input
-                id="payin-updated-to"
-                type="datetime-local"
-                size="md"
-                value={updatedToDraft}
-                onChange={(e) => setUpdatedToDraft(e.target.value)}
-                placeholder={t("payin.filterTimePlaceholder")}
-                aria-label={t("payin.filterUpdatedTo")}
-                className={dateTimeControlClass}
-              />
-            </FilterField>
-            <div className="flex h-9 flex-wrap items-center justify-end gap-2 md:col-span-2 xl:col-span-2">
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                leftIcon={<IconSearch width={15} height={15} />}
-              >
-                {t("payin.search")}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={onReset}
-                disabled={!canReset}
-                leftIcon={<IconRefresh width={15} height={15} />}
-              >
-                {t("payin.reset")}
-              </Button>
+              <FilterField label={t("payin.filterUpdatedFrom")} htmlFor="payin-updated-from">
+                <Input
+                  id="payin-updated-from"
+                  type="datetime-local"
+                  size="md"
+                  value={updatedFromDraft}
+                  onChange={(e) => setUpdatedFromDraft(e.target.value)}
+                  placeholder={t("payin.filterTimePlaceholder")}
+                  aria-label={t("payin.filterUpdatedFrom")}
+                  className={dateTimeControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payin.filterUpdatedTo")} htmlFor="payin-updated-to">
+                <Input
+                  id="payin-updated-to"
+                  type="datetime-local"
+                  size="md"
+                  value={updatedToDraft}
+                  onChange={(e) => setUpdatedToDraft(e.target.value)}
+                  placeholder={t("payin.filterTimePlaceholder")}
+                  aria-label={t("payin.filterUpdatedTo")}
+                  className={dateTimeControlClass}
+                />
+              </FilterField>
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 border-t border-edge pt-3 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
                 onClick={() => setExpanded(false)}
-                className="inline-flex h-9 items-center gap-1 px-1.5 text-label font-medium text-ink transition hover:opacity-70"
+                className="inline-flex h-9 items-center justify-center gap-1 px-1.5 text-label font-medium text-ink transition hover:opacity-70 sm:justify-start"
               >
                 {t("payin.collapse")}
                 <IconChevron className="rotate-180" width={14} height={14} />
               </button>
+              <div className="flex w-full gap-2 sm:w-auto">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  className="flex-1 sm:flex-none"
+                  onClick={onReset}
+                  disabled={!canReset}
+                  leftIcon={<IconRefresh width={15} height={15} />}
+                >
+                  {t("payin.reset")}
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  className="flex-1 sm:flex-none"
+                  leftIcon={<IconSearch width={15} height={15} />}
+                >
+                  {t("payin.search")}
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2.5">
-            <div className="min-w-[200px] flex-1 basis-[220px]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2.5">
+            <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px]">
               <Input
                 id="payin-trans-id-compact"
                 size="md"
@@ -486,7 +493,7 @@ export function PayinListPage() {
                 className={filterControlClass}
               />
             </div>
-            <div className="min-w-[200px] flex-1 basis-[220px]">
+            <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px]">
               <Input
                 id="payin-content-compact"
                 size="md"
@@ -497,7 +504,7 @@ export function PayinListPage() {
                 className={filterControlClass}
               />
             </div>
-            <div className="min-w-[200px] flex-1 basis-[220px] xl:max-w-[280px]">
+            <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px] xl:max-w-[280px]">
               <Select
                 id="payin-merchant-compact"
                 size="md"
@@ -510,29 +517,33 @@ export function PayinListPage() {
                 triggerClassName={filterControlClass}
               />
             </div>
-            <div className="ml-auto flex h-9 flex-wrap items-center gap-2">
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                leftIcon={<IconSearch width={15} height={15} />}
-              >
-                {t("payin.search")}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={onReset}
-                disabled={!canReset}
-                leftIcon={<IconRefresh width={15} height={15} />}
-              >
-                {t("payin.reset")}
-              </Button>
+            <div className="flex w-full flex-col gap-2 sm:ml-auto sm:h-9 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="flex w-full gap-2 sm:w-auto">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  className="flex-1 sm:flex-none"
+                  leftIcon={<IconSearch width={15} height={15} />}
+                >
+                  {t("payin.search")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  className="flex-1 sm:flex-none"
+                  onClick={onReset}
+                  disabled={!canReset}
+                  leftIcon={<IconRefresh width={15} height={15} />}
+                >
+                  {t("payin.reset")}
+                </Button>
+              </div>
               <button
                 type="button"
                 onClick={() => setExpanded(true)}
-                className="inline-flex h-9 items-center gap-1 px-1.5 text-label font-medium text-ink transition hover:opacity-70"
+                className="inline-flex h-9 items-center justify-center gap-1 px-1.5 text-label font-medium text-ink transition hover:opacity-70 sm:justify-start"
               >
                 {t("payin.expand")}
                 <IconChevron width={14} height={14} />

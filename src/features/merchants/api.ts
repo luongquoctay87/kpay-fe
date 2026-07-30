@@ -67,7 +67,12 @@ export const merchantApi = {
 
   adjustWallet(
     id: string,
-    body: { deltaAvailable: number; note?: string },
+    body: {
+      deltaAvailable: number;
+      note?: string;
+      password: string;
+      totpCode?: string;
+    },
   ): Promise<MerchantDetail["wallet"]> {
     return unwrap(apiClient.patch(`/merchants/${id}/wallet`, body));
   },
@@ -80,12 +85,18 @@ export const merchantApi = {
     return unwrap(apiClient.put(`/merchants/${id}/fees`, { fees }));
   },
 
-  revealCredentials(id: string): Promise<MerchantCredentialsResp> {
-    return unwrap(apiClient.get(`/merchants/${id}/credentials`));
+  revealCredentials(
+    id: string,
+    body: { password: string; totpCode?: string },
+  ): Promise<MerchantCredentialsResp> {
+    return unwrap(apiClient.post(`/merchants/${id}/credentials/reveal`, body));
   },
 
-  resetCredentials(id: string): Promise<MerchantCredentialsResp> {
-    return unwrap(apiClient.post(`/merchants/${id}/credentials/reset`));
+  resetCredentials(
+    id: string,
+    body: { password: string; totpCode?: string },
+  ): Promise<MerchantCredentialsResp> {
+    return unwrap(apiClient.post(`/merchants/${id}/credentials/reset`, body));
   },
 
   updateTelegramPayout(id: string, body: MerchantTelegramPayout): Promise<MerchantDetail> {
@@ -111,7 +122,10 @@ export const merchantApi = {
     return unwrap(apiClient.delete(`/merchants/${id}/ip-whitelist/${entryId}`));
   },
 
-  resetPassword(id: string, body: { newPassword: string }): Promise<void> {
+  resetPassword(
+    id: string,
+    body: { password: string; totpCode?: string; newPassword: string },
+  ): Promise<void> {
     return unwrap(apiClient.post(`/merchants/${id}/reset-password`, body));
   },
 };

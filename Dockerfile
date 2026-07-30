@@ -9,8 +9,17 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Baked into Next rewrite + client bundle — set per environment at image build.
 ARG BACKEND_ORIGIN=http://localhost:8756
+ARG NEXT_PUBLIC_API_BASE=/api
+ARG NEXT_PUBLIC_APP_ENV=staging
+ARG NEXT_PUBLIC_COOKIE_SECURE=
+
 ENV BACKEND_ORIGIN=$BACKEND_ORIGIN
+ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE
+ENV NEXT_PUBLIC_APP_ENV=$NEXT_PUBLIC_APP_ENV
+ENV NEXT_PUBLIC_COOKIE_SECURE=$NEXT_PUBLIC_COOKIE_SECURE
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

@@ -41,16 +41,17 @@ export function FilterBar({
   return (
     <form
       onSubmit={onSearch}
-      className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3"
+      className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6"
     >
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-3">
+      <div className="flex min-w-0 w-full flex-1 flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
         {children}
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
         <Button
           type="submit"
           variant="primary"
           size="md"
+          className="flex-1 sm:flex-none"
           loading={loading}
           leftIcon={<IconSearch width={15} height={15} />}
         >
@@ -60,6 +61,7 @@ export function FilterBar({
           type="button"
           variant="secondary"
           size="md"
+          className="flex-1 sm:flex-none"
           onClick={onReset}
           disabled={!canReset || loading}
           leftIcon={<IconRefresh width={15} height={15} />}

@@ -91,7 +91,7 @@ export function ColumnPicker<C extends string>({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-30 mt-1.5 w-64 rounded-md border border-edge bg-elevated py-1.5 shadow-lg"
+          className="absolute right-0 z-30 mt-1.5 w-[min(16rem,calc(100vw-2rem))] rounded-md border border-edge bg-elevated py-1.5 shadow-lg"
         >
           <p className="px-3 pb-1.5 pt-1 text-caption text-muted">{t(hintLabelKey)}</p>
           <ul className="max-h-80 overflow-y-auto">

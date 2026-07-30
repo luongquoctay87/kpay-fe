@@ -345,6 +345,13 @@ export const vi = {
     labelSecretKey: "Secret Key",
     btnReveal: "Reveal",
     btnResetKey: "Reset Key",
+    stepUpRevealTitle: "Hiện API credentials",
+    stepUpResetTitle: "Reset API credentials",
+    stepUpHint:
+      "Xác nhận mật khẩu admin để tiếp tục. Chỉ có session/JWT bị lộ là chưa đủ.",
+    stepUpPassword: "Mật khẩu admin",
+    stepUpTotp: "Mã authenticator",
+    stepUpError: "Không xác minh được danh tính.",
     sectionTelegramPayout: "Xác nhận Payout qua Telegram",
     sectionVietpmBot: "Cấu hình VietPM Bot",
     labelTelegramGroup: "Telegram Group ID",

@@ -10,11 +10,11 @@ import {
 } from "@/features/auth/refresh";
 import {
   clearAuthStorage,
+  clearAccessToken,
   clearStoredUser,
   clearTwoFaToken,
   getRememberMePreference,
   getStoredUserJson,
-  isAccessTokenFresh,
   setRememberMe,
   setRememberMePreference,
   setStoredUserJson,
@@ -59,16 +59,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   hydrate: async () => {
-    if (isAccessTokenFresh()) {
-      set({
-        hydrated: true,
-        user: parseStoredUser(),
-      });
-      scheduleProactiveRefresh();
-      return;
-    }
+    // Drop any pre-fix bearer tokens left in Web Storage.
+    clearAccessToken();
+    clearTwoFaToken();
 
-    // Access missing/expired — try HttpOnly refresh cookie before treating as logged out.
+    // Access is memory-only — after reload always rehydrate via HttpOnly refresh cookie.
     const result = await refreshSession();
     if (result?.accessToken) {
       set({

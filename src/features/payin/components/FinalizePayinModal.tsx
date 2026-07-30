@@ -74,7 +74,7 @@ export function FinalizePayinModal({ row, onClose, onDone }: FinalizePayinModalP
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !saving) onClose();
       }}
@@ -82,16 +82,16 @@ export function FinalizePayinModal({ row, onClose, onDone }: FinalizePayinModalP
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-md rounded-xl border border-edge bg-elevated shadow-xl"
+        className="flex max-h-[min(100dvh-1.5rem,90vh)] w-full max-w-md flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
       >
-        <div className="border-b border-edge px-5 py-4">
+        <div className="shrink-0 border-b border-edge px-4 py-4 sm:px-5">
           <p className="kpay-text-title font-semibold">{t("payin.finalizeTitle")}</p>
-          <p className="mt-1 font-mono text-caption text-muted">{row.requestId}</p>
+          <p className="mt-1 break-all font-mono text-caption text-muted">{row.requestId}</p>
           <p className="text-caption text-muted">
             {t("payin.colRequestValue")}: {formatMoney(row.requestValue)}
           </p>
         </div>
-        <div className="flex flex-col gap-4 p-5">
+        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4 sm:p-5">
           <Field label={t("payin.finalizeOutcome")} htmlFor="payin-outcome">
             <Select
               id="payin-outcome"
@@ -125,14 +125,28 @@ export function FinalizePayinModal({ row, onClose, onDone }: FinalizePayinModalP
               {error}
             </p>
           ) : null}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" size="md" onClick={onClose} disabled={saving}>
-              {t("payin.finalizeCancel")}
-            </Button>
-            <Button type="button" variant="primary" size="md" loading={saving} onClick={() => void confirm()}>
-              {t("payin.finalizeConfirm")}
-            </Button>
-          </div>
+        </div>
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            className="w-full sm:w-auto"
+            onClick={onClose}
+            disabled={saving}
+          >
+            {t("payin.finalizeCancel")}
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            className="w-full sm:w-auto"
+            loading={saving}
+            onClick={() => void confirm()}
+          >
+            {t("payin.finalizeConfirm")}
+          </Button>
         </div>
       </div>
     </div>

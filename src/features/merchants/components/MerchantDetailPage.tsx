@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/common";
 import { IconStore, IconUsers } from "@/components/icons/NavIcons";
 import { Button, ConfirmDialog, Field, Input, StatusBadge } from "@/components/ui";
 import { merchantApi } from "@/features/merchants/api";
+import { useAuthStore } from "@/features/auth/store";
 import {
   MERCHANT_STATUS_LABEL_KEY,
   MERCHANT_STATUS_TONE,
@@ -63,25 +64,36 @@ function Toggle({
   );
 }
 
-/* ─── Modal: Edit balance ──────────────────────────────────────────────── */
+/* ─── Modal: Edit balance (admin step-up required) ─────────────────────── */
 function AdjustBalanceModal({
   onClose,
   onConfirm,
   saving,
+  error,
 }: {
   onClose: () => void;
-  onConfirm: (delta: number, note: string) => Promise<void>;
+  onConfirm: (body: {
+    deltaAvailable: number;
+    note?: string;
+    password: string;
+    totpCode?: string;
+  }) => Promise<void>;
   saving: boolean;
+  error: string | null;
 }) {
   const { t } = useI18n();
+  const totpRequired = useAuthStore((s) => Boolean(s.user?.totpEnabled));
   const [delta, setDelta] = useState("");
   const [note, setNote] = useState("");
+  const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-xl border border-edge bg-elevated shadow-xl">
         <div className="border-b border-edge px-5 py-4">
           <p className="kpay-text-title font-semibold">{t("merchantDetail.modalAdjustTitle")}</p>
+          <p className="mt-1 text-label text-muted">{t("merchantDetail.stepUpHint")}</p>
         </div>
         <div className="flex flex-col gap-4 p-5">
           <Field label={t("merchantDetail.modalAdjustDelta")} htmlFor="adj-delta" required>
@@ -101,17 +113,56 @@ function AdjustBalanceModal({
               placeholder={t("merchantDetail.placeholderNote")}
             />
           </Field>
+          <Field label={t("merchantDetail.stepUpPassword")} htmlFor="adj-admin-pw" required>
+            <Input
+              id="adj-admin-pw"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </Field>
+          <Field
+            label={t("merchantDetail.stepUpTotp")}
+            htmlFor="adj-admin-totp"
+            required={totpRequired}
+          >
+            <Input
+              id="adj-admin-totp"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="000000"
+            />
+          </Field>
+          {error ? <p className="text-label text-danger">{error}</p> : null}
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-edge px-5 py-3">
-          <Button type="button" variant="secondary" size="md" onClick={onClose} disabled={saving}>
+        <div className="flex flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+          <Button type="button" variant="secondary" size="md" className="w-full sm:w-auto" onClick={onClose} disabled={saving}>
             {t("merchantDetail.modalAdjustCancel")}
           </Button>
           <Button
             type="button"
             variant="primary"
             size="md"
+            className="w-full sm:w-auto"
             loading={saving}
-            onClick={() => void onConfirm(Number(delta), note)}
+            disabled={
+              !delta.trim() ||
+              Number(delta) === 0 ||
+              Number.isNaN(Number(delta)) ||
+              !password.trim() ||
+              (totpRequired && totpCode.length !== 6)
+            }
+            onClick={() =>
+              void onConfirm({
+                deltaAvailable: Number(delta),
+                note: note.trim() ? note : undefined,
+                password,
+                totpCode: totpCode.trim() ? totpCode : undefined,
+              })
+            }
           >
             {t("merchantDetail.modalAdjustConfirm")}
           </Button>
@@ -121,46 +172,92 @@ function AdjustBalanceModal({
   );
 }
 
-/* ─── Modal: Reset password ────────────────────────────────────────────── */
+/* ─── Modal: Reset password (admin step-up + new portal password) ──────── */
 function ResetPasswordModal({
   onClose,
   onConfirm,
   saving,
+  error,
 }: {
   onClose: () => void;
-  onConfirm: (pw: string) => Promise<void>;
+  onConfirm: (body: {
+    password: string;
+    totpCode?: string;
+    newPassword: string;
+  }) => Promise<void>;
   saving: boolean;
+  error: string | null;
 }) {
   const { t } = useI18n();
-  const [pw, setPw] = useState("");
+  const totpRequired = useAuthStore((s) => Boolean(s.user?.totpEnabled));
+  const [adminPassword, setAdminPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-sm rounded-xl border border-edge bg-elevated shadow-xl">
         <div className="border-b border-edge px-5 py-4">
           <p className="kpay-text-title font-semibold">{t("merchantDetail.modalResetPwTitle")}</p>
+          <p className="mt-1 text-label text-muted">{t("merchantDetail.stepUpHint")}</p>
         </div>
-        <div className="p-5">
+        <div className="flex flex-col gap-3 p-5">
+          <Field label={t("merchantDetail.stepUpPassword")} htmlFor="reset-admin-pw" required>
+            <Input
+              id="reset-admin-pw"
+              type="password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </Field>
+          <Field
+            label={t("merchantDetail.stepUpTotp")}
+            htmlFor="reset-admin-totp"
+            required={totpRequired}
+          >
+            <Input
+              id="reset-admin-totp"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="000000"
+            />
+          </Field>
           <Field label={t("merchantDetail.modalResetPwLabel")} htmlFor="new-pw" required>
             <Input
               id="new-pw"
               type="password"
-              value={pw}
-              onChange={(e) => setPw(e.target.value)}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
             />
           </Field>
+          {error ? <p className="text-label text-danger">{error}</p> : null}
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-edge px-5 py-3">
-          <Button type="button" variant="secondary" size="md" onClick={onClose} disabled={saving}>
+        <div className="flex flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+          <Button type="button" variant="secondary" size="md" className="w-full sm:w-auto" onClick={onClose} disabled={saving}>
             {t("merchantDetail.modalResetPwCancel")}
           </Button>
           <Button
             type="button"
             variant="primary"
             size="md"
+            className="w-full sm:w-auto"
             loading={saving}
-            onClick={() => void onConfirm(pw)}
+            disabled={
+              !adminPassword.trim() ||
+              !newPassword.trim() ||
+              (totpRequired && totpCode.length !== 6)
+            }
+            onClick={() =>
+              void onConfirm({
+                password: adminPassword,
+                totpCode: totpCode.trim() || undefined,
+                newPassword,
+              })
+            }
           >
             {t("merchantDetail.modalResetPwConfirm")}
           </Button>
@@ -258,8 +355,8 @@ function SectionBasic({
   }
 
   return (
-    <section className="rounded-lg border border-edge bg-elevated">
-      <div className="flex items-center justify-between border-b border-edge px-5 py-3">
+    <section className="min-w-0 rounded-lg border border-edge bg-elevated">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-4 py-3 sm:px-5">
         <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionBasic")}</p>
         <div className="flex items-center gap-2">
           {editing ? (
@@ -293,7 +390,7 @@ function SectionBasic({
           )}
         </div>
       </div>
-      <div className="grid gap-x-10 gap-y-3 p-5 sm:grid-cols-2">
+      <div className="grid gap-x-10 gap-y-3 p-4 sm:grid-cols-2 sm:p-5">
         <div className="flex flex-col gap-0.5">
           <span className="text-label text-muted">{t("merchantDetail.labelCode")}</span>
           <span className="text-label font-medium text-ink">{m.code}</span>
@@ -394,20 +491,23 @@ function SectionWallet({
 }) {
   const { t } = useI18n();
   return (
-    <section className="rounded-lg border border-edge bg-elevated">
-      <div className="flex items-center justify-between border-b border-edge px-5 py-3">
+    <section className="min-w-0 rounded-lg border border-edge bg-elevated">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-4 py-3 sm:px-5">
         <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionWallet")}</p>
         <Button type="button" variant="secondary" size="sm" onClick={onEdit}>
           {t("merchantDetail.btnEditBalance")}
         </Button>
       </div>
-      <div className="grid grid-cols-3 divide-x divide-edge p-5">
+      <div className="grid grid-cols-1 divide-y divide-edge p-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:p-5">
         {[
           [t("merchantDetail.walletAvailable"), wallet.availableBalance],
           [t("merchantDetail.walletReserved"), wallet.reservedBalance],
           [t("merchantDetail.walletTotal"), wallet.totalBalance],
         ].map(([label, val]) => (
-          <div key={String(label)} className="flex flex-col items-center gap-1 px-4 first:pl-0 last:pr-0">
+          <div
+            key={String(label)}
+            className="flex flex-col items-start gap-1 py-3 first:pt-0 last:pb-0 sm:items-center sm:px-4 sm:py-0 sm:first:pl-0 sm:first:pt-0 sm:last:pr-0 sm:last:pb-0"
+          >
             <span className="text-label text-muted">{label}</span>
             <span className="text-label font-semibold tabular-nums text-ink">
               {formatMoney(val as number)}
@@ -482,8 +582,8 @@ function SectionIpWhitelist({
   }
 
   return (
-    <section className="rounded-lg border border-edge bg-elevated">
-      <div className="border-b border-edge px-5 py-3">
+    <section className="min-w-0 rounded-lg border border-edge bg-elevated">
+      <div className="border-b border-edge px-4 py-3 sm:px-5">
         <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionIpWhitelist")}</p>
         <p className="mt-1 text-caption text-muted">
           {enabled
@@ -491,7 +591,7 @@ function SectionIpWhitelist({
             : t("merchantDetail.ipWhitelistOffHint")}
         </p>
       </div>
-      <div className="flex flex-col gap-4 p-5">
+      <div className="flex flex-col gap-4 p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="min-w-0 flex-1">
             <Field label={t("merchantDetail.labelCidr")} htmlFor="ip-cidr" required>
@@ -519,6 +619,7 @@ function SectionIpWhitelist({
             type="button"
             variant="primary"
             size="md"
+            className="w-full shrink-0 sm:w-auto"
             loading={saving}
             disabled={!cidr.trim()}
             onClick={() => void onAdd()}
@@ -608,15 +709,15 @@ function SectionChannels({
     title: string;
   }) {
     return (
-      <div className="flex flex-col gap-2">
+      <div className="flex min-w-0 flex-col gap-2">
         <p className="kpay-text-title font-semibold">{title}</p>
         <div className="rounded-lg border border-edge">
           {rows.map((ch) => (
             <div
               key={ch.channelId}
-              className="flex items-center justify-between border-b border-edge px-4 py-3 last:border-0"
+              className="flex items-center justify-between gap-3 border-b border-edge px-3 py-3 last:border-0 sm:px-4"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <span className="text-label text-ink">{ch.channelName}</span>
                 <StatusBadge tone={ch.enabled ? "active" : "disabled"}>
                   {ch.enabled
@@ -633,18 +734,18 @@ function SectionChannels({
   }
 
   return (
-    <section className="grid gap-5 lg:grid-cols-2">
+    <section className="grid min-w-0 gap-5 lg:grid-cols-2">
       <ChannelTable rows={payin} title={t("merchantDetail.sectionPayinChannels")} />
-      <div className="flex flex-col gap-2">
+      <div className="flex min-w-0 flex-col gap-2">
         <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionPayoutChannels")}</p>
         <div className="rounded-lg border border-edge">
           {payout.map((ch) => (
             <div
               key={ch.channelId}
-              className="border-b border-edge px-4 py-3 last:border-0"
+              className="border-b border-edge px-3 py-3 last:border-0 sm:px-4"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <span className="text-label text-ink">{ch.channelName}</span>
                   <StatusBadge tone={ch.enabled ? "active" : "disabled"}>
                     {ch.enabled
@@ -655,7 +756,7 @@ function SectionChannels({
                 <Toggle checked={ch.enabled} onChange={() => void toggle(ch)} disabled={saving} />
               </div>
               {ch.payoutMode != null && (
-                <div className="mt-2 grid grid-cols-2 gap-1 text-label text-muted">
+                <div className="mt-2 grid grid-cols-1 gap-1 text-label text-muted min-[400px]:grid-cols-2">
                   <span>{t("merchantDetail.payoutMode")}</span>
                   <span className="text-ink capitalize">{ch.payoutMode}</span>
                   <span>{t("merchantDetail.payoutMin")}</span>
@@ -718,8 +819,8 @@ function SectionFees({
   ].filter(([, rows]) => rows.length > 0) as [string, MerchantFee[]][];
 
   return (
-    <section className="rounded-lg border border-edge bg-elevated">
-      <div className="flex items-center justify-between border-b border-edge px-5 py-3">
+    <section className="min-w-0 rounded-lg border border-edge bg-elevated">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-4 py-3 sm:px-5">
         <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionFees")}</p>
         {editing ? (
           <div className="flex gap-2">
@@ -737,17 +838,21 @@ function SectionFees({
         )}
       </div>
 
-      <div className="flex flex-col gap-6 p-5">
+      <div className="flex flex-col gap-6 p-4 sm:p-5">
         {groups.map(([groupLabel, groupFees]) => (
-          <div key={groupLabel} className="flex flex-col gap-2">
+          <div key={groupLabel} className="flex min-w-0 flex-col gap-2">
             <p className="text-label font-semibold text-ink">{groupLabel}</p>
-            <div className="overflow-hidden rounded-lg border border-edge">
-              <table className="w-full border-collapse text-left">
+            <div className="min-w-0 overflow-x-auto rounded-lg border border-edge">
+              <table className="w-full min-w-[480px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-                    <th className="px-4 py-2.5 font-medium">{t("merchantDetail.feeColChannel")}</th>
-                    <th className="w-[160px] px-4 py-2.5 font-medium">{t("merchantDetail.feeColRate")}</th>
-                    <th className="w-[200px] px-4 py-2.5 font-medium">{t("merchantDetail.feeColMemberRate")}</th>
+                    <th className="px-3 py-2.5 font-medium sm:px-4">{t("merchantDetail.feeColChannel")}</th>
+                    <th className="w-[120px] px-3 py-2.5 font-medium sm:w-[160px] sm:px-4">
+                      {t("merchantDetail.feeColRate")}
+                    </th>
+                    <th className="w-[140px] px-3 py-2.5 font-medium sm:w-[200px] sm:px-4">
+                      {t("merchantDetail.feeColMemberRate")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -755,8 +860,8 @@ function SectionFees({
                     const draftIdx = draft.findIndex((d) => d.channelId === fee.channelId);
                     return (
                       <tr key={fee.channelId} className="border-b border-edge last:border-0">
-                        <td className="px-4 py-2.5 text-label text-ink">{fee.channelName}</td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-3 py-2.5 text-label text-ink sm:px-4">{fee.channelName}</td>
+                        <td className="px-3 py-2.5 sm:px-4">
                           {editing ? (
                             <input
                               type="number"
@@ -778,7 +883,7 @@ function SectionFees({
                             <span className="font-mono text-label text-ink">{bps(fee.feeRateBps)}</span>
                           )}
                         </td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-3 py-2.5 sm:px-4">
                           {editing && fee.flow === "card" ? (
                             <input
                               type="number"
@@ -813,6 +918,88 @@ function SectionFees({
   );
 }
 
+/* ─── Modal: Step-up for reveal / reset API credentials ────────────────── */
+function CredentialsStepUpModal({
+  mode,
+  totpRequired,
+  onClose,
+  onConfirm,
+  saving,
+  error,
+}: {
+  mode: "reveal" | "reset";
+  totpRequired: boolean;
+  onClose: () => void;
+  onConfirm: (password: string, totpCode?: string) => Promise<void>;
+  saving: boolean;
+  error: string | null;
+}) {
+  const { t } = useI18n();
+  const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-sm rounded-xl border border-edge bg-elevated shadow-xl">
+        <div className="border-b border-edge px-5 py-4">
+          <p className="kpay-text-title font-semibold">
+            {mode === "reveal"
+              ? t("merchantDetail.stepUpRevealTitle")
+              : t("merchantDetail.stepUpResetTitle")}
+          </p>
+          <p className="mt-1 text-label text-muted">{t("merchantDetail.stepUpHint")}</p>
+        </div>
+        <div className="flex flex-col gap-3 p-5">
+          <Field label={t("merchantDetail.stepUpPassword")} htmlFor="cred-step-up-pw" required>
+            <Input
+              id="cred-step-up-pw"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </Field>
+          <Field
+            label={t("merchantDetail.stepUpTotp")}
+            htmlFor="cred-step-up-totp"
+            required={totpRequired}
+          >
+            <Input
+              id="cred-step-up-totp"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="000000"
+            />
+          </Field>
+          {error ? <p className="text-label text-danger">{error}</p> : null}
+        </div>
+        <div className="flex flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+          <Button type="button" variant="secondary" size="md" className="w-full sm:w-auto" onClick={onClose} disabled={saving}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            type="button"
+            variant={mode === "reset" ? "danger" : "primary"}
+            size="md"
+            className="w-full sm:w-auto"
+            loading={saving}
+            disabled={!password.trim() || (totpRequired && totpCode.length !== 6)}
+            onClick={() =>
+              void onConfirm(password, totpCode.trim() ? totpCode : undefined)
+            }
+          >
+            {mode === "reveal"
+              ? t("merchantDetail.btnReveal")
+              : t("merchantDetail.btnResetKey")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Section: Credentials ─────────────────────────────────────────────── */
 function SectionCredentials({
   merchantId,
@@ -822,61 +1009,93 @@ function SectionCredentials({
   initialHint?: string | null;
 }) {
   const { t } = useI18n();
+  const totpRequired = useAuthStore((s) => Boolean(s.user?.totpEnabled));
   const [creds, setCreds] = useState<MerchantCredentialsResp | null>(null);
-  const [resetting, setResetting] = useState(false);
+  const [stepUpMode, setStepUpMode] = useState<"reveal" | "reset" | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [stepUpError, setStepUpError] = useState<string | null>(null);
 
-  async function reveal() {
-    const res = await merchantApi.revealCredentials(merchantId);
-    setCreds(res);
-  }
-
-  async function resetKey() {
-    setResetting(true);
+  async function submitStepUp(password: string, totpCode?: string) {
+    if (!stepUpMode) return;
+    setSaving(true);
+    setStepUpError(null);
     try {
-      const res = await merchantApi.resetCredentials(merchantId);
+      const body = { password, totpCode };
+      const res =
+        stepUpMode === "reveal"
+          ? await merchantApi.revealCredentials(merchantId, body)
+          : await merchantApi.resetCredentials(merchantId, body);
       setCreds(res);
+      setStepUpMode(null);
+    } catch (e) {
+      setStepUpError(
+        e instanceof ApiError ? e.message : t("merchantDetail.stepUpError"),
+      );
     } finally {
-      setResetting(false);
+      setSaving(false);
     }
   }
 
   return (
-    <section className="rounded-lg border border-edge bg-elevated">
-      <div className="flex items-center justify-between border-b border-edge px-5 py-3">
+    <section className="min-w-0 rounded-lg border border-edge bg-elevated">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-4 py-3 sm:px-5">
         <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionCredentials")}</p>
         <Button
           type="button"
           variant="danger-ghost"
           size="sm"
-          loading={resetting}
-          onClick={() => void resetKey()}
+          onClick={() => {
+            setStepUpError(null);
+            setStepUpMode("reset");
+          }}
         >
           {t("merchantDetail.btnResetKey")}
         </Button>
       </div>
-      <div className="grid gap-4 p-5 sm:grid-cols-2">
-        <div className="flex flex-col gap-1.5">
+      <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <span className="text-label text-muted">{t("merchantDetail.labelMerchantKey")}</span>
-          <div className="flex items-center gap-2">
-            <span className="flex-1 truncate font-mono text-label text-ink">
-              {creds ? creds.merchantKey : (initialHint ?? "••••••••••••••••••••••••")}
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <span className="min-w-0 flex-1 break-all font-mono text-label text-ink sm:truncate sm:break-normal">
+              {creds ? creds.merchantKey : "••••••••••••••••••••••••"}
             </span>
             {!creds && (
-              <Button type="button" variant="secondary" size="sm" onClick={() => void reveal()}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full shrink-0 sm:w-auto"
+                onClick={() => {
+                  setStepUpError(null);
+                  setStepUpMode("reveal");
+                }}
+              >
                 {t("merchantDetail.btnReveal")}
               </Button>
             )}
           </div>
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <span className="text-label text-muted">{t("merchantDetail.labelSecretKey")}</span>
-          <div className="flex items-center gap-2">
-            <span className="flex-1 truncate font-mono text-label text-ink">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="min-w-0 flex-1 break-all font-mono text-label text-ink sm:truncate sm:break-normal">
               {creds ? creds.merchantSecret : "••••••••••••••••••••••••"}
             </span>
           </div>
         </div>
       </div>
+      {stepUpMode ? (
+        <CredentialsStepUpModal
+          mode={stepUpMode}
+          totpRequired={totpRequired}
+          saving={saving}
+          error={stepUpError}
+          onClose={() => {
+            if (!saving) setStepUpMode(null);
+          }}
+          onConfirm={submitStepUp}
+        />
+      ) : null}
     </section>
   );
 }
@@ -913,11 +1132,11 @@ function SectionVietpmBot({
   }
 
   return (
-    <section className="rounded-lg border border-edge bg-elevated">
-      <div className="border-b border-edge px-5 py-3">
+    <section className="min-w-0 rounded-lg border border-edge bg-elevated">
+      <div className="border-b border-edge px-4 py-3 sm:px-5">
         <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionVietpmBot")}</p>
       </div>
-      <div className="flex flex-col gap-4 p-5">
+      <div className="flex flex-col gap-4 p-4 sm:p-5">
         <Field label={t("merchantDetail.labelTelegramGroup")} htmlFor="vietpm-group">
           <Input
             id="vietpm-group"
@@ -926,18 +1145,25 @@ function SectionVietpmBot({
             placeholder="-100123456789"
           />
         </Field>
-        <div className="flex items-center justify-between">
-          <span className="text-label text-muted">
+        <div className="flex items-center justify-between gap-3">
+          <span className="min-w-0 text-label text-muted">
             {enabled ? t("common.on") : t("common.off")}
           </span>
           <Toggle checked={enabled} onChange={setEnabled} />
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-label text-muted">{t("merchantDetail.labelOverrideDelay")}</span>
+        <div className="flex items-center justify-between gap-3">
+          <span className="min-w-0 text-label text-muted">{t("merchantDetail.labelOverrideDelay")}</span>
           <Toggle checked={overrideDelay} onChange={setOverrideDelay} />
         </div>
-        <div className="flex justify-end">
-          <Button type="button" variant="primary" size="md" loading={saving} onClick={() => void save()}>
+        <div className="flex justify-stretch sm:justify-end">
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            className="w-full sm:w-auto"
+            loading={saving}
+            onClick={() => void save()}
+          >
             {t("merchantDetail.btnSave")}
           </Button>
         </div>
@@ -957,6 +1183,7 @@ export function MerchantDetailPage({ id }: { id: string }) {
   const [showResetPw, setShowResetPw] = useState(false);
   const [confirmStatus, setConfirmStatus] = useState(false);
   const [actionSaving, setActionSaving] = useState(false);
+  const [adjustError, setAdjustError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -991,26 +1218,37 @@ export function MerchantDetailPage({ id }: { id: string }) {
     }
   }
 
-  async function adjustBalance(delta: number, note: string) {
+  async function adjustBalance(body: {
+    deltaAvailable: number;
+    note?: string;
+    password: string;
+    totpCode?: string;
+  }) {
     setActionSaving(true);
-    setError(null);
+    setAdjustError(null);
     try {
-      await merchantApi.adjustWallet(id, { deltaAvailable: delta, note });
+      await merchantApi.adjustWallet(id, body);
       setShowAdjust(false);
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("merchantDetail.saveError"));
+      setAdjustError(
+        e instanceof ApiError ? e.message : t("merchantDetail.stepUpError"),
+      );
     } finally {
       setActionSaving(false);
     }
   }
 
-  async function resetPassword(pw: string) {
-    if (!pw.trim()) return;
+  async function resetPassword(body: {
+    password: string;
+    totpCode?: string;
+    newPassword: string;
+  }) {
+    if (!body.newPassword.trim()) return;
     setActionSaving(true);
     setError(null);
     try {
-      await merchantApi.resetPassword(id, { newPassword: pw });
+      await merchantApi.resetPassword(id, body);
       setShowResetPw(false);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t("merchantDetail.saveError"));
@@ -1040,13 +1278,13 @@ export function MerchantDetailPage({ id }: { id: string }) {
   const willSuspend = merchant.status === "active";
 
   return (
-    <div className="flex w-full flex-col gap-6 px-6 py-5 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-8 lg:px-10">
       {/* Header row */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <PageHeader
           title={
-            <span className="flex items-center gap-2.5">
-              {merchant.name}
+            <span className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+              <span className="break-words">{merchant.name}</span>
               <StatusBadge tone={MERCHANT_STATUS_TONE[merchant.status]}>
                 {t(MERCHANT_STATUS_LABEL_KEY[merchant.status])}
               </StatusBadge>
@@ -1061,11 +1299,12 @@ export function MerchantDetailPage({ id }: { id: string }) {
             { label: merchant.name, icon: <IconStore /> },
           ]}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-col gap-2 min-[400px]:flex-row sm:w-auto">
           <Button
             type="button"
             variant={willSuspend ? "danger-outline" : "secondary"}
             size="md"
+            className="w-full min-[400px]:flex-1 sm:w-auto sm:flex-none"
             loading={actionSaving}
             disabled={merchant.status === "disabled"}
             onClick={() => setConfirmStatus(true)}
@@ -1076,6 +1315,7 @@ export function MerchantDetailPage({ id }: { id: string }) {
             type="button"
             variant="secondary"
             size="md"
+            className="w-full min-[400px]:flex-1 sm:w-auto sm:flex-none"
             onClick={() => setShowResetPw(true)}
           >
             {t("merchantDetail.btnResetPassword")}
@@ -1090,9 +1330,15 @@ export function MerchantDetailPage({ id }: { id: string }) {
       ) : null}
 
       {/* Top two-column: Basic info + Wallet */}
-      <div className="grid gap-5 lg:grid-cols-[1fr_280px]">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[1fr_280px]">
         <SectionBasic m={merchant} merchantId={id} onUpdated={setMerchant} />
-        <SectionWallet wallet={merchant.wallet} onEdit={() => setShowAdjust(true)} />
+        <SectionWallet
+          wallet={merchant.wallet}
+          onEdit={() => {
+            setAdjustError(null);
+            setShowAdjust(true);
+          }}
+        />
       </div>
 
       <SectionIpWhitelist
@@ -1128,9 +1374,13 @@ export function MerchantDetailPage({ id }: { id: string }) {
       {/* Modals */}
       {showAdjust && (
         <AdjustBalanceModal
-          onClose={() => setShowAdjust(false)}
+          onClose={() => {
+            setShowAdjust(false);
+            setAdjustError(null);
+          }}
           onConfirm={adjustBalance}
           saving={actionSaving}
+          error={adjustError}
         />
       )}
       {showResetPw && (
@@ -1138,6 +1388,7 @@ export function MerchantDetailPage({ id }: { id: string }) {
           onClose={() => setShowResetPw(false)}
           onConfirm={resetPassword}
           saving={actionSaving}
+          error={error}
         />
       )}
       {confirmStatus && (
