@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
-import { Button, Field, Input } from "@/components/ui";
+import { DocumentTitle } from "@/components/layout/DocumentTitle";
+import { Button, Field, Input, OtpInput } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { clearTwoFaToken, getRememberMePreference } from "@/features/auth/token";
 import { useI18n } from "@/i18n/use-i18n";
@@ -124,143 +124,140 @@ export function LoginForm() {
         : t("auth.enterOtp");
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-surface px-4 font-sans text-ink">
-      <div className="absolute right-4 top-4">
-        <LocaleSwitcher />
+    <div className="w-full max-w-sm">
+      <DocumentTitle title={`${t("auth.signIn")} · ${t("brand.admin")}`} />
+      <div className="mb-8 text-center">
+        <h1 className="kpay-text-display">{t("brand.admin")}</h1>
+        <p className="kpay-text-body-muted mt-2">{subtitle}</p>
       </div>
 
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="kpay-text-display">{t("brand.admin")}</h1>
-          <p className="kpay-text-body-muted mt-2">{subtitle}</p>
-        </div>
+      <div className="rounded-2xl border border-edge bg-elevated p-6 shadow-sm">
+        {error ? (
+          <div
+            role="alert"
+            className="mb-4 rounded-lg border border-danger-edge bg-danger-bg px-3 py-2 text-body text-danger"
+          >
+            {error}
+          </div>
+        ) : null}
 
-        <div className="rounded-2xl border border-edge bg-elevated p-6 shadow-sm">
-          {error ? (
-            <div
-              role="alert"
-              className="mb-4 rounded-lg border border-danger-edge bg-danger-bg px-3 py-2 text-body text-danger"
+        {step === "password" ? (
+          <form className="flex flex-col gap-4" onSubmit={onPasswordSubmit} noValidate>
+            <Field
+              label={t("auth.username")}
+              htmlFor="login-username"
+              required
+              error={credentials.errorOf("username")}
             >
-              {error}
-            </div>
-          ) : null}
-
-          {step === "password" ? (
-            <form className="flex flex-col gap-4" onSubmit={onPasswordSubmit} noValidate>
-              <Field
-                label={t("auth.username")}
-                htmlFor="login-username"
-                required
-                error={credentials.errorOf("username")}
-              >
-                <Input
-                  id="login-username"
-                  name="username"
-                  type="text"
-                  size="lg"
-                  required
-                  invalid={Boolean(credentials.errorOf("username"))}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  autoComplete="username"
-                  placeholder="kadmin"
-                />
-              </Field>
-              <Field
-                label={t("auth.password")}
-                htmlFor="login-password"
-                required
-                error={credentials.errorOf("password")}
-              >
-                <Input
-                  id="login-password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  size="lg"
-                  required
-                  invalid={Boolean(credentials.errorOf("password"))}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  rightAddon={
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="flex items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
-                      aria-label={
-                        showPassword ? t("common.hidePassword") : t("common.showPassword")
-                      }
-                    >
-                      {showPassword ? (
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.75"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden
-                        >
-                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                          <line x1="1" y1="1" x2="23" y2="23" />
-                        </svg>
-                      ) : (
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.75"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden
-                        >
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                      )}
-                    </button>
-                  }
-                />
-              </Field>
-              <label
-                htmlFor="login-remember"
-                className="flex cursor-pointer items-center gap-2 text-body text-ink-secondary"
-              >
-                <input
-                  id="login-remember"
-                  name="rememberMe"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMeChecked(e.target.checked)}
-                  className="h-4 w-4 rounded border-edge accent-[var(--color-accent)]"
-                />
-                {t("auth.rememberMe")}
-              </label>
-              <Button
-                type="submit"
-                shape="pill"
+              <Input
+                id="login-username"
+                name="username"
+                type="text"
                 size="lg"
-                fullWidth
-                loading={loading}
-                className="mt-1"
-              >
-                {loading ? t("auth.signingIn") : t("auth.signIn")}
-              </Button>
-            </form>
-          ) : (
-            <form className="flex flex-col gap-4" onSubmit={onOtpSubmit} noValidate>
-              <Field
-                label={useBackup ? t("auth.backupCode") : t("auth.otpCode")}
-                htmlFor="login-code"
                 required
-                error={otp.errorOf("code")}
-              >
+                invalid={Boolean(credentials.errorOf("username"))}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                placeholder="kadmin"
+              />
+            </Field>
+            <Field
+              label={t("auth.password")}
+              htmlFor="login-password"
+              required
+              error={credentials.errorOf("password")}
+            >
+              <Input
+                id="login-password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                size="lg"
+                required
+                invalid={Boolean(credentials.errorOf("password"))}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                rightAddon={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="flex items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
+                    aria-label={
+                      showPassword ? t("common.hidePassword") : t("common.showPassword")
+                    }
+                  >
+                    {showPassword ? (
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.75"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
+                    ) : (
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.75"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                }
+              />
+            </Field>
+            <label
+              htmlFor="login-remember"
+              className="flex cursor-pointer items-center gap-2 text-body text-ink-secondary"
+            >
+              <input
+                id="login-remember"
+                name="rememberMe"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMeChecked(e.target.checked)}
+                className="h-4 w-4 rounded border-edge accent-[var(--color-accent)]"
+              />
+              {t("auth.rememberMe")}
+            </label>
+            <Button
+              type="submit"
+              shape="pill"
+              size="lg"
+              fullWidth
+              loading={loading}
+              className="mt-1"
+            >
+              {loading ? t("auth.signingIn") : t("auth.signIn")}
+            </Button>
+          </form>
+        ) : (
+          <form className="flex flex-col gap-4" onSubmit={onOtpSubmit} noValidate>
+            <Field
+              label={useBackup ? t("auth.backupCode") : t("auth.otpCode")}
+              htmlFor="login-code"
+              required
+              error={otp.errorOf("code")}
+            >
+              {useBackup ? (
                 <Input
                   id="login-code"
                   name="code"
@@ -271,44 +268,53 @@ export function LoginForm() {
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   autoFocus
-                  inputMode={useBackup ? "text" : "numeric"}
-                  maxLength={useBackup ? 32 : 6}
+                  inputMode="text"
+                  maxLength={32}
                   autoComplete="one-time-code"
-                  placeholder={useBackup ? "XXXXXXXXXX" : "000000"}
+                  placeholder="XXXXXXXXXX"
                   className="tracking-widest"
                 />
-              </Field>
-              <Button
-                type="submit"
-                shape="pill"
-                size="lg"
-                fullWidth
-                loading={loading}
-                className="mt-1"
-              >
-                {loading ? t("auth.verifying") : t("auth.verify")}
-              </Button>
-              <Button
-                type="button"
-                variant="link"
-                onClick={() => {
-                  setUseBackup((v) => !v);
-                  setError(null);
-                  setCode("");
-                  otp.hide();
-                }}
-              >
-                {useBackup ? t("auth.useAuthenticator") : t("auth.useBackup")}
-              </Button>
-              <Button type="button" variant="link" onClick={backToPassword}>
-                {t("auth.backToSignIn")}
-              </Button>
-            </form>
-          )}
-        </div>
-
-        <p className="mt-6 text-center text-caption text-subtle">{t("common.poweredBy")}</p>
+              ) : (
+                <OtpInput
+                  id="login-code"
+                  name="code"
+                  value={code}
+                  onChange={setCode}
+                  autoFocus
+                  invalid={Boolean(otp.errorOf("code"))}
+                  aria-label={t("auth.otpCode")}
+                />
+              )}
+            </Field>
+            <Button
+              type="submit"
+              shape="pill"
+              size="lg"
+              fullWidth
+              loading={loading}
+              className="mt-1"
+              disabled={!useBackup && code.replace(/\D/g, "").length < 6}
+            >
+              {loading ? t("auth.verifying") : t("auth.verify")}
+            </Button>
+            <Button
+              type="button"
+              variant="link"
+              onClick={() => {
+                setUseBackup((v) => !v);
+                setError(null);
+                setCode("");
+                otp.hide();
+              }}
+            >
+              {useBackup ? t("auth.useAuthenticator") : t("auth.useBackup")}
+            </Button>
+            <Button type="button" variant="link" onClick={backToPassword}>
+              {t("auth.backToSignIn")}
+            </Button>
+          </form>
+        )}
       </div>
-    </main>
+    </div>
   );
 }

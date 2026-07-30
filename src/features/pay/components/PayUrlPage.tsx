@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Button, Skeleton, Typography, message } from "antd";
 import { CheckOutlined, CopyOutlined } from "@ant-design/icons";
 import { QRCodeSVG } from "qrcode.react";
+import { AppFooter } from "@/components/layout/AppFooter";
+import { DocumentTitle } from "@/components/layout/DocumentTitle";
 import { useI18n } from "@/i18n/use-i18n";
 import { fetchPublicPayin } from "@/features/pay/api";
 import {
@@ -166,100 +168,110 @@ export function PayUrlPage({ token }: { token: string }) {
   }
 
   return (
-    <div className="pay-page min-h-screen bg-[linear-gradient(165deg,#eef2f6_0%,#f7f8fa_45%,#e8edf2_100%)] px-4 py-8">
-      <div className="mx-auto w-full max-w-md">
-        <header className="mb-6 text-center">
-          <div className="text-2xl font-semibold tracking-tight text-neutral-900">Kpay</div>
-          <Paragraph className="!mb-0 !mt-1 text-neutral-500">{t("pay.hint")}</Paragraph>
-        </header>
+    <div className="pay-page flex min-h-screen flex-col bg-[linear-gradient(165deg,#eef2f6_0%,#f7f8fa_45%,#e8edf2_100%)]">
+      <DocumentTitle title={`${t("pay.title")} · ${t("brand.name")}`} />
+      <header className="flex h-14 shrink-0 items-center justify-center border-b border-neutral-200/70 bg-white/80 px-4 backdrop-blur-sm">
+        <span className="text-lg font-semibold tracking-tight text-neutral-900">
+          {t("brand.name")}
+        </span>
+      </header>
 
-        <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.06)]">
-          {loading && !data ? (
-            <div className="space-y-4 p-6">
-              <Skeleton active paragraph={{ rows: 6 }} />
-            </div>
-          ) : error && !data ? (
-            <div className="p-6">
-              <Alert type="error" showIcon message={error} />
-              <Button className="mt-4" block onClick={() => void load(false)}>
-                {t("pay.retry")}
-              </Button>
-            </div>
-          ) : data ? (
-            <>
-              <div className="border-b border-neutral-100 px-6 pb-5 pt-6 text-center">
-                <Text type="secondary" className="text-xs uppercase tracking-wide">
-                  {t("pay.amountLabel")}
-                </Text>
-                <Title level={2} className="!mb-1 !mt-1 !text-neutral-900">
-                  {formatVnd(data.amount)}
-                </Title>
-                {isPayinAwaitingPayment(data.status) && !expiredByClock && countdown ? (
-                  <Text type="secondary" className="text-sm">
-                    {t("pay.expiresIn")} {countdown}
+      <main className="flex flex-1 items-start justify-center px-4 py-8 sm:items-center">
+        <div className="mx-auto w-full max-w-md">
+          <div className="mb-5 text-center">
+            <Paragraph className="!mb-0 text-neutral-500">{t("pay.hint")}</Paragraph>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.06)]">
+            {loading && !data ? (
+              <div className="space-y-4 p-6">
+                <Skeleton active paragraph={{ rows: 6 }} />
+              </div>
+            ) : error && !data ? (
+              <div className="p-6">
+                <Alert type="error" showIcon message={error} />
+                <Button className="mt-4" block onClick={() => void load(false)}>
+                  {t("pay.retry")}
+                </Button>
+              </div>
+            ) : data ? (
+              <>
+                <div className="border-b border-neutral-100 px-6 pb-5 pt-6 text-center">
+                  <Text type="secondary" className="text-xs uppercase tracking-wide">
+                    {t("pay.amountLabel")}
                   </Text>
-                ) : null}
-              </div>
-
-              <div className="px-6 py-5">
-                {isPayinAwaitingPayment(data.status) && !expiredByClock ? (
-                  <div className="mb-5 flex flex-col items-center">
-                    <div className="rounded-xl border border-neutral-100 bg-white p-3">
-                      {qrValue ? (
-                        <QRCodeSVG value={qrValue} size={200} level="M" includeMargin={false} />
-                      ) : (
-                        <div className="flex h-[200px] w-[200px] items-center justify-center text-center text-sm text-neutral-400">
-                          {t("pay.qrUnavailable")}
-                        </div>
-                      )}
-                    </div>
-                    <Text type="secondary" className="mt-3 text-center text-xs">
-                      {t("pay.scanHint")}
+                  <Title level={2} className="!mb-1 !mt-1 !text-neutral-900">
+                    {formatVnd(data.amount)}
+                  </Title>
+                  {isPayinAwaitingPayment(data.status) && !expiredByClock && countdown ? (
+                    <Text type="secondary" className="text-sm">
+                      {t("pay.expiresIn")} {countdown}
                     </Text>
-                  </div>
-                ) : (
-                  <Alert
-                    className="mb-4"
-                    type={expiredByClock ? "error" : statusTone(data.status)}
-                    showIcon
-                    message={
-                      expiredByClock
-                        ? t("pay.status.expired")
-                        : t(STATUS_KEY[data.status])
-                    }
-                    description={
-                      data.status === "success"
-                        ? t("pay.statusSuccessHint")
-                        : data.status === "wrong_denomination"
-                          ? t("pay.statusWrongHint")
-                          : undefined
-                    }
-                  />
-                )}
-
-                <div>
-                  {row("bank", t("pay.bank"), data.bankName ?? data.bankCode)}
-                  {row("accountName", t("pay.accountName"), data.accountName)}
-                  {row("accountNumber", t("pay.accountNumber"), data.accountNumber)}
-                  {row("content", t("pay.transferContent"), transferContent)}
-                  {row(
-                    "amount",
-                    t("pay.amountLabel"),
-                    formatVnd(data.amount),
-                    amountCopy,
-                  )}
+                  ) : null}
                 </div>
-              </div>
 
-              <div className="border-t border-neutral-100 px-6 py-3 text-center">
-                <Text type="secondary" className="text-xs">
-                  {t("pay.refLabel")} {data.orderId}
-                </Text>
-              </div>
-            </>
-          ) : null}
+                <div className="px-6 py-5">
+                  {isPayinAwaitingPayment(data.status) && !expiredByClock ? (
+                    <div className="mb-5 flex flex-col items-center">
+                      <div className="rounded-xl border border-neutral-100 bg-white p-3">
+                        {qrValue ? (
+                          <QRCodeSVG value={qrValue} size={200} level="M" includeMargin={false} />
+                        ) : (
+                          <div className="flex h-[200px] w-[200px] items-center justify-center text-center text-sm text-neutral-400">
+                            {t("pay.qrUnavailable")}
+                          </div>
+                        )}
+                      </div>
+                      <Text type="secondary" className="mt-3 text-center text-xs">
+                        {t("pay.scanHint")}
+                      </Text>
+                    </div>
+                  ) : (
+                    <Alert
+                      className="mb-4"
+                      type={expiredByClock ? "error" : statusTone(data.status)}
+                      showIcon
+                      message={
+                        expiredByClock
+                          ? t("pay.status.expired")
+                          : t(STATUS_KEY[data.status])
+                      }
+                      description={
+                        data.status === "success"
+                          ? t("pay.statusSuccessHint")
+                          : data.status === "wrong_denomination"
+                            ? t("pay.statusWrongHint")
+                            : undefined
+                      }
+                    />
+                  )}
+
+                  <div>
+                    {row("bank", t("pay.bank"), data.bankName ?? data.bankCode)}
+                    {row("accountName", t("pay.accountName"), data.accountName)}
+                    {row("accountNumber", t("pay.accountNumber"), data.accountNumber)}
+                    {row("content", t("pay.transferContent"), transferContent)}
+                    {row(
+                      "amount",
+                      t("pay.amountLabel"),
+                      formatVnd(data.amount),
+                      amountCopy,
+                    )}
+                  </div>
+                </div>
+
+                <div className="border-t border-neutral-100 px-6 py-3 text-center">
+                  <Text type="secondary" className="text-xs">
+                    {t("pay.refLabel")} {data.orderId}
+                  </Text>
+                </div>
+              </>
+            ) : null}
+          </div>
         </div>
-      </div>
+      </main>
+
+      <AppFooter variant="public" className="border-neutral-200/70 bg-white/70" />
     </div>
   );
 }

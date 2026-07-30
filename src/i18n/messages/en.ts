@@ -38,7 +38,9 @@ export const en = {
     expand: "Expand sidebar",
     noData: "No data yet",
     notConnected: "Not connected",
-    poweredBy: "Powered by Next.js · Kpay Admin Portal",
+    poweredBy: "Kpay Admin Portal",
+    footerPrivate: "Private system · Search & AI crawlers blocked",
+    footerCopyright: "© {year} Kpay",
   },
   errors: {
     pageTitle: "Failed to load this page",

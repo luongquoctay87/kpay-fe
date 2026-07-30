@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Button, Field, Input } from "@/components/ui";
+import { Button, Field, OtpInput } from "@/components/ui";
 import { IconCheckCircle, IconDownload } from "@/components/icons/NavIcons";
 import { authApi } from "@/features/auth/api";
 import { useAuthStore } from "@/features/auth/store";
@@ -165,17 +165,15 @@ export function TotpSetupRequiredModal() {
               error={required.errorOf("code")}
               hint={t("auth.totpEnrollHint")}
             >
-              <Input
+              <OtpInput
                 id="totp-setup-code"
                 name="code"
-                inputMode="numeric"
-                maxLength={6}
-                autoComplete="one-time-code"
-                placeholder="000000"
                 value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                onChange={setCode}
+                autoFocus={!enrolling && Boolean(otpauthUrl)}
                 invalid={Boolean(required.errorOf("code"))}
                 disabled={enrolling || !otpauthUrl}
+                aria-label={t("auth.totpLabel")}
               />
             </Field>
 
@@ -192,7 +190,13 @@ export function TotpSetupRequiredModal() {
               <Button
                 type="submit"
                 loading={loading}
-                disabled={enrolling || !otpauthUrl || loading || loggingOut}
+                disabled={
+                  enrolling ||
+                  !otpauthUrl ||
+                  loading ||
+                  loggingOut ||
+                  code.replace(/\D/g, "").length < 6
+                }
               >
                 {t("auth.totpConfirm")}
               </Button>

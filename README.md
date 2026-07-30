@@ -140,7 +140,21 @@ src/
 Multi-stage image (`node:22-alpine` → standalone `node server.js`).  
 Build args are **required** for correct API rewrites inside Compose / ECS.
 
-### Build (Compose network)
+### Build & push to ECR
+
+```bash
+export AWS_ACCOUNT_ID=…
+export AWS_REGION=ap-southeast-1
+export BACKEND_ORIGIN=http://api.kpay.staging.local:8756   # or http://backend:8756 for Compose
+export NEXT_PUBLIC_APP_ENV=staging
+
+./scripts/push-ecr.sh              # → kpay/kpay-fe:<git-sha> + :latest
+./scripts/push-ecr.sh v1.0.0
+```
+
+`BACKEND_ORIGIN` is **required** (baked at image build). See [`scripts/push-ecr.sh`](./scripts/push-ecr.sh).
+
+### Build (Compose network) — manual docker
 
 Service name in [`docker-compose.test.yml`](../kpay-backend/docker-compose.test.yml) / [`docker-compose.prod.yml`](../kpay-backend/docker-compose.prod.yml) is `backend` on port `8756`:
 
@@ -150,7 +164,7 @@ docker build \
   --platform=linux/amd64 \
   --build-arg BACKEND_ORIGIN=http://backend:8756 \
   --build-arg NEXT_PUBLIC_APP_ENV=staging \
-  -t kpay/frontend:latest \
+  -t kpay/kpay-fe:latest \
   .
 
 # Production
@@ -158,7 +172,7 @@ docker build \
   --platform=linux/amd64 \
   --build-arg BACKEND_ORIGIN=http://backend:8756 \
   --build-arg NEXT_PUBLIC_APP_ENV=production \
-  -t kpay/frontend:latest \
+  -t kpay/kpay-fe:latest \
   .
 ```
 
@@ -168,7 +182,7 @@ docker build \
 ### Run locally
 
 ```bash
-docker run --rm -p 3000:3000 kpay/frontend:latest
+docker run --rm -p 3000:3000 kpay/kpay-fe:latest
 ```
 
 ### Deploy with Compose
@@ -177,10 +191,10 @@ Compose files **pull** the image (they do not build FE):
 
 | File | Profile | Image |
 |------|---------|--------|
-| [`kpay-backend/docker-compose.test.yml`](../kpay-backend/docker-compose.test.yml) | test | `${ECR_REGISTRY}/kpay/frontend:${IMAGE_TAG}` |
+| [`kpay-backend/docker-compose.test.yml`](../kpay-backend/docker-compose.test.yml) | test | `${ECR_REGISTRY}/kpay/kpay-fe:${IMAGE_TAG}` |
 | [`kpay-backend/docker-compose.prod.yml`](../kpay-backend/docker-compose.prod.yml) | prod | same |
 
-Push the image you built to ECR as `kpay/frontend`, then:
+Push the image you built to ECR as `kpay/kpay-fe`, then:
 
 ```bash
 cd ../kpay-backend

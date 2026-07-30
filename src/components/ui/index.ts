@@ -12,6 +12,7 @@ export {
 } from "@/components/ui/ConfirmDialog";
 export { Field, type FieldProps } from "@/components/ui/Field";
 export { Input, type InputProps } from "@/components/ui/Input";
+export { OtpInput, type OtpInputProps } from "@/components/ui/OtpInput";
 export { Textarea, type TextareaProps } from "@/components/ui/Textarea";
 export {
   Select,

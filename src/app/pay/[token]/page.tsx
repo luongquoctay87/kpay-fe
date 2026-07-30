@@ -2,9 +2,8 @@ import { PayUrlPage } from "@/features/pay/components/PayUrlPage";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Kpay — Thanh toán",
+  title: "Thanh toán",
   description: "Quét QR VietQR để thanh toán",
-  robots: { index: false, follow: false },
 };
 
 export default async function Page({

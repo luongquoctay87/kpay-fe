@@ -13,9 +13,35 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+/** Private ops portal — never index (search or AI training crawlers). */
 export const metadata: Metadata = {
-  title: "Kpay Admin Portal",
-  description: "Kpay Admin Portal — Merchant, Payin, Payout",
+  title: {
+    default: "Kpay Admin",
+    template: "%s · Kpay Admin",
+  },
+  description: "Kpay Admin Portal — private operations console",
+  applicationName: "Kpay Admin",
+  referrer: "strict-origin-when-cross-origin",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    noarchive: true,
+    nosnippet: true,
+    noimageindex: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+      nosnippet: true,
+      noarchive: true,
+    },
+  },
+  other: {
+    // Extra signals some AI scrapers honor
+    "X-Robots-Tag": "noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai",
+    robots: "noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai",
+  },
 };
 
 export default function RootLayout({

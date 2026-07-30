@@ -1,9 +1,12 @@
 "use client";
 
 import { Alert, Button, Card, Form, Input, Space, Typography } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { DocumentTitle } from "@/components/layout/DocumentTitle";
+import { OtpInput } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { getTwoFaToken } from "@/features/auth/token";
 import { useI18n } from "@/i18n/use-i18n";
@@ -26,6 +29,7 @@ export function TotpForm() {
   const confirmTotp = useAuthStore((s) => s.confirmTotp);
   const verifyTotp = useAuthStore((s) => s.verifyTotp);
 
+  const [form] = Form.useForm<{ code: string }>();
   const [otpauthUrl, setOtpauthUrl] = useState<string | null>(null);
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -79,34 +83,68 @@ export function TotpForm() {
   };
 
   if (backupCodes) {
+    const codes = backupCodes;
+    function downloadBackupCodes() {
+      const body = [
+        "Kpay Admin — TOTP backup codes",
+        `Generated: ${new Date().toISOString()}`,
+        "",
+        t("auth.backupHint"),
+        "",
+        ...codes,
+        "",
+      ].join("\n");
+      const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "kpay-backup-codes.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
     return (
       <Card className="w-full max-w-md shadow-md">
+        <DocumentTitle title={`${t("auth.backupTitle")} · ${t("brand.admin")}`} />
         <Title level={4}>{t("auth.backupTitle")}</Title>
         <Paragraph type="secondary">{t("auth.backupHint")}</Paragraph>
         <div className="mb-4 rounded border border-dashed border-neutral-300 bg-neutral-50 p-3 font-mono text-sm">
-          {backupCodes.map((c) => (
+          {codes.map((c) => (
             <div key={c}>{c}</div>
           ))}
         </div>
-        <Button
-          type="primary"
-          block
-          onClick={() => {
-            const qs = new URLSearchParams({ step: "verify" });
-            if (nextPath && nextPath !== ROUTES.home) qs.set("next", nextPath);
-            router.replace(`${ROUTES.totp}?${qs.toString()}`);
-          }}
-        >
-          {t("auth.backupContinue")}
-        </Button>
+        <Space direction="vertical" className="w-full" size="middle">
+          <Button
+            block
+            icon={<DownloadOutlined />}
+            onClick={downloadBackupCodes}
+          >
+            {t("auth.totpSetupDownload")}
+          </Button>
+          <Button
+            type="primary"
+            block
+            onClick={() => {
+              const qs = new URLSearchParams({ step: "verify" });
+              if (nextPath && nextPath !== ROUTES.home) qs.set("next", nextPath);
+              router.replace(`${ROUTES.totp}?${qs.toString()}`);
+            }}
+          >
+            {t("auth.backupContinue")}
+          </Button>
+        </Space>
       </Card>
     );
   }
 
+  const pageHeading =
+    step === "enroll" ? t("auth.totpEnrollTitle") : t("auth.totpVerifyTitle");
+
   return (
     <Card className="w-full max-w-md shadow-md">
+      <DocumentTitle title={`${pageHeading} · ${t("brand.admin")}`} />
       <Title level={3} className="!mb-1">
-        {step === "enroll" ? t("auth.totpEnrollTitle") : t("auth.totpVerifyTitle")}
+        {pageHeading}
       </Title>
       <Paragraph type="secondary">
         {step === "enroll"
@@ -130,8 +168,10 @@ export function TotpForm() {
       ) : null}
 
       <Form
+        form={form}
         layout="vertical"
         size="large"
+        initialValues={{ code: "" }}
         onFinish={step === "enroll" ? onConfirm : onVerify}
         requiredMark={false}
       >
@@ -147,12 +187,16 @@ export function TotpForm() {
                 ]
           }
         >
-          <Input
-            inputMode={useBackup ? "text" : "numeric"}
-            maxLength={useBackup ? 32 : 6}
-            placeholder={useBackup ? "XXXXXXXXXX" : "000000"}
-            autoComplete="one-time-code"
-          />
+          {useBackup ? (
+            <Input
+              inputMode="text"
+              maxLength={32}
+              placeholder="XXXXXXXXXX"
+              autoComplete="one-time-code"
+            />
+          ) : (
+            <OtpInput aria-label={t("auth.totpLabel")} autoFocus />
+          )}
         </Form.Item>
         <Button type="primary" htmlType="submit" block loading={loading}>
           {step === "enroll" ? t("auth.totpConfirm") : t("auth.verify")}
@@ -165,6 +209,7 @@ export function TotpForm() {
             onClick={() => {
               setUseBackup((v) => !v);
               setError(null);
+              form.setFieldValue("code", "");
             }}
           >
             {useBackup ? t("auth.useAuthenticator") : t("auth.useBackup")}

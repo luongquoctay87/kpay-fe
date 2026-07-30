@@ -31,6 +31,11 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
+          // Private portal — block search & AI crawler indexing at the HTTP layer.
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai",
+          },
           // Mitigate XSS → refresh-cookie → accessToken theft (residual SPA risk).
           {
             key: "Content-Security-Policy",

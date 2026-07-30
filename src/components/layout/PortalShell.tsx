@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { AppFooter } from "@/components/layout/AppFooter";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppSidebar, readSidebarCollapsed } from "@/components/layout/AppSidebar";
 import { authApi } from "@/features/auth/api";
@@ -85,6 +86,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col bg-canvas">
         <AppHeader />
         <main className="min-h-0 flex-1 overflow-auto bg-canvas">{children}</main>
+        <AppFooter variant="portal" />
       </div>
       {needsTotpSetup ? <TotpSetupRequiredModal /> : null}
     </div>

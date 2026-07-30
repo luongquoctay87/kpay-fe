@@ -35,7 +35,9 @@ export const vi = {
     expand: "Mở rộng sidebar",
     noData: "Chưa có dữ liệu",
     notConnected: "Chưa kết nối",
-    poweredBy: "Powered by Next.js · Kpay Admin Portal",
+    poweredBy: "Kpay Admin Portal",
+    footerPrivate: "Hệ thống nội bộ · Chặn bot tìm kiếm & AI index",
+    footerCopyright: "© {year} Kpay",
   },
   errors: {
     pageTitle: "Không tải được trang",
