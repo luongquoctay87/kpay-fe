@@ -1,13 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
-import {
-  clearAccessToken,
-  clearSessionCookie,
-  getAccessToken,
-  getTwoFaToken,
-  setAccessToken,
-} from "@/features/auth/token";
+import { refreshSession } from "@/features/auth/refresh";
+import { getAccessToken, getTwoFaToken } from "@/features/auth/token";
 import { ApiError, type ApiResponse } from "@/lib/types/api";
-import type { AuthResult } from "@/features/auth/types";
 
 /** Same-origin proxy → Spring Boot (`next.config` rewrites). */
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "/api";
@@ -28,25 +22,6 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-let refreshPromise: Promise<string | null> | null = null;
-
-async function refreshAccessToken(): Promise<string | null> {
-  try {
-    const { data } = await axios.post<ApiResponse<AuthResult>>(
-      `${API_BASE}/auth/refresh-token`,
-      {},
-      { withCredentials: true },
-    );
-    const token = data.data?.accessToken ?? null;
-    if (token) setAccessToken(token);
-    return token;
-  } catch {
-    clearAccessToken();
-    clearSessionCookie();
-    return null;
-  }
-}
-
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiResponse<unknown>>) => {
@@ -62,10 +37,8 @@ apiClient.interceptors.response.use(
       }
 
       original._retry = true;
-      refreshPromise ??= refreshAccessToken().finally(() => {
-        refreshPromise = null;
-      });
-      const token = await refreshPromise;
+      const result = await refreshSession();
+      const token = result?.accessToken ?? null;
       if (token) {
         original.headers.Authorization = `Bearer ${token}`;
         return apiClient(original);

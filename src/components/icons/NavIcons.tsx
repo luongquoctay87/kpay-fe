@@ -141,15 +141,6 @@ export function IconChevron(props: IconProps) {
   );
 }
 
-export function IconPanelLeft(props: IconProps) {
-  return (
-    <svg {...base(props)}>
-      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
-      <path d="M9.5 4.5v15" />
-    </svg>
-  );
-}
-
 export function IconLogout(props: IconProps) {
   return (
     <svg {...base(props)}>
@@ -203,6 +194,16 @@ export function IconPencil(props: IconProps) {
     <svg {...base(props)}>
       <path d="M4 20h4l10-10a2.5 2.5 0 0 0-3.5-3.5L4.5 16.5z" />
       <path d="m13.5 6.5 4 4" />
+    </svg>
+  );
+}
+
+export function IconSave(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+      <path d="M17 21v-8H7v8" />
+      <path d="M7 3v5h8" />
     </svg>
   );
 }

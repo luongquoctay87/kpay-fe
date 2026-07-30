@@ -16,6 +16,7 @@ import {
 } from "@/components/icons/NavIcons";
 import {
   ColumnHeader,
+  CopyButton,
   FilterBar,
   PageHeader,
   Pagination,
@@ -60,37 +61,6 @@ type JsonModalState = {
   title: string;
   data: Record<string, unknown> | null | undefined;
 } | null;
-
-function CopyButton({ value, label }: { value: string; label: string }) {
-  const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
-
-  async function onCopy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => void onCopy()}
-      className="inline-flex items-center gap-1 text-caption text-accent transition hover:text-ink"
-      aria-label={label}
-      title={copied ? t("common.copied") : label}
-    >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <rect x="9" y="9" width="13" height="13" rx="2" />
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-      </svg>
-      {copied ? "✓" : null}
-    </button>
-  );
-}
 
 function HttpStatusCell({ status }: { status?: number | null }) {
   if (status == null) return <span className="text-label text-muted">—</span>;
@@ -507,6 +477,8 @@ export function CallbackLogsPage() {
                         {row.externalRequestId}
                       </span>
                       <CopyButton
+                        showCheck
+                        className="inline-flex items-center gap-1 text-caption text-accent transition hover:text-ink"
                         value={row.externalRequestId}
                         label={t("callbackLogs.copyExternalId")}
                       />
@@ -519,7 +491,7 @@ export function CallbackLogsPage() {
                       <span className="truncate font-mono text-label text-ink-secondary" title={row.refId}>
                         {row.refId}
                       </span>
-                      <CopyButton value={row.refId} label={t("callbackLogs.copyRefId")} />
+                      <CopyButton showCheck className="inline-flex items-center gap-1 text-caption text-accent transition hover:text-ink" value={row.refId} label={t("callbackLogs.copyRefId")} />
                     </div>
                   </td>
                 ) : null}

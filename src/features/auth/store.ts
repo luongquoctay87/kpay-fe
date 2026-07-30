@@ -3,12 +3,20 @@
 import { create } from "zustand";
 import { authApi } from "@/features/auth/api";
 import {
+  applyAuthTokens,
+  clearProactiveRefresh,
+  refreshSession,
+  scheduleProactiveRefresh,
+} from "@/features/auth/refresh";
+import {
   clearAuthStorage,
   clearStoredUser,
   clearTwoFaToken,
-  getAccessToken,
+  getRememberMePreference,
   getStoredUserJson,
-  setAccessToken,
+  isAccessTokenFresh,
+  setRememberMe,
+  setRememberMePreference,
   setStoredUserJson,
   setTwoFaToken,
 } from "@/features/auth/token";
@@ -18,12 +26,15 @@ interface AuthState {
   user: User | null;
   hydrated: boolean;
   setUser: (user: User | null) => void;
-  hydrate: () => void;
-  login: (body: Omit<SignInRequest, "role"> & { role?: SignInRequest["role"] }) => Promise<AuthResult>;
-  verifyTotp: (code: string, backupCode?: string) => Promise<AuthResult>;
+  /** Restore session: fresh access, or silent refresh via HttpOnly cookie. */
+  hydrate: () => Promise<void>;
+  login: (
+    body: Omit<SignInRequest, "role"> & { role?: SignInRequest["role"] },
+  ) => Promise<AuthResult>;
+  verifyTotp: (code: string, backupCode?: string, rememberMe?: boolean) => Promise<AuthResult>;
   confirmTotp: (code: string) => Promise<AuthResult>;
   enrollTotp: () => Promise<AuthResult>;
-  completeSession: (result: AuthResult) => void;
+  completeSession: (result: AuthResult, rememberMe?: boolean) => void;
   logout: () => Promise<void>;
 }
 
@@ -47,19 +58,40 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user });
   },
 
-  hydrate: () => {
-    const token = getAccessToken();
-    set({
-      hydrated: true,
-      user: token ? parseStoredUser() : null,
-    });
+  hydrate: async () => {
+    if (isAccessTokenFresh()) {
+      set({
+        hydrated: true,
+        user: parseStoredUser(),
+      });
+      scheduleProactiveRefresh();
+      return;
+    }
+
+    // Access missing/expired — try HttpOnly refresh cookie before treating as logged out.
+    const result = await refreshSession();
+    if (result?.accessToken) {
+      set({
+        hydrated: true,
+        user: result.user ?? parseStoredUser(),
+      });
+      return;
+    }
+
+    clearAuthStorage();
+    clearProactiveRefresh();
+    set({ hydrated: true, user: null });
   },
 
   login: async (body) => {
+    const rememberMe = Boolean(body.rememberMe);
+    // Preference only — session storage mode is applied after tokens are issued.
+    setRememberMePreference(rememberMe);
     const result = await authApi.login({
       username: body.username.trim(),
       password: body.password,
       role: body.role ?? "ADMIN",
+      rememberMe,
     });
     if (result.twoFaToken) {
       setTwoFaToken(result.twoFaToken);
@@ -71,24 +103,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   confirmTotp: async (code) => authApi.confirmTotp({ code }),
 
-  verifyTotp: async (code, backupCode) => {
-    const payload =
-      backupCode && backupCode.trim()
-        ? { backupCode: backupCode.trim() }
-        : { code: code.trim() };
-    const result = await authApi.verifyTotp(payload);
-    get().completeSession(result);
+  verifyTotp: async (code, backupCode, rememberMe) => {
+    const remember = rememberMe ?? getRememberMePreference();
+    const result = await authApi.verifyTotp({
+      code: (backupCode ?? code).trim(),
+      rememberMe: remember,
+    });
+    get().completeSession(result, remember);
     return result;
   },
 
-  completeSession: (result) => {
+  completeSession: (result, rememberMe) => {
     if (!result.accessToken) {
       return;
     }
-    setAccessToken(result.accessToken);
+    setRememberMe(rememberMe ?? getRememberMePreference());
+    applyAuthTokens(result);
     clearTwoFaToken();
     if (result.user) {
-      setStoredUserJson(JSON.stringify(result.user));
       set({ user: result.user });
     }
   },
@@ -97,6 +129,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await authApi.logout();
     } finally {
+      clearProactiveRefresh();
       clearAuthStorage();
       set({ user: null });
     }

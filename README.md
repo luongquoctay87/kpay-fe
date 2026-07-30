@@ -63,7 +63,7 @@ src/
   components/
     layout/                 # Sidebar, Header, PortalShell
     providers/              # Ant Design + locale
-    common/                 # PageStub, shared UI
+    common/                 # PageHeader, TableCard, ColumnPicker, StatCard, …
   features/                 # Domain modules (api + types + UI)
     auth/
     merchants/

@@ -1,4 +1,5 @@
 import { apiClient, unwrap } from "@/lib/api/client";
+import { downloadXlsx } from "@/lib/api/download-blob";
 import type {
   CreateMerchantBody,
   CreateMerchantResp,
@@ -36,15 +37,7 @@ export const merchantApi = {
       },
       responseType: "blob",
     });
-    const blob = new Blob([res.data], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "merchants.xlsx";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadXlsx(res.data, "merchants.xlsx");
   },
 
   getById(id: string): Promise<MerchantDetail> {

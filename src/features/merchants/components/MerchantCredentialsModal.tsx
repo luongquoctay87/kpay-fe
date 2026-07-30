@@ -2,7 +2,7 @@
 
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
-import { IconDownload } from "@/components/icons/NavIcons";
+import { IconCheckCircle, IconDownload } from "@/components/icons/NavIcons";
 import { Button, Input } from "@/components/ui";
 import type { CreateMerchantResp } from "@/features/merchants/types";
 import { useI18n } from "@/i18n/use-i18n";
@@ -161,7 +161,7 @@ export function MerchantCredentialsModal({ merchant, onClose }: MerchantCredenti
           >
             {t("merchantNew.modalKeyDownload")}
           </Button>
-          <Button type="button" variant="primary" size="md" onClick={onClose}>
+          <Button type="button" variant="primary" size="md" onClick={onClose} leftIcon={<IconCheckCircle width={16} height={16} />}>
             {t("merchantNew.modalKeyDone")}
           </Button>
         </div>

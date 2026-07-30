@@ -103,6 +103,19 @@ export function AppHeader() {
                 variant="ghost"
                 fullWidth
                 className="justify-start"
+                onClick={() => {
+                  setMenuOpen(false);
+                  router.push(ROUTES.profile);
+                }}
+                leftIcon={<IconUser width={16} height={16} />}
+              >
+                {t("profile.menu")}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                fullWidth
+                className="justify-start"
                 onClick={() => void onLogout()}
                 leftIcon={<IconLogout width={16} height={16} />}
               >

@@ -1,4 +1,5 @@
 import { apiClient, unwrap } from "@/lib/api/client";
+import { downloadXlsx } from "@/lib/api/download-blob";
 import type {
   PayinChannelOption,
   PayinOrderListParams,
@@ -43,15 +44,7 @@ export const payinApi = {
       },
       responseType: "blob",
     });
-    const blob = new Blob([res.data], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "payin-orders.xlsx";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadXlsx(res.data, "payin-orders.xlsx");
   },
 
   listChannels(): Promise<PayinChannelOption[]> {

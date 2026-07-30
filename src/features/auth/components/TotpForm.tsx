@@ -7,7 +7,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useAuthStore } from "@/features/auth/store";
 import { getTwoFaToken } from "@/features/auth/token";
 import { useI18n } from "@/i18n/use-i18n";
-import { ROUTES } from "@/lib/constants/routes";
+import { ROUTES, safeInternalPath } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
 
 const { Title, Paragraph, Text } = Typography;
@@ -21,7 +21,7 @@ export function TotpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const step = searchParams.get("step") === "enroll" ? "enroll" : "verify";
-  const nextPath = searchParams.get("next") || ROUTES.home;
+  const nextPath = safeInternalPath(searchParams.get("next"));
   const enrollTotp = useAuthStore((s) => s.enrollTotp);
   const confirmTotp = useAuthStore((s) => s.confirmTotp);
   const verifyTotp = useAuthStore((s) => s.verifyTotp);

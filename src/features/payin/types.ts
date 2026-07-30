@@ -1,3 +1,8 @@
+import type { OrderCallbackStatus } from "@/features/orders/callback-status";
+
+export type { OrderCallbackStatus } from "@/features/orders/callback-status";
+export { ORDER_CALLBACK_STATUS_OPTIONS as CALLBACK_STATUS_OPTIONS } from "@/features/orders/callback-status";
+
 /** Align với BE PayinOrder list. */
 export type PayinStatus =
   | "created"
@@ -6,8 +11,6 @@ export type PayinStatus =
   | "wrong_denomination"
   | "expired"
   | "failure";
-
-export type OrderCallbackStatus = "none" | "pending" | "success" | "failed";
 
 export interface PayinOrderStats {
   successCount: number;
@@ -78,13 +81,6 @@ export const PAYIN_STATUS_OPTIONS: PayinStatus[] = [
   "wrong_denomination",
   "expired",
   "failure",
-];
-
-export const CALLBACK_STATUS_OPTIONS: OrderCallbackStatus[] = [
-  "none",
-  "pending",
-  "success",
-  "failed",
 ];
 
 export const EMPTY_PAYIN_STATS: PayinOrderStats = {

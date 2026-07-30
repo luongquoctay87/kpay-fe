@@ -13,3 +13,11 @@ export function formatDate(value?: string | null): string {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("vi-VN");
 }
+
+/** Convert `<input type="datetime-local">` value to ISO for API query params. */
+export function localDateTimeInputToIso(value: string): string | undefined {
+  if (!value.trim()) return undefined;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toISOString();
+}

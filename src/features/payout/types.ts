@@ -1,3 +1,8 @@
+import type { OrderCallbackStatus } from "@/features/orders/callback-status";
+
+export type { OrderCallbackStatus } from "@/features/orders/callback-status";
+export { ORDER_CALLBACK_STATUS_OPTIONS as CALLBACK_STATUS_OPTIONS } from "@/features/orders/callback-status";
+
 /** Align với BE PayoutOrder list. */
 export type PayoutStatus =
   | "pending"
@@ -5,8 +10,6 @@ export type PayoutStatus =
   | "success"
   | "rejected"
   | "failed";
-
-export type OrderCallbackStatus = "none" | "pending" | "success" | "failed";
 
 export interface PayoutOrderStats {
   successCount: number;
@@ -75,13 +78,6 @@ export const PAYOUT_STATUS_OPTIONS: PayoutStatus[] = [
   "processing",
   "success",
   "rejected",
-  "failed",
-];
-
-export const CALLBACK_STATUS_OPTIONS: OrderCallbackStatus[] = [
-  "none",
-  "pending",
-  "success",
   "failed",
 ];
 

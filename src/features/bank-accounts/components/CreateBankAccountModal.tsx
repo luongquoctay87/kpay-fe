@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { IconSave } from "@/components/icons/NavIcons";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import type { BankOption, CreateBankAccountBody } from "@/features/bank-accounts/types";
@@ -314,7 +315,28 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-edge px-5 py-3">
-            <Button type="button" variant="secondary" size="md" onClick={onClose} disabled={submitting}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              leftIcon={
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  aria-hidden
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              }
+              onClick={onClose}
+              disabled={submitting}
+            >
               {t("bankAccounts.btnCancel")}
             </Button>
             <Button
@@ -323,6 +345,7 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
               size="md"
               loading={submitting}
               disabled={banksLoading || bankOptions.length === 0}
+              leftIcon={<IconSave width={15} height={15} />}
             >
               {t("bankAccounts.btnCreate")}
             </Button>

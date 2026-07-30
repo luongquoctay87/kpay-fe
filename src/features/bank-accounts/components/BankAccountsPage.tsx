@@ -22,7 +22,7 @@ import {
   IconTrash,
   IconUser,
 } from "@/components/icons/NavIcons";
-import { ColumnHeader, FilterBar, PageHeader, Pagination, TableCard } from "@/components/common";
+import { ColumnHeader, CopyButton, FilterBar, PageHeader, Pagination, TableCard } from "@/components/common";
 import { Button, ConfirmDialog, Input, Select, StatusBadge } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import { ColumnPicker } from "@/features/bank-accounts/components/ColumnPicker";
@@ -57,46 +57,6 @@ const EMPTY_STATS: BankAccountStats = {
   with1Source: 0,
   with0Sources: 0,
 };
-
-function CopyButton({ value, label }: { value: string; label: string }) {
-  const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
-
-  async function onCopy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => void onCopy()}
-      className="inline-flex items-center text-muted transition hover:text-ink"
-      aria-label={label}
-      title={copied ? t("common.copied") : label}
-    >
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <rect x="9" y="9" width="13" height="13" rx="2" />
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-      </svg>
-    </button>
-  );
-}
 
 function SourceMark({ configured, configuredLabel, notConfiguredLabel }: {
   configured: boolean;

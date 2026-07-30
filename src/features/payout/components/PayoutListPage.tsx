@@ -6,7 +6,6 @@ import {
   useMemo,
   useState,
   type FormEvent,
-  type ReactNode,
 } from "react";
 import {
   IconActivity,
@@ -25,10 +24,16 @@ import {
 } from "@/components/icons/NavIcons";
 import {
   ColumnHeader,
+  CopyButton,
+  FilterField,
   PageHeader,
   Pagination,
+  StatCard,
   TableCard,
+  dateTimeControlClass,
+  filterControlClass,
 } from "@/components/common";
+
 import { Button, Input, Select, StatusBadge } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import { merchantApi } from "@/features/merchants/api";
@@ -63,125 +68,8 @@ import {
   PAYOUT_STATUS_OPTIONS,
 } from "@/features/payout/types";
 import { useI18n } from "@/i18n/use-i18n";
-import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatDateTime, formatMoney, localDateTimeInputToIso } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
-
-function CopyButton({ value, label }: { value: string; label: string }) {
-  const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
-
-  async function onCopy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => void onCopy()}
-      className="inline-flex items-center text-muted transition hover:text-ink"
-      aria-label={label}
-      title={copied ? t("common.copied") : label}
-    >
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <rect x="9" y="9" width="13" height="13" rx="2" />
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-      </svg>
-    </button>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "default" | "success" | "info" | "warning" | "danger";
-}) {
-  const barClass =
-    tone === "success"
-      ? "bg-success"
-      : tone === "info"
-        ? "bg-ink-secondary"
-        : tone === "warning"
-          ? "bg-warning"
-          : tone === "danger"
-            ? "bg-danger"
-            : "bg-ink/35";
-
-  const valueClass =
-    tone === "success"
-      ? "text-success"
-      : tone === "info"
-        ? "text-ink-secondary"
-        : tone === "warning"
-          ? "text-warning"
-          : tone === "danger"
-            ? "text-danger"
-            : "text-ink";
-
-  return (
-    <div className="relative flex h-full min-h-[76px] flex-col justify-center overflow-hidden rounded-lg border border-edge bg-elevated py-3 pl-5 pr-4">
-      <span className={`absolute inset-y-0 left-0 w-0.5 ${barClass}`} aria-hidden />
-      <p className="text-caption text-muted">{label}</p>
-      <p className={`mt-1.5 text-xl font-semibold leading-none tabular-nums tracking-tight ${valueClass}`}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function localToIso(value: string): string | undefined {
-  if (!value.trim()) return undefined;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return undefined;
-  return d.toISOString();
-}
-
-function FilterField({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="grid min-w-0 grid-cols-[9.25rem_minmax(0,1fr)] items-center gap-x-2.5">
-      <label
-        htmlFor={htmlFor}
-        title={label}
-        className="truncate text-right text-label leading-none text-muted"
-      >
-        {label}&nbsp;:
-      </label>
-      <div className="min-w-0">{children}</div>
-    </div>
-  );
-}
-
-const fieldControlClass =
-  "!h-9 !border-edge bg-surface/80 hover:!border-edge-strong";
-
-const dateTimeControlClass = `${fieldControlClass} min-w-0 max-w-full text-[13px] [color-scheme:light] [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:opacity-55 [&::-webkit-datetime-edit]:min-w-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0`;
 
 export function PayoutListPage() {
   const { t } = useI18n();
@@ -356,10 +244,10 @@ export function PayoutListPage() {
       callbackStatus: callbackDraft ?? undefined,
       realStatus: realStatusDraft.trim() || undefined,
       reason: reasonDraft.trim() || undefined,
-      createdFrom: localToIso(createdFromDraft),
-      createdTo: localToIso(createdToDraft),
-      updatedFrom: localToIso(updatedFromDraft),
-      updatedTo: localToIso(updatedToDraft),
+      createdFrom: localDateTimeInputToIso(createdFromDraft),
+      createdTo: localDateTimeInputToIso(createdToDraft),
+      updatedFrom: localDateTimeInputToIso(updatedFromDraft),
+      updatedTo: localDateTimeInputToIso(updatedToDraft),
     };
   }
 
@@ -443,7 +331,7 @@ export function PayoutListPage() {
                 value={transIdDraft}
                 onChange={(e) => setTransIdDraft(e.target.value)}
                 placeholder={t("payout.filterTransIdPlaceholder")}
-                className={fieldControlClass}
+                className={filterControlClass}
               />
             </FilterField>
             <FilterField label={t("payout.filterContent")} htmlFor="payout-content">
@@ -453,7 +341,7 @@ export function PayoutListPage() {
                 value={transferContentDraft}
                 onChange={(e) => setTransferContentDraft(e.target.value)}
                 placeholder={t("payout.filterContentPlaceholder")}
-                className={fieldControlClass}
+                className={filterControlClass}
               />
             </FilterField>
             <FilterField label={t("payout.filterMerchant")} htmlFor="payout-merchant">
@@ -465,7 +353,7 @@ export function PayoutListPage() {
                 onChange={setMerchantDraft}
                 placeholder={t("payout.filterMerchantPlaceholder")}
                 clearable
-                triggerClassName={fieldControlClass}
+                triggerClassName={filterControlClass}
               />
             </FilterField>
             <FilterField label={t("payout.filterAccount")} htmlFor="payout-account">
@@ -475,7 +363,7 @@ export function PayoutListPage() {
                 value={accountDraft}
                 onChange={(e) => setAccountDraft(e.target.value)}
                 placeholder={t("payout.filterAccountPlaceholder")}
-                className={fieldControlClass}
+                className={filterControlClass}
               />
             </FilterField>
 
@@ -491,7 +379,7 @@ export function PayoutListPage() {
                 onChange={setSourceAccountDraft}
                 placeholder={t("payout.filterSourceAccountPlaceholder")}
                 clearable
-                triggerClassName={fieldControlClass}
+                triggerClassName={filterControlClass}
               />
             </FilterField>
             <FilterField label={t("payout.filterStatus")} htmlFor="payout-status">
@@ -503,7 +391,7 @@ export function PayoutListPage() {
                 onChange={setStatusDraft}
                 placeholder={t("payout.filterStatusPlaceholder")}
                 clearable
-                triggerClassName={fieldControlClass}
+                triggerClassName={filterControlClass}
               />
             </FilterField>
             <FilterField label={t("payout.filterCallback")} htmlFor="payout-callback">
@@ -515,7 +403,7 @@ export function PayoutListPage() {
                 onChange={setCallbackDraft}
                 placeholder={t("payout.filterCallbackPlaceholder")}
                 clearable
-                triggerClassName={fieldControlClass}
+                triggerClassName={filterControlClass}
               />
             </FilterField>
             <FilterField label={t("payout.filterCreatedFrom")} htmlFor="payout-created-from">
@@ -569,7 +457,7 @@ export function PayoutListPage() {
                 value={realStatusDraft}
                 onChange={(e) => setRealStatusDraft(e.target.value)}
                 placeholder={t("payout.filterRealStatusPlaceholder")}
-                className={fieldControlClass}
+                className={filterControlClass}
               />
             </FilterField>
             <FilterField label={t("payout.filterReason")} htmlFor="payout-reason">
@@ -579,7 +467,7 @@ export function PayoutListPage() {
                 value={reasonDraft}
                 onChange={(e) => setReasonDraft(e.target.value)}
                 placeholder={t("payout.filterReasonPlaceholder")}
-                className={fieldControlClass}
+                className={filterControlClass}
               />
             </FilterField>
 
@@ -622,7 +510,7 @@ export function PayoutListPage() {
                 onChange={(e) => setTransIdDraft(e.target.value)}
                 placeholder={t("payout.filterTransIdPlaceholder")}
                 aria-label={t("payout.filterTransId")}
-                className={fieldControlClass}
+                className={filterControlClass}
               />
             </div>
             <div className="min-w-[200px] flex-1 basis-[220px]">
@@ -633,7 +521,7 @@ export function PayoutListPage() {
                 onChange={(e) => setTransferContentDraft(e.target.value)}
                 placeholder={t("payout.filterContentPlaceholder")}
                 aria-label={t("payout.filterContent")}
-                className={fieldControlClass}
+                className={filterControlClass}
               />
             </div>
             <div className="min-w-[200px] flex-1 basis-[220px] xl:max-w-[280px]">
@@ -646,7 +534,7 @@ export function PayoutListPage() {
                 placeholder={t("payout.filterMerchantPlaceholder")}
                 clearable
                 aria-label={t("payout.filterMerchant")}
-                triggerClassName={fieldControlClass}
+                triggerClassName={filterControlClass}
               />
             </div>
             <div className="ml-auto flex h-9 flex-wrap items-center gap-2">

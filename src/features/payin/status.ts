@@ -1,5 +1,9 @@
 import type { BadgeTone } from "@/components/ui/StatusBadge";
-import type { OrderCallbackStatus, PayinStatus } from "@/features/payin/types";
+import {
+  ORDER_CALLBACK_STATUS_TONE,
+  type OrderCallbackStatus,
+} from "@/features/orders/callback-status";
+import type { PayinStatus } from "@/features/payin/types";
 import type { MessageKey } from "@/i18n/types";
 
 export const PAYIN_STATUS_LABEL_KEY: Record<PayinStatus, MessageKey> = {
@@ -27,9 +31,4 @@ export const CALLBACK_STATUS_LABEL_KEY: Record<OrderCallbackStatus, MessageKey> 
   failed: "payin.callbackFailed",
 };
 
-export const CALLBACK_STATUS_TONE: Record<OrderCallbackStatus, BadgeTone> = {
-  none: "neutral",
-  pending: "pending",
-  success: "active",
-  failed: "disabled",
-};
+export const CALLBACK_STATUS_TONE = ORDER_CALLBACK_STATUS_TONE;

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { PageHeader } from "@/components/common";
-import { IconPlus, IconUsers } from "@/components/icons/NavIcons";
+import { IconPlus, IconSave, IconUsers } from "@/components/icons/NavIcons";
 import { Button, Field, Input } from "@/components/ui";
 import { agentApi } from "@/features/agents/api";
 import { useI18n } from "@/i18n/use-i18n";
@@ -218,12 +218,33 @@ export function AgentCreatePage() {
             type="button"
             variant="secondary"
             size="md"
+            leftIcon={
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                aria-hidden
+              >
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+            }
             onClick={() => router.push(ROUTES.agents)}
             disabled={submitting}
           >
             {t("agentNew.btnCancel")}
           </Button>
-          <Button type="submit" variant="primary" size="md" loading={submitting}>
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            loading={submitting}
+            leftIcon={<IconSave width={15} height={15} />}
+          >
             {t("agentNew.btnCreate")}
           </Button>
         </div>

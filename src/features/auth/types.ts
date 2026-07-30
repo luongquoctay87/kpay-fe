@@ -15,7 +15,6 @@ export interface AuthResult {
   totpEnrolled?: boolean;
   twoFaToken?: string;
   accessToken?: string;
-  refreshToken?: string;
   type?: string;
   expiresIn?: number;
   user?: User;
@@ -28,6 +27,8 @@ export interface SignInRequest {
   password: string;
   /** Admin Portal phải gửi ADMIN (BE default = MERCHANT). */
   role: AuthRole;
+  /** Persist refresh cookie ~14 days when true; session-only when false. */
+  rememberMe?: boolean;
 }
 
 export interface TotpCodeRequest {
@@ -37,4 +38,11 @@ export interface TotpCodeRequest {
 export interface TotpVerifyRequest {
   code?: string;
   backupCode?: string;
+  rememberMe?: boolean;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }

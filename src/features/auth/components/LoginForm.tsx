@@ -1,13 +1,13 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
 import { Button, Field, Input } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
-import { clearTwoFaToken } from "@/features/auth/token";
+import { clearTwoFaToken, getRememberMePreference } from "@/features/auth/token";
 import { useI18n } from "@/i18n/use-i18n";
-import { ROUTES } from "@/lib/constants/routes";
+import { ROUTES, safeInternalPath } from "@/lib/constants/routes";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
 import { ApiError } from "@/lib/types/api";
 
@@ -32,12 +32,18 @@ export function LoginForm() {
   const [useBackup, setUseBackup] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMeChecked] = useState(true);
   const [code, setCode] = useState("");
 
   const credentials = useRequiredFields({ username, password });
   const otp = useRequiredFields({ code });
 
-  const nextPath = searchParams.get("next") || ROUTES.home;
+  const nextPath = safeInternalPath(searchParams.get("next"));
+
+  useEffect(() => {
+    setRememberMeChecked(getRememberMePreference());
+  }, []);
 
   async function onPasswordSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -50,7 +56,12 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
     try {
-      const result = await login({ username: username.trim(), password, role: "ADMIN" });
+      const result = await login({
+        username: username.trim(),
+        password,
+        role: "ADMIN",
+        rememberMe,
+      });
 
       if (result.totpEnrolled && result.twoFaToken) {
         setStep("otp");
@@ -59,7 +70,7 @@ export function LoginForm() {
       }
 
       if (result.accessToken) {
-        completeSession(result);
+        completeSession(result, rememberMe);
         router.replace(nextPath);
         return;
       }
@@ -84,9 +95,9 @@ export function LoginForm() {
     setError(null);
     try {
       if (useBackup) {
-        await verifyTotp("", code.trim());
+        await verifyTotp("", code.trim(), rememberMe);
       } else {
-        await verifyTotp(code.trim());
+        await verifyTotp(code.trim(), undefined, rememberMe);
       }
       router.replace(nextPath);
     } catch (err) {
@@ -164,7 +175,7 @@ export function LoginForm() {
                 <Input
                   id="login-password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   size="lg"
                   required
                   invalid={Boolean(credentials.errorOf("password"))}
@@ -172,8 +183,65 @@ export function LoginForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                   placeholder="••••••••"
+                  rightAddon={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="flex items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
+                      aria-label={
+                        showPassword ? t("common.hidePassword") : t("common.showPassword")
+                      }
+                    >
+                      {showPassword ? (
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.75"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden
+                        >
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.75"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden
+                        >
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  }
                 />
               </Field>
+              <label
+                htmlFor="login-remember"
+                className="flex cursor-pointer items-center gap-2 text-body text-ink-secondary"
+              >
+                <input
+                  id="login-remember"
+                  name="rememberMe"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMeChecked(e.target.checked)}
+                  className="h-4 w-4 rounded border-edge accent-[var(--color-accent)]"
+                />
+                {t("auth.rememberMe")}
+              </label>
               <Button
                 type="submit"
                 shape="pill"

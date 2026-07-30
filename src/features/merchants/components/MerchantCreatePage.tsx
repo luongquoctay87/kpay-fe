@@ -10,6 +10,7 @@ import { MerchantCredentialsModal } from "@/features/merchants/components/Mercha
 import type { CreateMerchantResp, FeeItem, FeeItemReq } from "@/features/merchants/types";
 import { percentToBps } from "@/features/merchants/types";
 import { useI18n } from "@/i18n/use-i18n";
+import type { MessageKey } from "@/i18n/types";
 import { ROUTES } from "@/lib/constants/routes";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
 import { ApiError } from "@/lib/types/api";
@@ -18,13 +19,8 @@ import { ApiError } from "@/lib/types/api";
 
 type FeeGroup = {
   key: "payinFees" | "payoutFees" | "cardFeesMerchant" | "cardFeesMember" | "cryptoFees";
-  labelKey:
-    | "merchantNew.feePayin"
-    | "merchantNew.feePayout"
-    | "merchantNew.feeCardMerchant"
-    | "merchantNew.feeCardMember"
-    | "merchantNew.feeCrypto";
-  channels: { key: string; labelKey: string }[];
+  labelKey: MessageKey;
+  channels: { key: string; labelKey: MessageKey }[];
 };
 
 const FEE_GROUPS: FeeGroup[] = [
@@ -35,7 +31,7 @@ const FEE_GROUPS: FeeGroup[] = [
       { key: "qr_bank", labelKey: "merchantNew.channelBankQr" },
       { key: "momo", labelKey: "merchantNew.channelMomo" },
       { key: "zalopay", labelKey: "merchantNew.channelZalopay" },
-      { key: "viettelpay", labelKey: "merchantNew.channelViettpay" },
+      { key: "viettelpay", labelKey: "merchantNew.channelViettelpay" },
     ],
   },
   {
@@ -83,6 +79,29 @@ type FeesState = Record<FeeGroup["key"], FeeItem[]>;
 
 function initAllFees(): FeesState {
   return Object.fromEntries(FEE_GROUPS.map((g) => [g.key, initFees(g)])) as FeesState;
+}
+
+/** Strong random password for merchant portal login (client-side). */
+function generateLoginPassword(length = 14): string {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghijkmnopqrstuvwxyz";
+  const digits = "23456789";
+  const special = "@$!%*?&";
+  const all = upper + lower + digits + special;
+  const pick = (alphabet: string) =>
+    alphabet[crypto.getRandomValues(new Uint32Array(1))[0]! % alphabet.length]!;
+
+  const chars = [pick(upper), pick(lower), pick(digits), pick(special)];
+  const rest = crypto.getRandomValues(new Uint32Array(Math.max(length - chars.length, 0)));
+  for (const n of rest) {
+    chars.push(all[n % all.length]!);
+  }
+  // Fisher–Yates shuffle
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0]! % (i + 1);
+    [chars[i], chars[j]] = [chars[j]!, chars[i]!];
+  }
+  return chars.join("");
 }
 
 /** Merge UI fee groups → BE FeeItemReq list (card merchant + member share channelId). */
@@ -298,27 +317,41 @@ export function MerchantCreatePage() {
                 required
                 invalid={Boolean(required.errorOf("password"))}
                 rightAddon={
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="flex items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
-                    aria-label={
-                      showPassword ? t("common.hidePassword") : t("common.showPassword")
-                    }
-                  >
-                    {showPassword ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                        <line x1="1" y1="1" x2="23" y2="23" />
-                      </svg>
-                    ) : (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    )}
-                  </button>
+                  <span className="flex shrink-0 items-center gap-0.5 pr-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPassword(generateLoginPassword());
+                        setShowPassword(true);
+                      }}
+                      title={t("merchantNew.generatePassword")}
+                      aria-label={t("merchantNew.generatePassword")}
+                      className="flex items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
+                    >
+                      <IconRefresh width={15} height={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="flex items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
+                      aria-label={
+                        showPassword ? t("common.hidePassword") : t("common.showPassword")
+                      }
+                    >
+                      {showPassword ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </span>
                 }
               />
             </Field>
@@ -348,7 +381,7 @@ export function MerchantCreatePage() {
                         return (
                           <tr key={fee.channel} className="border-b border-edge last:border-0">
                             <td className="px-3 py-2 text-label text-ink">
-                              {t(ch.labelKey as Parameters<typeof t>[0])}
+                              {t(ch.labelKey)}
                             </td>
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-1">
@@ -387,12 +420,33 @@ export function MerchantCreatePage() {
             type="button"
             variant="secondary"
             size="md"
+            leftIcon={
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                aria-hidden
+              >
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+            }
             onClick={() => router.push(ROUTES.merchants)}
             disabled={submitting}
           >
             {t("merchantNew.btnCancel")}
           </Button>
-          <Button type="submit" variant="primary" size="md" loading={submitting}>
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            loading={submitting}
+            leftIcon={<IconPlus width={15} height={15} />}
+          >
             {t("merchantNew.btnCreate")}
           </Button>
         </div>
