@@ -12,6 +12,7 @@ import {
   IconActivity,
   IconArrowOut,
   IconBank,
+  IconCheckCircle,
   IconChevron,
   IconClock,
   IconDownload,
@@ -35,11 +36,12 @@ import {
   filterControlClass,
 } from "@/components/common";
 
-import { Button, Input, Select, StatusBadge } from "@/components/ui";
+import { Button, Input, Select, StatusBadge, toast } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import { getActiveMerchantOptions } from "@/features/merchants/options-cache";
 import { payoutApi } from "@/features/payout/api";
 import { ColumnPicker } from "@/features/payout/components/ColumnPicker";
+import { FinalizePayoutModal } from "@/features/payout/components/FinalizePayoutModal";
 import { PayoutDetailDrawer } from "@/features/payout/components/PayoutDetailDrawer";
 import {
   PAYOUT_COLUMN_ALIGN,
@@ -87,6 +89,7 @@ export function PayoutListPage() {
   const [expanded, setExpanded] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [detailRow, setDetailRow] = useState<PayoutOrderListItem | null>(null);
+  const [finalizeRow, setFinalizeRow] = useState<PayoutOrderListItem | null>(null);
 
   const [transIdDraft, setTransIdDraft] = useState("");
   const [transferContentDraft, setTransferContentDraft] = useState("");
@@ -288,8 +291,11 @@ export function PayoutListPage() {
     setError(null);
     try {
       await payoutApi.export(filters);
+      toast.success(t("payout.exportOk"));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("payout.exportError"));
+      const msg = e instanceof ApiError ? e.message : t("payout.exportError");
+      setError(msg);
+      toast.error(t("payout.exportError"), msg);
     } finally {
       setExporting(false);
     }
@@ -751,6 +757,7 @@ export function PayoutListPage() {
                   </ColumnHeader>
                 </th>
               ) : null}
+              <th className="w-[96px] px-3 py-3 text-center">{t("payout.colActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -918,6 +925,29 @@ export function PayoutListPage() {
                     {formatDateTime(row.updatedAt)}
                   </td>
                 ) : null}
+                <td className="px-3 py-3 text-center">
+                  {row.status === "pending" || row.status === "processing" ? (
+                    <span className="group relative inline-flex">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        aria-label={t("payout.btnFinalize")}
+                        leftIcon={<IconCheckCircle width={15} height={15} />}
+                        onClick={() => setFinalizeRow(row)}
+                      />
+                      <span
+                        role="tooltip"
+                        className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                      >
+                        {t("payout.btnFinalize")}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-caption text-subtle">—</span>
+                  )}
+                </td>
               </tr>
             ))}
 
@@ -953,6 +983,7 @@ export function PayoutListPage() {
                 {show.retryCount ? <td /> : null}
                 {show.createdAt ? <td /> : null}
                 {show.updatedAt ? <td /> : null}
+                <td />
               </tr>
             ) : null}
           </tbody>
@@ -960,7 +991,28 @@ export function PayoutListPage() {
       </TableCard>
 
       {detailRow ? (
-        <PayoutDetailDrawer row={detailRow} onClose={() => setDetailRow(null)} />
+        <PayoutDetailDrawer
+          row={detailRow}
+          onClose={() => setDetailRow(null)}
+          onFinalize={
+            detailRow.status === "pending" || detailRow.status === "processing"
+              ? () => {
+                  setFinalizeRow(detailRow);
+                  setDetailRow(null);
+                }
+              : undefined
+          }
+        />
+      ) : null}
+
+      {finalizeRow ? (
+        <FinalizePayoutModal
+          row={finalizeRow}
+          onClose={() => setFinalizeRow(null)}
+          onDone={() => {
+            void refresh();
+          }}
+        />
       ) : null}
     </div>
   );

@@ -1,9 +1,12 @@
 import { apiClient, unwrap } from "@/lib/api/client";
 import { downloadXlsx } from "@/lib/api/download-blob";
 import type {
+  PayoutOrderListItem,
   PayoutOrderListParams,
   PayoutOrderListResp,
 } from "@/features/payout/types";
+
+export type PayoutFinalizeOutcome = "success" | "rejected" | "failed";
 
 export const payoutApi = {
   list(params: PayoutOrderListParams = {}): Promise<PayoutOrderListResp> {
@@ -50,5 +53,12 @@ export const payoutApi = {
       responseType: "blob",
     });
     downloadXlsx(res.data, "payout-orders.xlsx");
+  },
+
+  finalize(
+    id: string,
+    body: { outcome: PayoutFinalizeOutcome },
+  ): Promise<PayoutOrderListItem> {
+    return unwrap(apiClient.post(`/payout-orders/${id}/finalize`, body));
   },
 };

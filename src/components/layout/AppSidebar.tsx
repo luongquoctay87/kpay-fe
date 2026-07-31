@@ -72,7 +72,14 @@ const NAV: NavEntry[] = [
 ];
 
 const ROW =
-  "flex w-full items-center gap-2.5 rounded-md text-body no-underline transition-colors";
+  "relative flex w-full items-center gap-2.5 rounded-md text-body no-underline outline-none transition-[color,background-color] duration-150 focus-visible:ring-2 focus-visible:ring-edge-strong focus-visible:ring-offset-1";
+
+/** Active page — soft sky fill + light blue rail. */
+const NAV_ACTIVE =
+  "!bg-nav-active font-medium !text-nav-active-fg before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-nav-active-bar";
+
+const NAV_IDLE =
+  "!text-ink-secondary hover:bg-panel hover:!text-ink";
 
 function isActive(pathname: string, href: string) {
   if (href === ROUTES.home) return pathname === ROUTES.home;
@@ -192,12 +199,15 @@ export function AppSidebar({
                     className={cn(
                       ROW,
                       collapsed ? "justify-center px-2 py-2" : "px-2.5 py-2",
-                      active
-                        ? "bg-hover font-medium !text-ink"
-                        : "!text-ink-secondary hover:bg-hover hover:!text-ink",
+                      active ? NAV_ACTIVE : NAV_IDLE,
                     )}
                   >
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                    <span
+                      className={cn(
+                        "flex h-5 w-5 shrink-0 items-center justify-center transition-colors",
+                        active ? "text-nav-active-fg" : "text-ink-secondary",
+                      )}
+                    >
                       {entry.icon}
                     </span>
                     {!collapsed ? (
@@ -225,11 +235,16 @@ export function AppSidebar({
                     ROW,
                     collapsed ? "justify-center px-2 py-2" : "px-2.5 py-2",
                     hasActiveChild
-                      ? "font-medium text-ink"
-                      : "text-ink-secondary hover:bg-hover hover:text-ink",
+                      ? "font-medium text-nav-active-fg"
+                      : NAV_IDLE,
                   )}
                 >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                  <span
+                    className={cn(
+                      "flex h-5 w-5 shrink-0 items-center justify-center transition-colors",
+                      hasActiveChild ? "text-nav-active-fg" : "text-ink-secondary",
+                    )}
+                  >
                     {entry.icon}
                   </span>
                   {!collapsed ? (
@@ -260,13 +275,16 @@ export function AppSidebar({
                             className={cn(
                               ROW,
                               "py-1.5 pl-[22px] pr-2.5",
-                              active
-                                ? "bg-hover font-medium !text-ink"
-                                : "!text-ink-secondary hover:bg-hover hover:!text-ink",
+                              active ? NAV_ACTIVE : NAV_IDLE,
                             )}
                           >
                             {child.icon ? (
-                              <span className="flex h-5 w-5 shrink-0 items-center justify-center [&>svg]:h-4 [&>svg]:w-4">
+                              <span
+                                className={cn(
+                                  "flex h-5 w-5 shrink-0 items-center justify-center [&>svg]:h-4 [&>svg]:w-4 transition-colors",
+                                  active ? "text-nav-active-fg" : "text-ink-secondary",
+                                )}
+                              >
                                 {child.icon}
                               </span>
                             ) : null}

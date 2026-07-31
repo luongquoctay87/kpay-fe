@@ -25,13 +25,18 @@
   --kpay-edge: #e4e4e7; /* zinc-200 */
   --kpay-edge-strong: #d4d4d8; /* zinc-300 */
 
-  /* Accent (primary actions / active nav) */
-  --kpay-accent: #18181b;
-  --kpay-accent-hover: #27272a;
+  /* Accent (primary actions — e.g. Thêm mới) */
+  --kpay-accent: #4088f0;
+  --kpay-accent-hover: #2f6fd9;
   --kpay-on-accent: #ffffff;
 
   /* Inline text links */
   --kpay-link-hover: #0ea5e9; /* sky-500 */
+
+  /* Sidebar active nav — soft sky tint + high-contrast ink text */
+  --kpay-nav-active-bg: #f0f9ff; /* sky-50 */
+  --kpay-nav-active-fg: #4088f0;
+  --kpay-nav-active-bar: #7dd3fc; /* sky-300 */
 
   /* Feedback */
   --kpay-danger: #b91c1c;
@@ -85,6 +90,9 @@
   --color-accent-hover: var(--kpay-accent-hover);
   --color-on-accent: var(--kpay-on-accent);
   --color-link-hover: var(--kpay-link-hover);
+  --color-nav-active: var(--kpay-nav-active-bg);
+  --color-nav-active-fg: var(--kpay-nav-active-fg);
+  --color-nav-active-bar: var(--kpay-nav-active-bar);
 
   --color-danger: var(--kpay-danger);
   --color-danger-bg: var(--kpay-danger-bg);

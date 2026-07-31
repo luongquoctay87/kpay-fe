@@ -12,6 +12,7 @@ import {
   IconActivity,
   IconArrowIn,
   IconBank,
+  IconCheckCircle,
   IconChevron,
   IconClock,
   IconDownload,
@@ -36,7 +37,7 @@ import {
   filterControlClass,
 } from "@/components/common";
 
-import { Button, Input, Select, StatusBadge } from "@/components/ui";
+import { Button, Input, Select, StatusBadge, toast } from "@/components/ui";
 import { getActiveMerchantOptions } from "@/features/merchants/options-cache";
 import { payinApi } from "@/features/payin/api";
 import { FinalizePayinModal } from "@/features/payin/components/FinalizePayinModal";
@@ -89,7 +90,6 @@ export function PayinListPage() {
   const [exporting, setExporting] = useState(false);
   const [finalizeRow, setFinalizeRow] = useState<PayinOrderListItem | null>(null);
   const [detailRow, setDetailRow] = useState<PayinOrderListItem | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const [transIdDraft, setTransIdDraft] = useState("");
   const [contentDraft, setContentDraft] = useState("");
@@ -286,8 +286,11 @@ export function PayinListPage() {
     setError(null);
     try {
       await payinApi.export(filters);
+      toast.success(t("payin.exportOk"));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("payin.exportError"));
+      const msg = e instanceof ApiError ? e.message : t("payin.exportError");
+      setError(msg);
+      toast.error(t("payin.exportError"), msg);
     } finally {
       setExporting(false);
     }
@@ -296,12 +299,6 @@ export function PayinListPage() {
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader title={t("payin.listTitle")} />
-
-      {notice ? (
-        <p className="rounded-md bg-success/10 px-3 py-2 text-label text-success" role="status">
-          {notice}
-        </p>
-      ) : null}
 
       <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -892,14 +889,23 @@ export function PayinListPage() {
                 ) : null}
                 <td className="px-3 py-3 text-center">
                   {row.status === "created" || row.status === "pending" ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setFinalizeRow(row)}
-                    >
-                      {t("payin.btnFinalize")}
-                    </Button>
+                    <span className="group relative inline-flex">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        aria-label={t("payin.btnFinalize")}
+                        leftIcon={<IconCheckCircle width={15} height={15} />}
+                        onClick={() => setFinalizeRow(row)}
+                      />
+                      <span
+                        role="tooltip"
+                        className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                      >
+                        {t("payin.btnFinalize")}
+                      </span>
+                    </span>
                   ) : row.status === "wrong_denomination" ? (
                     <span className="group relative inline-flex">
                       <Button
@@ -992,7 +998,6 @@ export function PayinListPage() {
           row={finalizeRow}
           onClose={() => setFinalizeRow(null)}
           onDone={() => {
-            setNotice(t("payin.finalizeOk"));
             void refresh();
           }}
         />

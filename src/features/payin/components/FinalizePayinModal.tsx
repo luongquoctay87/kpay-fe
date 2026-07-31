@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { IconCheckCircle, IconWallet, IconX } from "@/components/icons/NavIcons";
-import { Button, Field, MoneyInput, Select } from "@/components/ui";
+import { Button, Field, MoneyInput, Select, toast } from "@/components/ui";
 import { payinApi, type PayinFinalizeOutcome } from "@/features/payin/api";
 import type { PayinOrderListItem } from "@/features/payin/types";
 import { useI18n } from "@/i18n/use-i18n";
@@ -76,10 +76,15 @@ export function FinalizePayinModal({ row, onClose, onDone }: FinalizePayinModalP
         }
       }
       await payinApi.finalize(row.id, body);
+      toast.success(
+        isWrongDenomCredit ? t("payin.creditOk") : t("payin.finalizeOk"),
+      );
       onDone();
       onClose();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("payin.finalizeError"));
+      const msg = e instanceof ApiError ? e.message : t("payin.finalizeError");
+      setError(msg);
+      toast.error(t("payin.finalizeError"), msg);
     } finally {
       setSaving(false);
     }

@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { CopyButton } from "@/components/common";
-import { IconX } from "@/components/icons/NavIcons";
+import { IconCheckCircle, IconX } from "@/components/icons/NavIcons";
 import { Button, StatusBadge } from "@/components/ui";
 import {
   CALLBACK_STATUS_LABEL_KEY,
@@ -45,9 +45,10 @@ function DetailRow({
 type PayoutDetailDrawerProps = {
   row: PayoutOrderListItem;
   onClose: () => void;
+  onFinalize?: () => void;
 };
 
-export function PayoutDetailDrawer({ row, onClose }: PayoutDetailDrawerProps) {
+export function PayoutDetailDrawer({ row, onClose, onFinalize }: PayoutDetailDrawerProps) {
   const { t } = useI18n();
 
   useEffect(() => {
@@ -202,7 +203,7 @@ export function PayoutDetailDrawer({ row, onClose }: PayoutDetailDrawerProps) {
           </DetailRow>
         </dl>
 
-        <div className="flex shrink-0 justify-end border-t border-edge px-4 py-3 sm:px-5">
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
           <Button
             type="button"
             variant="secondary"
@@ -213,6 +214,18 @@ export function PayoutDetailDrawer({ row, onClose }: PayoutDetailDrawerProps) {
           >
             {t("payout.detailClose")}
           </Button>
+          {onFinalize ? (
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              className="w-full sm:w-auto"
+              onClick={onFinalize}
+              leftIcon={<IconCheckCircle width={15} height={15} />}
+            >
+              {t("payout.btnFinalize")}
+            </Button>
+          ) : null}
         </div>
       </aside>
     </div>
