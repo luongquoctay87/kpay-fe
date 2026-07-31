@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { IconPlus, IconRefresh, IconUsers } from "@/components/icons/NavIcons";
 import { PageHeader } from "@/components/common";
-import { Button, Field, Input } from "@/components/ui";
+import { Button, Field, Input, toast } from "@/components/ui";
 import { merchantApi } from "@/features/merchants/api";
 import { MerchantCredentialsModal } from "@/features/merchants/components/MerchantCredentialsModal";
 import type { CreateMerchantResp, FeeItem, FeeItemReq } from "@/features/merchants/types";
@@ -180,8 +180,11 @@ export function MerchantCreatePage() {
       });
       // Redirect only once the one-time secret has been acknowledged.
       setCreated(resp);
+      toast.success(t("merchantNew.successCreated"));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("merchantNew.errorCreateFailed"));
+      const msg = err instanceof ApiError ? err.message : t("merchantNew.errorCreateFailed");
+      setError(msg);
+      toast.error(t("merchantNew.errorCreateFailed"), msg);
     } finally {
       setSubmitting(false);
     }

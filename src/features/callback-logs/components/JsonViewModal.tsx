@@ -1,5 +1,6 @@
 "use client";
 
+import { IconX } from "@/components/icons/NavIcons";
 import { Button } from "@/components/ui";
 import { useI18n } from "@/i18n/use-i18n";
 
@@ -34,6 +35,7 @@ export function JsonViewModal({ title, data, onClose }: JsonViewModalProps) {
             size="md"
             className="w-full sm:w-auto"
             onClick={onClose}
+            leftIcon={<IconX width={15} height={15} />}
           >
             {t("callbackLogs.modalClose")}
           </Button>

@@ -51,9 +51,9 @@ export function FilterBar({
           type="submit"
           variant="soft"
           size="md"
-          className="flex-1 sm:flex-none"
+          className="min-h-9 flex-1 gap-2 px-4 sm:min-w-[8.75rem] sm:flex-none"
           loading={loading}
-          leftIcon={<IconSearch width={15} height={15} />}
+          leftIcon={<IconSearch width={16} height={16} />}
         >
           {searchLabel ?? t("common.search")}
         </Button>
@@ -61,7 +61,7 @@ export function FilterBar({
           type="button"
           variant="secondary"
           size="md"
-          className="flex-1 sm:flex-none"
+          className="min-h-9 flex-1 sm:flex-none"
           onClick={onReset}
           disabled={!canReset || loading}
           leftIcon={<IconRefresh width={15} height={15} />}

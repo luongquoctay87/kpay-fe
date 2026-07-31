@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { IconCheckCircle, IconWallet, IconX } from "@/components/icons/NavIcons";
 import { Button, Field, MoneyInput, Select } from "@/components/ui";
 import { payinApi, type PayinFinalizeOutcome } from "@/features/payin/api";
 import type { PayinOrderListItem } from "@/features/payin/types";
@@ -156,6 +157,7 @@ export function FinalizePayinModal({ row, onClose, onDone }: FinalizePayinModalP
             className="w-full sm:w-auto"
             onClick={onClose}
             disabled={saving}
+            leftIcon={<IconX width={15} height={15} />}
           >
             {t("payin.finalizeCancel")}
           </Button>
@@ -166,6 +168,13 @@ export function FinalizePayinModal({ row, onClose, onDone }: FinalizePayinModalP
             className="w-full sm:w-auto"
             loading={saving}
             onClick={() => void confirm()}
+            leftIcon={
+              isWrongDenomCredit ? (
+                <IconWallet width={15} height={15} />
+              ) : (
+                <IconCheckCircle width={15} height={15} />
+              )
+            }
           >
             {isWrongDenomCredit ? t("payin.creditConfirm") : t("payin.finalizeConfirm")}
           </Button>

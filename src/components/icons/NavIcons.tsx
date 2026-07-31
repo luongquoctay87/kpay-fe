@@ -208,6 +208,28 @@ export function IconSave(props: IconProps) {
   );
 }
 
+/** Reset / khóa mật khẩu */
+export function IconKey(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="8" cy="15" r="4" />
+      <path d="M10.8 12.2 20 3" />
+      <path d="M16 7l3 3" />
+      <path d="M18.5 4.5 21 7" />
+    </svg>
+  );
+}
+
+/** Hiện / xem (reveal credentials) */
+export function IconEye(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
 export function IconTrash(props: IconProps) {
   return (
     <svg {...base(props)}>
@@ -216,6 +238,16 @@ export function IconTrash(props: IconProps) {
       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
       <path d="M10 11v6" />
       <path d="M14 11v6" />
+    </svg>
+  );
+}
+
+/** Đóng / hủy */
+export function IconX(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </svg>
   );
 }
@@ -321,6 +353,17 @@ export function IconLink(props: IconProps) {
     <svg {...base(props)}>
       <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.5 5.4" />
       <path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07L13.5 18.6" />
+    </svg>
+  );
+}
+
+/** Gỡ liên kết */
+export function IconUnlink(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M9.5 14.5 7.4 16.6a4 4 0 0 1-5.66-5.66L5.5 7.2" />
+      <path d="M14.5 9.5 16.6 7.4a4 4 0 0 1 5.66 5.66L18.5 16.8" />
+      <path d="m7 7 10 10" />
     </svg>
   );
 }

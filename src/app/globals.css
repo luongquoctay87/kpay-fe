@@ -215,3 +215,42 @@ a {
 .kpay-shell .ant-table {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
+
+/* —— Toast motion —— */
+@keyframes kpay-toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(12px, -8px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes kpay-toast-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(16px, -6px, 0) scale(0.96);
+  }
+}
+
+.kpay-toast-enter {
+  animation: kpay-toast-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.kpay-toast-leave {
+  animation: kpay-toast-out 280ms cubic-bezier(0.4, 0, 1, 1) both;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpay-toast-enter,
+  .kpay-toast-leave {
+    animation-duration: 1ms;
+  }
+}

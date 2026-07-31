@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { CopyButton } from "@/components/common";
+import { IconWallet, IconX } from "@/components/icons/NavIcons";
 import { Button, StatusBadge } from "@/components/ui";
 import {
   CALLBACK_STATUS_LABEL_KEY,
@@ -201,6 +202,7 @@ export function PayinDetailDrawer({ row, onClose, onCompensate }: PayinDetailDra
               size="md"
               className="w-full sm:w-auto"
               onClick={onCompensate}
+              leftIcon={<IconWallet width={15} height={15} />}
             >
               {row.status === "wrong_denomination"
                 ? t("payin.outcomeCredit")
@@ -213,6 +215,7 @@ export function PayinDetailDrawer({ row, onClose, onCompensate }: PayinDetailDra
             size="md"
             className="w-full sm:w-auto"
             onClick={onClose}
+            leftIcon={<IconX width={15} height={15} />}
           >
             {t("payin.detailClose")}
           </Button>

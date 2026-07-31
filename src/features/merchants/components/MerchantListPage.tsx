@@ -17,6 +17,7 @@ import {
 } from "@/components/icons/NavIcons";
 import {
   ColumnHeader,
+  CopyButton,
   FilterBar,
   PageHeader,
   Pagination,
@@ -290,14 +291,17 @@ export function MerchantListPage() {
 
             {rows.map((row) => (
               <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
-                <td className="truncate px-3 py-2.5 sm:px-5">
-                  <Link
-                    href={ROUTES.merchantDetail(row.id)}
-                    className="text-label font-medium"
-                    title={row.code}
-                  >
-                    {row.code}
-                  </Link>
+                <td className="px-3 py-2.5 sm:px-5">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-label font-medium text-ink" title={row.code}>
+                      {row.code}
+                    </span>
+                    <CopyButton
+                      value={row.code}
+                      label={t("merchants.copyCode")}
+                      className="inline-flex shrink-0 items-center rounded p-0.5 text-muted transition hover:bg-hover hover:text-ink"
+                    />
+                  </div>
                 </td>
                 <td className="truncate px-3 py-2.5 sm:px-5">
                   <Link

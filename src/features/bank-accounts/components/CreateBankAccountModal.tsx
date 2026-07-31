@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { IconSave } from "@/components/icons/NavIcons";
-import { Button, Field, Input, MoneyInput, Select, Textarea } from "@/components/ui";
+import { IconSave, IconX } from "@/components/icons/NavIcons";
+import { Button, Field, Input, MoneyInput, Select, Textarea, toast } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import type { BankOption, CreateBankAccountBody } from "@/features/bank-accounts/types";
 import { useI18n } from "@/i18n/use-i18n";
@@ -130,8 +130,11 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
     try {
       await bankAccountApi.create(body);
       onCreated();
+      toast.success(t("bankAccounts.successCreated"));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("bankAccounts.errorCreateFailed"));
+      const msg = err instanceof ApiError ? err.message : t("bankAccounts.errorCreateFailed");
+      setError(msg);
+      toast.error(t("bankAccounts.errorCreateFailed"), msg);
     } finally {
       setSubmitting(false);
     }
@@ -318,21 +321,7 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
               type="button"
               variant="secondary"
               size="md"
-              leftIcon={
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  aria-hidden
-                >
-                  <path d="M18 6 6 18" />
-                  <path d="m6 6 12 12" />
-                </svg>
-              }
+              leftIcon={<IconX width={15} height={15} />}
               onClick={onClose}
               disabled={submitting}
             >

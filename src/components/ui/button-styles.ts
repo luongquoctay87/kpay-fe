@@ -31,7 +31,7 @@ const variantClass: Record<ButtonVariant, string> = {
   secondary:
     "!border !border-edge !bg-elevated !text-ink hover:!border-edge-strong hover:!bg-surface hover:!text-ink focus-visible:ring-edge-strong/40",
   soft:
-    "!border !border-accent/35 !bg-accent/8 !text-accent hover:!border-accent/55 hover:!bg-accent/14 hover:!text-accent focus-visible:ring-accent/25",
+    "!border-0 !bg-accent/12 !text-accent hover:!bg-accent/18 hover:!text-accent-hover active:!bg-accent/22 focus-visible:ring-accent/30",
   ghost:
     "!bg-transparent !text-ink-secondary hover:!bg-hover hover:!text-ink focus-visible:ring-edge-strong/40",
   danger:

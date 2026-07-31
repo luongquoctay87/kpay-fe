@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { PageHeader } from "@/components/common";
 import { IconPlus, IconSave, IconUsers } from "@/components/icons/NavIcons";
-import { Button, Field, Input } from "@/components/ui";
+import { Button, Field, Input, toast } from "@/components/ui";
 import { agentApi } from "@/features/agents/api";
 import { useI18n } from "@/i18n/use-i18n";
 import { ROUTES } from "@/lib/constants/routes";
@@ -61,9 +61,12 @@ export function AgentCreatePage() {
         telegramId: telegramId.trim() || undefined,
         phone: phone.trim() || undefined,
       });
+      toast.success(t("agentNew.successCreated"));
       router.push(ROUTES.agents);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("agentNew.errorCreateFailed"));
+      const msg = err instanceof ApiError ? err.message : t("agentNew.errorCreateFailed");
+      setError(msg);
+      toast.error(t("agentNew.errorCreateFailed"), msg);
     } finally {
       setSubmitting(false);
     }

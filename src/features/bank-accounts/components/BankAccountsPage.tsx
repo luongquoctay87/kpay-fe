@@ -290,28 +290,15 @@ export function BankAccountsPage() {
           { label: t("bankAccounts.breadcrumbCurrent"), icon: <IconBank /> },
         ]}
         actions={
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              leftIcon={<IconPlus width={16} height={16} />}
-              onClick={() => setShowCreate(true)}
-            >
-              {t("bankAccounts.add")}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              leftIcon={<IconRefresh width={16} height={16} />}
-              onClick={() => void fetchList()}
-              disabled={loading}
-              aria-label={t("bankAccounts.refresh")}
-            >
-              {t("bankAccounts.refresh")}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            leftIcon={<IconPlus width={16} height={16} />}
+            onClick={() => setShowCreate(true)}
+          >
+            {t("bankAccounts.add")}
+          </Button>
         }
       />
 

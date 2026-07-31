@@ -86,7 +86,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const content = (
       <>
-        {loading ? <Spinner className="shrink-0" /> : leftIcon}
+        {loading ? <Spinner className="shrink-0" /> : leftIcon ? <span className="inline-flex shrink-0">{leftIcon}</span> : null}
         {children != null && !iconOnly ? (
           <span className={cn(loading && "opacity-90")}>{children}</span>
         ) : null}

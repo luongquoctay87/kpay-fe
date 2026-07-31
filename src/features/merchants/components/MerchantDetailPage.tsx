@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CopyButton, MoneyAmount, PageHeader } from "@/components/common";
-import { IconDownload, IconRefresh, IconStore, IconUsers } from "@/components/icons/NavIcons";
+import { IconBan, IconCheckCircle, IconDownload, IconEye, IconKey, IconPencil, IconRefresh, IconSave, IconSettings, IconStore, IconUsers, IconWallet, IconX } from "@/components/icons/NavIcons";
 import {
   Button,
   ConfirmDialog,
@@ -13,6 +13,7 @@ import {
   PasswordVisibilityToggle,
   Select,
   StatusBadge,
+  toast,
 } from "@/components/ui";
 import { merchantApi } from "@/features/merchants/api";
 import { MerchantCredentialsModal } from "@/features/merchants/components/MerchantCredentialsModal";
@@ -222,6 +223,7 @@ function AdjustBalanceModal({
             className="w-full sm:w-auto"
             onClick={onClose}
             disabled={saving}
+            leftIcon={<IconX width={15} height={15} />}
           >
             {t("merchantDetail.modalAdjustCancel")}
           </Button>
@@ -244,6 +246,7 @@ function AdjustBalanceModal({
                 totpCode: totpCode.trim() || undefined,
               })
             }
+            leftIcon={<IconWallet width={15} height={15} />}
           >
             {t("merchantDetail.modalAdjustConfirm")}
           </Button>
@@ -348,7 +351,15 @@ function ResetPasswordModal({
           {error ? <p className="text-label text-danger">{error}</p> : null}
         </div>
         <div className="flex flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
-          <Button type="button" variant="secondary" size="md" className="w-full sm:w-auto" onClick={onClose} disabled={saving}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            className="w-full sm:w-auto"
+            onClick={onClose}
+            disabled={saving}
+            leftIcon={<IconX width={15} height={15} />}
+          >
             {t("merchantDetail.modalResetPwCancel")}
           </Button>
           <Button
@@ -369,6 +380,7 @@ function ResetPasswordModal({
                 newPassword,
               })
             }
+            leftIcon={<IconKey width={15} height={15} />}
           >
             {t("merchantDetail.modalResetPwConfirm")}
           </Button>
@@ -447,8 +459,11 @@ function WebhookSecurityConfigModal({
 
       const detail = await merchantApi.update(merchant.id, { callbackRetryMax: n });
       onSaved(detail);
+      toast.success(t("common.saved"));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("merchantDetail.saveError"));
+      const msg = e instanceof ApiError ? e.message : t("merchantDetail.saveError");
+      setError(msg);
+      toast.error(t("common.saveFailed"), msg);
     } finally {
       setSaving(false);
     }
@@ -553,10 +568,16 @@ function WebhookSecurityConfigModal({
         </div>
 
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={saving}
+            leftIcon={<IconX width={15} height={15} />}
+          >
             {t("merchantDetail.btnCancel")}
           </Button>
-          <Button type="button" variant="primary" loading={saving} onClick={() => void onSave()}>
+          <Button type="button" variant="primary" loading={saving} onClick={() => void onSave()} leftIcon={<IconSave width={15} height={15} />}>
             {t("merchantDetail.btnSave")}
           </Button>
         </div>
@@ -603,8 +624,11 @@ function SectionBasic({
       });
       onUpdated(res);
       setEditing(false);
+      toast.success(t("common.updated"));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("merchantDetail.saveError"));
+      const msg = e instanceof ApiError ? e.message : t("merchantDetail.saveError");
+      setError(msg);
+      toast.error(t("common.updateFailed"), msg);
     } finally {
       setSaving(false);
     }
@@ -632,12 +656,17 @@ function SectionBasic({
     try {
       const res = await merchantApi.update(merchantId, { [key]: value });
       onUpdated(res);
+      toast.success(t("common.saved"));
       if (key === "ipWhitelistEnabled") setIpWhitelist(res.ipWhitelistEnabled);
       if (key === "includeInStatistics") setIncludeStats(res.includeInStatistics);
     } catch (e) {
       if (key === "ipWhitelistEnabled") setIpWhitelist(!value);
       if (key === "includeInStatistics") setIncludeStats(!value);
       setError(e instanceof ApiError ? e.message : t("merchantDetail.saveError"));
+      toast.error(
+        t("common.updateFailed"),
+        e instanceof ApiError ? e.message : undefined,
+      );
     } finally {
       setSaving(false);
     }
@@ -666,12 +695,12 @@ function SectionBasic({
               >
                 {t("merchantDetail.btnCancel")}
               </Button>
-              <Button type="button" variant="primary" size="sm" loading={saving} onClick={() => void save()}>
+              <Button type="button" variant="primary" size="sm" loading={saving} onClick={() => void save()} leftIcon={<IconSave width={15} height={15} />}>
                 {t("merchantDetail.btnSave")}
               </Button>
             </>
           ) : (
-            <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(true)}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(true)} leftIcon={<IconPencil width={15} height={15} />}>
               {t("merchantDetail.btnEdit")}
             </Button>
           )}
@@ -773,7 +802,7 @@ function SectionWallet({
     <section className="min-w-0 rounded-lg border border-edge bg-elevated">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-4 py-3 sm:px-5">
         <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionWallet")}</p>
-        <Button type="button" variant="secondary" size="sm" onClick={onEdit}>
+        <Button type="button" variant="secondary" size="sm" onClick={onEdit} leftIcon={<IconWallet width={15} height={15} />}>
           {t("merchantDetail.btnEditBalance")}
         </Button>
       </div>
@@ -877,8 +906,11 @@ function PayoutConfigModal({
       });
       const res = await merchantApi.updateChannels(merchantId, updated);
       onSaved(res);
+      toast.success(t("common.saved"));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("merchantDetail.saveError"));
+      const msg = e instanceof ApiError ? e.message : t("merchantDetail.saveError");
+      setError(msg);
+      toast.error(t("common.saveFailed"), msg);
     } finally {
       setSaving(false);
     }
@@ -987,10 +1019,16 @@ function PayoutConfigModal({
         </div>
 
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={saving}
+            leftIcon={<IconX width={15} height={15} />}
+          >
             {t("merchantDetail.btnCancel")}
           </Button>
-          <Button type="button" variant="primary" loading={saving} onClick={() => void onSave()}>
+          <Button type="button" variant="primary" loading={saving} onClick={() => void onSave()} leftIcon={<IconSave width={15} height={15} />}>
             {t("merchantDetail.btnSave")}
           </Button>
         </div>
@@ -1009,6 +1047,17 @@ function payoutModeLabel(
 }
 
 /* ─── Section: Channels ────────────────────────────────────────────────── */
+/** Phase 1: only QR Bank can be toggled under Payin channels. */
+const PAYIN_EDITABLE_CHANNEL_ID = "qr_bank";
+
+function sortPayinChannelsQrBankFirst(rows: MerchantChannelConfig[]): MerchantChannelConfig[] {
+  return [...rows].sort((a, b) => {
+    if (a.channelId === PAYIN_EDITABLE_CHANNEL_ID) return -1;
+    if (b.channelId === PAYIN_EDITABLE_CHANNEL_ID) return 1;
+    return 0;
+  });
+}
+
 function SectionChannels({
   channels,
   merchantId,
@@ -1019,12 +1068,15 @@ function SectionChannels({
   onUpdated: (m: MerchantDetail) => void;
 }) {
   const { t } = useI18n();
-  const payin = channels.filter((c) => c.flow === "payin" || c.flow === "card" || c.flow === "crypto");
+  const payin = sortPayinChannelsQrBankFirst(
+    channels.filter((c) => c.flow === "payin" || c.flow === "card" || c.flow === "crypto"),
+  );
   const payout = channels.filter((c) => c.flow === "payout");
   const [saving, setSaving] = useState(false);
   const [configChannel, setConfigChannel] = useState<MerchantChannelConfig | null>(null);
 
   async function toggle(ch: MerchantChannelConfig) {
+    if (ch.channelId !== PAYIN_EDITABLE_CHANNEL_ID) return;
     setSaving(true);
     try {
       // BE overwrites every field it receives, so resend limits for untouched channels too.
@@ -1038,6 +1090,7 @@ function SectionChannels({
       }));
       const res = await merchantApi.updateChannels(merchantId, updated);
       onUpdated(res);
+      toast.success(t("common.saved"));
     } finally {
       setSaving(false);
     }
@@ -1054,22 +1107,33 @@ function SectionChannels({
       <div className="flex min-w-0 flex-col gap-2">
         <p className="kpay-text-title font-semibold">{title}</p>
         <div className="rounded-lg border border-edge bg-elevated">
-          {rows.map((ch) => (
-            <div
-              key={ch.channelId}
-              className="flex items-center justify-between gap-3 border-b border-edge px-3 py-3 last:border-0 sm:px-4"
-            >
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <span className="text-label text-ink">{ch.channelName}</span>
-                <StatusBadge tone={ch.enabled ? "active" : "disabled"}>
-                  {ch.enabled
-                    ? t("merchantDetail.channelEnabled")
-                    : t("merchantDetail.channelDisabled")}
-                </StatusBadge>
+          {rows.map((ch) => {
+            const editable = ch.channelId === PAYIN_EDITABLE_CHANNEL_ID;
+            return (
+              <div
+                key={ch.channelId}
+                className={`flex items-center justify-between gap-3 border-b border-edge px-3 py-3 last:border-0 sm:px-4 ${
+                  editable ? "" : "bg-surface/60"
+                }`}
+              >
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className={`text-label ${editable ? "text-ink" : "text-muted"}`}>
+                    {ch.channelName}
+                  </span>
+                  <StatusBadge tone={ch.enabled ? "active" : "disabled"}>
+                    {ch.enabled
+                      ? t("merchantDetail.channelEnabled")
+                      : t("merchantDetail.channelDisabled")}
+                  </StatusBadge>
+                </div>
+                <Toggle
+                  checked={ch.enabled}
+                  onChange={() => void toggle(ch)}
+                  disabled={saving || !editable}
+                />
               </div>
-              <Toggle checked={ch.enabled} onChange={() => void toggle(ch)} disabled={saving} />
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -1088,6 +1152,7 @@ function SectionChannels({
               size="sm"
               disabled={saving}
               onClick={() => setConfigChannel(payout[0]!)}
+              leftIcon={<IconSettings width={15} height={15} />}
             >
               {t("merchantDetail.btnConfigChannels")}
             </Button>
@@ -1146,6 +1211,17 @@ function SectionChannels({
   );
 }
 
+/** Phase 1: only QR Bank fee is editable on merchant detail; other channels stay visible but locked. */
+const FEE_EDITABLE_CHANNEL_ID = "qr_bank";
+
+function sortFeesQrBankFirst(rows: MerchantFee[]): MerchantFee[] {
+  return [...rows].sort((a, b) => {
+    if (a.channelId === FEE_EDITABLE_CHANNEL_ID) return -1;
+    if (b.channelId === FEE_EDITABLE_CHANNEL_ID) return 1;
+    return 0;
+  });
+}
+
 /* ─── Section: Fees ────────────────────────────────────────────────────── */
 function SectionFees({
   fees,
@@ -1178,14 +1254,20 @@ function SectionFees({
       const res = await merchantApi.updateFees(merchantId, draft);
       onUpdated(res);
       setEditing(false);
+      toast.success(t("common.saved"));
+    } catch (e) {
+      toast.error(
+        t("common.saveFailed"),
+        e instanceof ApiError ? e.message : undefined,
+      );
     } finally {
       setSaving(false);
     }
   }
 
-  // Group fees by flow
+  // Payin first; within each group QR Bank on top.
   const groups: [string, MerchantFee[]][] = [
-    [t("merchantDetail.feeGroupPayin"), fees.filter((f) => f.flow === "payin")],
+    [t("merchantDetail.feeGroupPayin"), sortFeesQrBankFirst(fees.filter((f) => f.flow === "payin"))],
     [t("merchantDetail.feeGroupCard"), fees.filter((f) => f.flow === "card")],
     [t("merchantDetail.feeGroupCrypto"), fees.filter((f) => f.flow === "crypto")],
     [t("merchantDetail.feeGroupPayout"), fees.filter((f) => f.flow === "payout")],
@@ -1200,12 +1282,12 @@ function SectionFees({
             <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(false)} disabled={saving}>
               {t("merchantDetail.btnCancel")}
             </Button>
-            <Button type="button" variant="primary" size="sm" loading={saving} onClick={() => void save()}>
+            <Button type="button" variant="primary" size="sm" loading={saving} onClick={() => void save()} leftIcon={<IconSave width={15} height={15} />}>
               {t("merchantDetail.btnSave")}
             </Button>
           </div>
         ) : (
-          <Button type="button" variant="secondary" size="sm" onClick={startEdit}>
+          <Button type="button" variant="secondary" size="sm" onClick={startEdit} leftIcon={<IconPencil width={15} height={15} />}>
             {t("merchantDetail.btnEditFees")}
           </Button>
         )}
@@ -1231,11 +1313,19 @@ function SectionFees({
                 <tbody>
                   {groupFees.map((fee) => {
                     const draftIdx = draft.findIndex((d) => d.channelId === fee.channelId);
+                    const editable = fee.channelId === FEE_EDITABLE_CHANNEL_ID;
                     return (
-                      <tr key={fee.channelId} className="border-b border-edge last:border-0">
-                        <td className="px-3 py-2.5 text-label text-ink sm:px-4">{fee.channelName}</td>
+                      <tr
+                        key={fee.channelId}
+                        className={`border-b border-edge last:border-0 ${editable ? "" : "bg-surface/60"}`}
+                      >
+                        <td
+                          className={`px-3 py-2.5 text-label sm:px-4 ${editable ? "text-ink" : "text-muted"}`}
+                        >
+                          {fee.channelName}
+                        </td>
                         <td className="px-3 py-2.5 sm:px-4">
-                          {editing ? (
+                          {editing && editable ? (
                             <input
                               type="number"
                               step="0.01"
@@ -1253,30 +1343,15 @@ function SectionFees({
                               className="w-full rounded-md border border-edge-strong bg-canvas px-3 py-1 text-right font-mono text-label text-ink outline-none transition focus:border-ink"
                             />
                           ) : (
-                            <span className="font-mono text-label text-ink">{bps(fee.feeRateBps)}</span>
+                            <span
+                              className={`font-mono text-label ${editable ? "text-ink" : "text-muted"}`}
+                            >
+                              {bps(fee.feeRateBps)}
+                            </span>
                           )}
                         </td>
                         <td className="px-3 py-2.5 sm:px-4">
-                          {editing && fee.flow === "card" ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={draftIdx >= 0 ? ((draft[draftIdx].memberFeeBps ?? 0) / 100).toFixed(2) : "0.00"}
-                              onChange={(e) => {
-                                if (draftIdx < 0) return;
-                                const next = [...draft];
-                                next[draftIdx] = {
-                                  ...next[draftIdx],
-                                  memberFeeBps: Math.round(Number(e.target.value) * 100),
-                                };
-                                setDraft(next);
-                              }}
-                              className="w-full rounded-md border border-edge-strong bg-canvas px-3 py-1 text-right font-mono text-label text-ink outline-none transition focus:border-ink"
-                            />
-                          ) : (
-                            <span className="font-mono text-label text-muted">{bps(fee.memberFeeBps)}</span>
-                          )}
+                          <span className="font-mono text-label text-muted">{bps(fee.memberFeeBps)}</span>
                         </td>
                       </tr>
                     );
@@ -1356,7 +1431,15 @@ function CredentialsStepUpModal({
           {error ? <p className="text-label text-danger">{error}</p> : null}
         </div>
         <div className="flex flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
-          <Button type="button" variant="secondary" size="md" className="w-full sm:w-auto" onClick={onClose} disabled={saving}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            className="w-full sm:w-auto"
+            onClick={onClose}
+            disabled={saving}
+            leftIcon={<IconX width={15} height={15} />}
+          >
             {t("common.cancel")}
           </Button>
           <Button
@@ -1368,6 +1451,13 @@ function CredentialsStepUpModal({
             disabled={!password.trim() || (totpRequired && totpCode.length !== 6)}
             onClick={() =>
               void onConfirm(password, totpCode.trim() ? totpCode : undefined)
+            }
+            leftIcon={
+              mode === "reveal" ? (
+                <IconEye width={15} height={15} />
+              ) : (
+                <IconRefresh width={15} height={15} />
+              )
             }
           >
             {mode === "reveal"
@@ -1465,6 +1555,7 @@ function SectionCredentials({
               setStepUpError(null);
               setStepUpMode("reset");
             }}
+            leftIcon={<IconRefresh width={15} height={15} />}
           >
             {t("merchantDetail.btnResetKey")}
           </Button>
@@ -1497,6 +1588,7 @@ function SectionCredentials({
                   setStepUpError(null);
                   setStepUpMode("reveal");
                 }}
+                leftIcon={<IconEye width={15} height={15} />}
               >
                 {t("merchantDetail.btnReveal")}
               </Button>
@@ -1575,6 +1667,12 @@ function SectionVietpmBot({
         replyDelaySeconds: initial?.replyDelaySeconds ?? undefined,
       });
       onUpdated(res);
+      toast.success(t("common.saved"));
+    } catch (e) {
+      toast.error(
+        t("common.saveFailed"),
+        e instanceof ApiError ? e.message : undefined,
+      );
     } finally {
       setSaving(false);
     }
@@ -1612,6 +1710,7 @@ function SectionVietpmBot({
             className="w-full sm:w-auto"
             loading={saving}
             onClick={() => void save()}
+            leftIcon={<IconSave width={15} height={15} />}
           >
             {t("merchantDetail.btnSave")}
           </Button>
@@ -1660,8 +1759,11 @@ export function MerchantDetailPage({ id }: { id: string }) {
       const next = merchant.status === "active" ? "suspended" : "active";
       const res = await merchantApi.updateStatus(id, { status: next });
       setMerchant(res);
+      toast.success(t(next === "suspended" ? "common.suspended" : "common.activated"));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("merchantDetail.saveError"));
+      const msg = e instanceof ApiError ? e.message : t("merchantDetail.saveError");
+      setError(msg);
+      toast.error(t("common.statusUpdateFailed"), msg);
     } finally {
       setActionSaving(false);
       setConfirmStatus(false);
@@ -1680,10 +1782,11 @@ export function MerchantDetailPage({ id }: { id: string }) {
       await merchantApi.adjustWallet(id, body);
       setShowAdjust(false);
       await load();
+      toast.success(t("common.balanceAdjusted"));
     } catch (e) {
-      setAdjustError(
-        e instanceof ApiError ? e.message : t("merchantDetail.stepUpError"),
-      );
+      const msg = e instanceof ApiError ? e.message : t("merchantDetail.stepUpError");
+      setAdjustError(msg);
+      toast.error(t("common.balanceAdjustFailed"), msg);
     } finally {
       setActionSaving(false);
     }
@@ -1758,6 +1861,13 @@ export function MerchantDetailPage({ id }: { id: string }) {
             loading={actionSaving}
             disabled={merchant.status === "disabled"}
             onClick={() => setConfirmStatus(true)}
+            leftIcon={
+              willSuspend ? (
+                <IconBan width={15} height={15} />
+              ) : (
+                <IconCheckCircle width={15} height={15} />
+              )
+            }
           >
             {willSuspend ? t("merchantDetail.btnSuspend") : t("merchantDetail.btnActive")}
           </Button>
@@ -1767,6 +1877,7 @@ export function MerchantDetailPage({ id }: { id: string }) {
             size="md"
             className="w-full min-[400px]:flex-1 sm:w-auto sm:flex-none"
             onClick={() => setShowConfig(true)}
+            leftIcon={<IconSettings width={15} height={15} />}
           >
             {t("merchantDetail.btnConfig")}
           </Button>
@@ -1776,6 +1887,7 @@ export function MerchantDetailPage({ id }: { id: string }) {
             size="md"
             className="w-full min-[400px]:flex-1 sm:w-auto sm:flex-none"
             onClick={() => setShowResetPw(true)}
+            leftIcon={<IconKey width={15} height={15} />}
           >
             {t("merchantDetail.btnResetPassword")}
           </Button>
@@ -1866,6 +1978,14 @@ export function MerchantDetailPage({ id }: { id: string }) {
           )}
           confirmLabel={willSuspend ? t("merchants.suspend") : t("common.confirm")}
           cancelLabel={t("common.cancel")}
+          confirmIcon={
+            willSuspend ? (
+              <IconBan width={15} height={15} />
+            ) : (
+              <IconCheckCircle width={15} height={15} />
+            )
+          }
+          cancelIcon={<IconX width={15} height={15} />}
           loading={actionSaving}
           onConfirm={() => void toggleStatus()}
           onCancel={() => setConfirmStatus(false)}

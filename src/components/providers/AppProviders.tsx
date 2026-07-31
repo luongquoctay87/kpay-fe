@@ -8,6 +8,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/en";
 import "dayjs/locale/vi";
 import { useEffect, type ReactNode } from "react";
+import { ToastHost } from "@/components/ui/ToastHost";
 import { useLocaleStore } from "@/i18n/store";
 import { KPAY_THEME } from "@/lib/theme/tokens";
 
@@ -55,7 +56,10 @@ function LocaleEffects({ children }: { children: ReactNode }) {
 
   return (
     <ConfigProvider locale={antdLocale} theme={theme}>
-      <App>{children}</App>
+      <App>
+        {children}
+        <ToastHost />
+      </App>
     </ConfigProvider>
   );
 }

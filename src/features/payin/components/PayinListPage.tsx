@@ -476,8 +476,8 @@ export function PayinListPage() {
                   type="submit"
                   variant="soft"
                   size="md"
-                  className="flex-1 sm:flex-none"
-                  leftIcon={<IconSearch width={15} height={15} />}
+                  className="min-h-9 flex-1 gap-2 px-4 sm:min-w-[8.75rem] sm:flex-none"
+                  leftIcon={<IconSearch width={16} height={16} />}
                 >
                   {t("payin.search")}
                 </Button>
@@ -527,8 +527,8 @@ export function PayinListPage() {
                   type="submit"
                   variant="soft"
                   size="md"
-                  className="flex-1 sm:flex-none"
-                  leftIcon={<IconSearch width={15} height={15} />}
+                  className="min-h-9 flex-1 gap-2 px-4 sm:min-w-[8.75rem] sm:flex-none"
+                  leftIcon={<IconSearch width={16} height={16} />}
                 >
                   {t("payin.search")}
                 </Button>

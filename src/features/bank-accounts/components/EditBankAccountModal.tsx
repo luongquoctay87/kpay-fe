@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Button, Field, Input, MoneyInput, Select, Textarea } from "@/components/ui";
+import { IconSave, IconX } from "@/components/icons/NavIcons";
+import { Button, Field, Input, MoneyInput, Select, Textarea, toast } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import {
   BANK_ACCOUNT_STATUS_LABEL_KEY,
@@ -141,8 +142,11 @@ export function EditBankAccountModal({
     try {
       await bankAccountApi.update(account.id, body);
       onUpdated();
+      toast.success(t("bankAccounts.successUpdated"));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("bankAccounts.errorUpdateFailed"));
+      const msg = err instanceof ApiError ? err.message : t("bankAccounts.errorUpdateFailed");
+      setError(msg);
+      toast.error(t("bankAccounts.errorUpdateFailed"), msg);
     } finally {
       setSubmitting(false);
     }
@@ -359,10 +363,23 @@ export function EditBankAccountModal({
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-edge px-5 py-3">
-            <Button type="button" variant="secondary" size="md" onClick={onClose} disabled={submitting}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={onClose}
+              disabled={submitting}
+              leftIcon={<IconX width={15} height={15} />}
+            >
               {t("bankAccounts.btnCancel")}
             </Button>
-            <Button type="submit" variant="primary" size="md" loading={submitting}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              loading={submitting}
+              leftIcon={<IconSave width={15} height={15} />}
+            >
               {t("bankAccounts.btnSave")}
             </Button>
           </div>

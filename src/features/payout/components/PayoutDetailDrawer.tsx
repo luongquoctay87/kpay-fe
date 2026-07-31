@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { CopyButton } from "@/components/common";
+import { IconX } from "@/components/icons/NavIcons";
 import { Button, StatusBadge } from "@/components/ui";
 import {
   CALLBACK_STATUS_LABEL_KEY,
@@ -208,6 +209,7 @@ export function PayoutDetailDrawer({ row, onClose }: PayoutDetailDrawerProps) {
             size="md"
             className="w-full sm:w-auto"
             onClick={onClose}
+            leftIcon={<IconX width={15} height={15} />}
           >
             {t("payout.detailClose")}
           </Button>

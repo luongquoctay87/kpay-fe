@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, type ReactNode } from "react";
+import { IconBan, IconCheckCircle, IconX } from "@/components/icons/NavIcons";
 import { Button } from "@/components/ui/Button";
 
 /** Drives the confirm button only — the alert icon stays amber for every tone. */
@@ -13,6 +14,8 @@ export type ConfirmDialogProps = {
   cancelLabel: string;
   tone?: ConfirmDialogTone;
   loading?: boolean;
+  confirmIcon?: ReactNode;
+  cancelIcon?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -24,10 +27,20 @@ export function ConfirmDialog({
   cancelLabel,
   tone = "default",
   loading = false,
+  confirmIcon,
+  cancelIcon,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
   const titleId = useId();
+  const resolvedCancelIcon = cancelIcon ?? <IconX width={15} height={15} />;
+  const resolvedConfirmIcon =
+    confirmIcon ??
+    (tone === "danger" ? (
+      <IconBan width={15} height={15} />
+    ) : (
+      <IconCheckCircle width={15} height={15} />
+    ));
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -68,7 +81,14 @@ export function ConfirmDialog({
         </div>
 
         <div className="mt-5 flex items-center justify-end gap-2">
-          <Button type="button" variant="secondary" size="md" onClick={onCancel} disabled={loading}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            onClick={onCancel}
+            disabled={loading}
+            leftIcon={resolvedCancelIcon}
+          >
             {cancelLabel}
           </Button>
           <Button
@@ -78,6 +98,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             loading={loading}
             autoFocus
+            leftIcon={resolvedConfirmIcon}
           >
             {confirmLabel}
           </Button>

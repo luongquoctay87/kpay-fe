@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { MoneyAmount, PageHeader } from "@/components/common";
-import { IconHeadset, IconRefresh, IconUsers } from "@/components/icons/NavIcons";
+import { IconBan, IconCheckCircle, IconHeadset, IconKey, IconLink, IconPencil, IconRefresh, IconSave, IconUnlink, IconUsers, IconWallet, IconX } from "@/components/icons/NavIcons";
 import {
   Button,
   ConfirmDialog,
@@ -15,6 +15,7 @@ import {
   Select,
   StatusBadge,
   Textarea,
+  toast,
 } from "@/components/ui";
 import { agentApi } from "@/features/agents/api";
 import { EditAgentModal } from "@/features/agents/components/EditAgentModal";
@@ -220,7 +221,13 @@ function AdjustBalanceModal({
         </div>
 
         <div className="flex justify-end gap-2 border-t border-edge px-5 py-4">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={saving}
+            leftIcon={<IconX width={15} height={15} />}
+          >
             {t("agentDetail.btnCancel")}
           </Button>
           <Button
@@ -240,6 +247,7 @@ function AdjustBalanceModal({
                 totpCode: totpCode.trim() || undefined,
               })
             }
+            leftIcon={<IconWallet width={15} height={15} />}
           >
             {t("agentDetail.modalAdjustConfirm")}
           </Button>
@@ -345,7 +353,13 @@ function ResetPasswordModal({
           ) : null}
         </div>
         <div className="flex justify-end gap-2 border-t border-edge px-5 py-4">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={saving}
+            leftIcon={<IconX width={15} height={15} />}
+          >
             {t("agentDetail.btnCancel")}
           </Button>
           <Button
@@ -364,6 +378,7 @@ function ResetPasswordModal({
                 newPassword,
               })
             }
+            leftIcon={<IconKey width={15} height={15} />}
           >
             {t("agentDetail.modalResetPwConfirm")}
           </Button>
@@ -407,7 +422,7 @@ function SectionBasic({
     <section className="min-w-0 rounded-lg border border-edge bg-elevated">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-4 py-3 sm:px-5">
         <p className="kpay-text-title font-semibold">{t("agentDetail.sectionBasic")}</p>
-        <Button type="button" id="agent-basic-edit" variant="secondary" size="sm" onClick={onEdit}>
+        <Button type="button" id="agent-basic-edit" variant="secondary" size="sm" onClick={onEdit} leftIcon={<IconPencil width={15} height={15} />}>
           {t("agentDetail.btnEdit")}
         </Button>
       </div>
@@ -435,7 +450,7 @@ function SectionWallet({
     <section className="min-w-0 rounded-lg border border-edge bg-elevated">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-4 py-3 sm:px-5">
         <p className="kpay-text-title font-semibold">{t("agentDetail.sectionWallet")}</p>
-        <Button type="button" variant="secondary" size="sm" onClick={onEdit}>
+        <Button type="button" variant="secondary" size="sm" onClick={onEdit} leftIcon={<IconWallet width={15} height={15} />}>
           {t("agentDetail.btnEdit")}
         </Button>
       </div>
@@ -518,7 +533,13 @@ function LinkMerchantModal({
         </div>
 
         <div className="flex justify-end gap-2 border-t border-edge px-5 py-4">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={saving}
+            leftIcon={<IconX width={15} height={15} />}
+          >
             {t("agentDetail.btnCancel")}
           </Button>
           <Button
@@ -529,6 +550,7 @@ function LinkMerchantModal({
             onClick={() => {
               if (pick) void onConfirm(pick);
             }}
+            leftIcon={<IconLink width={15} height={15} />}
           >
             {t("agentDetail.modalLinkConfirm")}
           </Button>
@@ -581,8 +603,11 @@ function SectionLinkedMerchants({
       const res = await agentApi.linkMerchant(agentId, merchantId);
       onUpdated(res);
       setShowLink(false);
+      toast.success(t("agentDetail.linkOk"));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("agentDetail.linkError"));
+      const msg = e instanceof ApiError ? e.message : t("agentDetail.linkError");
+      setError(msg);
+      toast.error(t("agentDetail.linkError"), msg);
     } finally {
       setSaving(false);
     }
@@ -594,8 +619,11 @@ function SectionLinkedMerchants({
     try {
       const res = await agentApi.unlinkMerchant(agentId, merchantId);
       onUpdated(res);
+      toast.success(t("agentDetail.unlinkOk"));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("agentDetail.unlinkError"));
+      const msg = e instanceof ApiError ? e.message : t("agentDetail.unlinkError");
+      setError(msg);
+      toast.error(t("agentDetail.unlinkError"), msg);
     } finally {
       setSaving(false);
       setUnlinkId(null);
@@ -615,6 +643,7 @@ function SectionLinkedMerchants({
             setError(null);
             setShowLink(true);
           }}
+          leftIcon={<IconLink width={14} height={14} className="shrink-0" />}
         >
           {t("agentDetail.btnAddMerchant")}
         </Button>
@@ -632,7 +661,9 @@ function SectionLinkedMerchants({
             <thead>
               <tr className="border-b border-edge text-muted">
                 <th className="py-2 font-medium">{t("agentDetail.colMerchantName")}</th>
-                <th className="py-2 text-right font-medium">{t("agentDetail.colActions")}</th>
+                <th className="w-12 py-2 text-right font-medium">
+                  <span className="sr-only">{t("agentDetail.colActions")}</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -641,21 +672,30 @@ function SectionLinkedMerchants({
                   <td className="py-2.5">
                     <Link
                       href={ROUTES.merchantDetail(row.merchantId)}
-                      className="font-medium"
+                      className="font-medium text-ink transition hover:text-link-hover hover:underline"
                     >
                       {row.merchantName ?? row.merchantCode ?? row.merchantId}
                     </Link>
                   </td>
                   <td className="py-2.5 text-right">
-                    <Button
-                      type="button"
-                      variant="danger-outline"
-                      size="sm"
-                      disabled={saving}
-                      onClick={() => setUnlinkId(row.merchantId)}
-                    >
-                      {t("agentDetail.btnUnlink")}
-                    </Button>
+                    <span className="group relative inline-flex">
+                      <Button
+                        type="button"
+                        variant="danger-ghost"
+                        size="sm"
+                        iconOnly
+                        disabled={saving}
+                        aria-label={t("agentDetail.btnUnlink")}
+                        leftIcon={<IconUnlink width={15} height={15} />}
+                        onClick={() => setUnlinkId(row.merchantId)}
+                      />
+                      <span
+                        role="tooltip"
+                        className="pointer-events-none absolute right-0 top-full z-20 mt-1.5 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                      >
+                        {t("agentDetail.btnUnlink")}
+                      </span>
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -686,6 +726,7 @@ function SectionLinkedMerchants({
           message={t("agentDetail.confirmUnlinkBody")}
           confirmLabel={t("agentDetail.btnUnlink")}
           cancelLabel={t("agentDetail.btnCancel")}
+          confirmIcon={<IconUnlink width={15} height={15} />}
           onCancel={() => setUnlinkId(null)}
           onConfirm={() => void onUnlink(unlinkId)}
         />
@@ -693,6 +734,9 @@ function SectionLinkedMerchants({
     </section>
   );
 }
+
+/** Phase 1: only QR Bank commission is editable; other channels stay visible but locked. */
+const COMMISSION_EDITABLE_CHANNEL_ID = "qr_bank";
 
 function SectionCommissions({
   agentId,
@@ -706,6 +750,7 @@ function SectionCommissions({
   const { t } = useI18n();
   const linked = agent.linkedMerchants ?? [];
   const [merchantId, setMerchantId] = useState<string | null>(linked[0]?.merchantId ?? null);
+  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Record<string, { rate: string; active: boolean }>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -714,21 +759,43 @@ function SectionCommissions({
     if (!merchantId && linked[0]) setMerchantId(linked[0].merchantId);
   }, [linked, merchantId]);
 
-  const ratesForMerchant: AgentCommissionRate[] = useMemo(
-    () => (agent.commissions ?? []).filter((c) => c.merchantId === merchantId),
-    [agent.commissions, merchantId],
-  );
+  const ratesForMerchant: AgentCommissionRate[] = useMemo(() => {
+    const rows = (agent.commissions ?? []).filter((c) => c.merchantId === merchantId);
+    return [...rows].sort((a, b) => {
+      if (a.channelId === COMMISSION_EDITABLE_CHANNEL_ID) return -1;
+      if (b.channelId === COMMISSION_EDITABLE_CHANNEL_ID) return 1;
+      return 0;
+    });
+  }, [agent.commissions, merchantId]);
 
-  useEffect(() => {
+  function syncDraftFromRates(rows: AgentCommissionRate[]) {
     const next: Record<string, { rate: string; active: boolean }> = {};
-    for (const row of ratesForMerchant) {
+    for (const row of rows) {
       next[row.channelId] = {
         rate: bpsToPercent(row.commissionRateBps),
         active: row.active,
       };
     }
     setDraft(next);
+  }
+
+  useEffect(() => {
+    syncDraftFromRates(ratesForMerchant);
+    setEditing(false);
+    setError(null);
   }, [ratesForMerchant]);
+
+  function startEdit() {
+    syncDraftFromRates(ratesForMerchant);
+    setError(null);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    syncDraftFromRates(ratesForMerchant);
+    setError(null);
+    setEditing(false);
+  }
 
   async function save() {
     if (!merchantId) return;
@@ -742,8 +809,12 @@ function SectionCommissions({
       }));
       const res = await agentApi.updateCommissions(agentId, { merchantId, rates });
       onUpdated(res);
+      setEditing(false);
+      toast.success(t("common.saved"));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("agentDetail.saveError"));
+      const msg = e instanceof ApiError ? e.message : t("agentDetail.saveError");
+      setError(msg);
+      toast.error(t("common.saveFailed"), msg);
     } finally {
       setSaving(false);
     }
@@ -758,17 +829,44 @@ function SectionCommissions({
     <section className="min-w-0 rounded-lg border border-edge bg-elevated">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-4 py-3 sm:px-5">
         <p className="kpay-text-title font-semibold">{t("agentDetail.sectionCommissions")}</p>
-        <Button
-          type="button"
-          variant="primary"
-          size="sm"
-          loading={saving}
-          disabled={!merchantId || ratesForMerchant.length === 0}
-          onClick={() => void save()}
-        >
-          {t("agentDetail.btnSave")}
-        </Button>
+        {linked.length > 0 && ratesForMerchant.length > 0 ? (
+          editing ? (
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={cancelEdit}
+                disabled={saving}
+                leftIcon={<IconX width={15} height={15} />}
+              >
+                {t("agentDetail.btnCancel")}
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                loading={saving}
+                onClick={() => void save()}
+                leftIcon={<IconSave width={15} height={15} />}
+              >
+                {t("agentDetail.btnSave")}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={startEdit}
+              leftIcon={<IconPencil width={15} height={15} />}
+            >
+              {t("agentDetail.btnEditCommissions")}
+            </Button>
+          )
+        ) : null}
       </div>
+
       <div className="flex flex-col gap-4 p-4 sm:p-5">
         {linked.length === 0 ? (
           <p className="text-label text-muted">{t("agentDetail.commissionNeedLink")}</p>
@@ -780,58 +878,119 @@ function SectionCommissions({
                   id="ag-comm-merchant"
                   options={merchantOptions}
                   value={merchantId}
-                  onChange={setMerchantId}
+                  onChange={(id) => {
+                    setMerchantId(id);
+                    setEditing(false);
+                    setError(null);
+                  }}
+                  disabled={saving}
                 />
               </Field>
             </div>
-            <ul className="divide-y divide-edge rounded-md border border-edge">
-              {ratesForMerchant.map((row) => {
-                const d = draft[row.channelId] ?? {
-                  rate: bpsToPercent(row.commissionRateBps),
-                  active: row.active,
-                };
-                return (
-                  <li
-                    key={row.channelId}
-                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                  >
-                    <span className="min-w-[140px] text-label font-medium text-ink">
-                      {row.channelName ?? row.channelId}
-                    </span>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex w-24 items-center gap-1.5">
-                        <Input
-                          value={d.rate}
-                          onChange={(e) =>
-                            setDraft((prev) => ({
-                              ...prev,
-                              [row.channelId]: { ...d, rate: e.target.value },
-                            }))
-                          }
-                          disabled={saving}
-                        />
-                        <span className="text-label text-muted">%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-caption text-muted">
-                          {t("agentDetail.labelActive")}
-                        </span>
-                        <Toggle
-                          checked={d.active}
-                          disabled={saving}
-                          onChange={(v) =>
-                            setDraft((prev) => ({
-                              ...prev,
-                              [row.channelId]: { ...d, active: v },
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+
+            {ratesForMerchant.length === 0 ? (
+              <p className="text-label text-muted">{t("agentDetail.commissionEmpty")}</p>
+            ) : (
+              <div className="min-w-0 overflow-x-auto rounded-lg border border-edge">
+                <table className="w-full min-w-[420px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+                      <th className="px-3 py-2.5 font-medium sm:px-4">
+                        {t("agentDetail.colChannel")}
+                      </th>
+                      <th className="w-[140px] px-3 py-2.5 font-medium sm:w-[180px] sm:px-4">
+                        {t("agentDetail.colRate")}
+                      </th>
+                      <th className="w-[120px] px-3 py-2.5 font-medium sm:px-4">
+                        {t("agentDetail.colActive")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ratesForMerchant.map((row) => {
+                      const d = draft[row.channelId] ?? {
+                        rate: bpsToPercent(row.commissionRateBps),
+                        active: row.active,
+                      };
+                      const editable = row.channelId === COMMISSION_EDITABLE_CHANNEL_ID;
+                      const canEdit = editing && editable;
+                      return (
+                        <tr
+                          key={row.channelId}
+                          className={`border-b border-edge last:border-0 ${
+                            editable ? "" : "bg-surface/60"
+                          }`}
+                        >
+                          <td
+                            className={`px-3 py-2.5 text-label sm:px-4 ${
+                              editable ? "text-ink" : "text-muted"
+                            }`}
+                          >
+                            {row.channelName ?? row.channelId}
+                          </td>
+                          <td className="px-3 py-2.5 sm:px-4">
+                            {canEdit ? (
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={d.rate}
+                                  disabled={saving}
+                                  onChange={(e) =>
+                                    setDraft((prev) => ({
+                                      ...prev,
+                                      [row.channelId]: { ...d, rate: e.target.value },
+                                    }))
+                                  }
+                                  className="w-full rounded-md border border-edge-strong bg-canvas px-3 py-1 text-right font-mono text-label text-ink outline-none transition focus:border-ink disabled:opacity-50"
+                                />
+                                <span className="shrink-0 text-label text-muted">%</span>
+                              </div>
+                            ) : (
+                              <span
+                                className={`font-mono text-label tabular-nums ${
+                                  editable ? "text-ink" : "text-muted"
+                                }`}
+                              >
+                                {d.rate}%
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 sm:px-4">
+                            {canEdit ? (
+                              <div className="flex items-center gap-2">
+                                <Toggle
+                                  checked={d.active}
+                                  disabled={saving}
+                                  onChange={(v) =>
+                                    setDraft((prev) => ({
+                                      ...prev,
+                                      [row.channelId]: { ...d, active: v },
+                                    }))
+                                  }
+                                />
+                                <span className="text-caption text-muted">
+                                  {d.active ? t("common.on") : t("common.off")}
+                                </span>
+                              </div>
+                            ) : (
+                              <StatusBadge
+                                tone={(editing ? d.active : row.active) ? "active" : "disabled"}
+                              >
+                                {(editing ? d.active : row.active)
+                                  ? t("common.on")
+                                  : t("common.off")}
+                              </StatusBadge>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </>
         )}
         {error ? (
@@ -925,7 +1084,13 @@ function AddLoginIpModal({
           ) : null}
         </div>
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={saving}
+            leftIcon={<IconX width={15} height={15} />}
+          >
             {t("agentDetail.btnCancel")}
           </Button>
           <Button
@@ -939,6 +1104,7 @@ function AddLoginIpModal({
               }
               void onConfirm(cidr.trim());
             }}
+            leftIcon={<IconCheckCircle width={15} height={15} />}
           >
             {t("agentDetail.modalAddIpConfirm")}
           </Button>
@@ -1152,8 +1318,11 @@ export function AgentDetailPage({ id }: { id: string }) {
     setError(null);
     try {
       setAgent(await agentApi.updateStatus(id, { active: !agent.active }));
+      toast.success(t(agent.active ? "common.suspended" : "common.activated"));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("agentDetail.saveError"));
+      const msg = e instanceof ApiError ? e.message : t("agentDetail.saveError");
+      setError(msg);
+      toast.error(t("common.statusUpdateFailed"), msg);
     } finally {
       setActionSaving(false);
       setConfirmStatus(false);
@@ -1196,13 +1365,14 @@ export function AgentDetailPage({ id }: { id: string }) {
             { label: agent.name, icon: <IconHeadset /> },
           ]}
         />
-        <div className="flex w-full flex-col gap-2 min-[400px]:flex-row sm:w-auto">
+        <div className="flex w-full shrink-0 flex-col gap-2 min-[400px]:flex-row min-[400px]:flex-wrap sm:w-auto sm:justify-end">
           <Button
             type="button"
             variant="primary"
             size="md"
-            className="w-full min-[400px]:flex-1 sm:w-auto"
+            className="w-full whitespace-nowrap min-[400px]:flex-1 sm:w-auto sm:flex-none"
             onClick={() => setShowEdit(true)}
+            leftIcon={<IconPencil width={15} height={15} className="shrink-0" />}
           >
             {t("agentDetail.btnEdit")}
           </Button>
@@ -1210,9 +1380,16 @@ export function AgentDetailPage({ id }: { id: string }) {
             type="button"
             variant={agent.active ? "danger-outline" : "secondary"}
             size="md"
-            className="w-full min-[400px]:flex-1 sm:w-auto"
+            className="w-full whitespace-nowrap min-[400px]:flex-1 sm:w-auto sm:flex-none"
             loading={actionSaving}
             onClick={() => setConfirmStatus(true)}
+            leftIcon={
+              agent.active ? (
+                <IconBan width={15} height={15} className="shrink-0" />
+              ) : (
+                <IconCheckCircle width={15} height={15} className="shrink-0" />
+              )
+            }
           >
             {agent.active ? t("agentDetail.btnSuspend") : t("agentDetail.btnActivate")}
           </Button>
@@ -1220,11 +1397,12 @@ export function AgentDetailPage({ id }: { id: string }) {
             type="button"
             variant="secondary"
             size="md"
-            className="w-full min-[400px]:flex-1 sm:w-auto"
+            className="w-full whitespace-nowrap min-[400px]:flex-1 sm:w-auto sm:flex-none"
             onClick={() => {
               setResetError(null);
               setShowResetPw(true);
             }}
+            leftIcon={<IconKey width={15} height={15} className="shrink-0" />}
           >
             {t("agentDetail.btnResetPassword")}
           </Button>
@@ -1281,10 +1459,12 @@ export function AgentDetailPage({ id }: { id: string }) {
               await agentApi.adjustWallet(id, body);
               setShowAdjust(false);
               await load();
+              toast.success(t("common.balanceAdjusted"));
             } catch (e) {
-              setAdjustError(
-                e instanceof ApiError ? e.message : t("agentDetail.stepUpError"),
-              );
+              const msg =
+                e instanceof ApiError ? e.message : t("agentDetail.stepUpError");
+              setAdjustError(msg);
+              toast.error(t("common.balanceAdjustFailed"), msg);
             } finally {
               setActionSaving(false);
             }
@@ -1331,6 +1511,14 @@ export function AgentDetailPage({ id }: { id: string }) {
             agent.active ? t("agentDetail.btnSuspend") : t("agentDetail.btnActivate")
           }
           cancelLabel={t("agentDetail.btnCancel")}
+          confirmIcon={
+            agent.active ? (
+              <IconBan width={15} height={15} />
+            ) : (
+              <IconCheckCircle width={15} height={15} />
+            )
+          }
+          cancelIcon={<IconX width={15} height={15} />}
           onCancel={() => setConfirmStatus(false)}
           onConfirm={() => void toggleStatus()}
         />

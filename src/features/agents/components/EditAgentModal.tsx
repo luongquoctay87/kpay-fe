@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Button, Field, Input, Switch } from "@/components/ui";
+import { IconCheckCircle, IconX } from "@/components/icons/NavIcons";
+import { Button, Field, Input, Switch, toast } from "@/components/ui";
 import { agentApi } from "@/features/agents/api";
 import type { AgentDetail, AgentListItem } from "@/features/agents/types";
 import { useI18n } from "@/i18n/use-i18n";
@@ -132,8 +133,11 @@ export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProp
         detail = await agentApi.updateStatus(agent.id, { active });
       }
       onUpdated(detail);
+      toast.success(t("common.updated"));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("agents.errorUpdateFailed"));
+      const msg = err instanceof ApiError ? err.message : t("agents.errorUpdateFailed");
+      setError(msg);
+      toast.error(t("common.updateFailed"), msg);
     } finally {
       setSubmitting(false);
     }
@@ -288,6 +292,7 @@ export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProp
               className="w-full sm:w-auto"
               onClick={onClose}
               disabled={submitting}
+              leftIcon={<IconX width={15} height={15} />}
             >
               {t("agents.btnCancel")}
             </Button>
@@ -298,6 +303,7 @@ export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProp
               className="w-full sm:w-auto"
               loading={submitting}
               disabled={formLocked}
+              leftIcon={<IconCheckCircle width={15} height={15} />}
             >
               {t("agents.btnConfirm")}
             </Button>
