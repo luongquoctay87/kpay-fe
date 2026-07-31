@@ -8,6 +8,45 @@ export interface AgentListItem {
   createdAt?: string;
 }
 
+export interface AgentWallet {
+  availableBalance: number;
+  version?: number | null;
+}
+
+export interface AgentLinkedMerchant {
+  merchantId: string;
+  merchantCode?: string | null;
+  merchantName?: string | null;
+  linkedAt?: string;
+}
+
+export interface AgentCommissionRate {
+  id: string;
+  merchantId: string;
+  channelId: string;
+  channelName?: string | null;
+  commissionRateBps: number;
+  active: boolean;
+}
+
+export interface AgentLoginIpItem {
+  id: string;
+  cidr: string;
+  note?: string | null;
+  createdAt?: string;
+}
+
+export interface AgentLoginHistoryItem {
+  id: number;
+  ipAddress?: string | null;
+  device?: string | null;
+  browser?: string | null;
+  os?: string | null;
+  status?: string | null;
+  failureReason?: string | null;
+  loginAt?: string;
+}
+
 export interface AgentDetail {
   id: string;
   name: string;
@@ -16,7 +55,13 @@ export interface AgentDetail {
   phone?: string | null;
   telegramId?: string | null;
   active: boolean;
-  balance?: number | null;
+  totpEnabled?: boolean;
+  loginIpWhitelistEnabled?: boolean;
+  wallet?: AgentWallet | null;
+  linkedMerchants?: AgentLinkedMerchant[];
+  commissions?: AgentCommissionRate[];
+  ipWhitelist?: AgentLoginIpItem[];
+  loginHistory?: AgentLoginHistoryItem[];
   lastLoginAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -52,4 +97,16 @@ export interface UpdateAgentBody {
   email?: string;
   telegramId?: string;
   phone?: string;
+  loginIpWhitelistEnabled?: boolean;
+}
+
+export function bpsToPercent(bps: number | null | undefined): string {
+  if (bps == null) return "0.00";
+  return (bps / 100).toFixed(2);
+}
+
+export function percentToBps(percent: string): number {
+  const n = Number(percent);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100);
 }

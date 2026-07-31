@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from
 import { useRouter } from "next/navigation";
 import { IconUser } from "@/components/icons/NavIcons";
 import { PageHeader } from "@/components/common";
-import { Button, Field, Input, StatusBadge } from "@/components/ui";
+import { Button, Field, Input, PasswordVisibilityToggle, StatusBadge } from "@/components/ui";
 import { authApi } from "@/features/auth/api";
 import { useAuthStore } from "@/features/auth/store";
 import type { User } from "@/features/auth/types";
@@ -15,60 +15,6 @@ import { ApiError } from "@/lib/types/api";
 
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-
-function PasswordVisibilityToggle({
-  visible,
-  onToggle,
-  showLabel,
-  hideLabel,
-}: {
-  visible: boolean;
-  onToggle: () => void;
-  showLabel: string;
-  hideLabel: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="flex items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
-      aria-label={visible ? hideLabel : showLabel}
-    >
-      {visible ? (
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-          <line x1="1" y1="1" x2="23" y2="23" />
-        </svg>
-      ) : (
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
-      )}
-    </button>
-  );
-}
 
 function InfoRow({ label, children }: { label: string; children: ReactNode }) {
   return (

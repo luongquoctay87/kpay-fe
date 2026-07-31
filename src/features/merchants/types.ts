@@ -70,7 +70,7 @@ export interface UpdateMerchantBody {
 /* ─── Detail ─────────────────────────────────────────────────────────────── */
 
 export type ChannelFlow = "payin" | "payout" | "card" | "crypto";
-export type PayoutMode = "auto" | "manual";
+export type PayoutMode = "off" | "auto" | "manual";
 export type TelegramApprover = "none" | "any_member" | "specific_users";
 
 export interface MerchantWallet {

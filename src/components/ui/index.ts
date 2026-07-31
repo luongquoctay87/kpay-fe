@@ -13,6 +13,7 @@ export {
 export { Field, type FieldProps } from "@/components/ui/Field";
 export { Input, type InputProps } from "@/components/ui/Input";
 export { OtpInput, type OtpInputProps } from "@/components/ui/OtpInput";
+export { PasswordVisibilityToggle } from "@/components/ui/PasswordVisibilityToggle";
 export { Textarea, type TextareaProps } from "@/components/ui/Textarea";
 export {
   Select,

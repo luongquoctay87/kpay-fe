@@ -496,7 +496,7 @@ export function PayoutListPage() {
                 </Button>
                 <Button
                   type="submit"
-                  variant="primary"
+                  variant="soft"
                   size="md"
                   className="flex-1 sm:flex-none"
                   leftIcon={<IconSearch width={15} height={15} />}
@@ -556,7 +556,7 @@ export function PayoutListPage() {
               </Button>
               <Button
                 type="submit"
-                variant="primary"
+                variant="soft"
                 size="md"
                 leftIcon={<IconSearch width={15} height={15} />}
               >

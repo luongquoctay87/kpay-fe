@@ -13,6 +13,7 @@ import { useI18n } from "@/i18n/use-i18n";
 import type { MessageKey } from "@/i18n/types";
 import { ROUTES } from "@/lib/constants/routes";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
+import { generateLoginPassword } from "@/lib/password/generate-login-password";
 import { ApiError } from "@/lib/types/api";
 
 /* ─── Fee table structure ─────────────────────────────────────────────────── */
@@ -82,28 +83,6 @@ function initAllFees(): FeesState {
 }
 
 /** Strong random password for merchant portal login (client-side). */
-function generateLoginPassword(length = 14): string {
-  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const lower = "abcdefghijkmnopqrstuvwxyz";
-  const digits = "23456789";
-  const special = "@$!%*?&";
-  const all = upper + lower + digits + special;
-  const pick = (alphabet: string) =>
-    alphabet[crypto.getRandomValues(new Uint32Array(1))[0]! % alphabet.length]!;
-
-  const chars = [pick(upper), pick(lower), pick(digits), pick(special)];
-  const rest = crypto.getRandomValues(new Uint32Array(Math.max(length - chars.length, 0)));
-  for (const n of rest) {
-    chars.push(all[n % all.length]!);
-  }
-  // Fisher–Yates shuffle
-  for (let i = chars.length - 1; i > 0; i--) {
-    const j = crypto.getRandomValues(new Uint32Array(1))[0]! % (i + 1);
-    [chars[i], chars[j]] = [chars[j]!, chars[i]!];
-  }
-  return chars.join("");
-}
-
 /** Merge UI fee groups → BE FeeItemReq list (card merchant + member share channelId). */
 function buildFeesPayload(fees: FeesState): FeeItemReq[] {
   const map = new Map<string, FeeItemReq>();
@@ -324,8 +303,8 @@ export function MerchantCreatePage() {
                         setPassword(generateLoginPassword());
                         setShowPassword(true);
                       }}
-                      title={t("merchantNew.generatePassword")}
-                      aria-label={t("merchantNew.generatePassword")}
+                      title={t("common.generatePassword")}
+                      aria-label={t("common.generatePassword")}
                       className="flex items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
                     >
                       <IconRefresh width={15} height={15} />
@@ -458,7 +437,13 @@ export function MerchantCreatePage() {
 
       {created ? (
         <MerchantCredentialsModal
-          merchant={created}
+          merchantKey={created.merchantKey}
+          merchantSecret={created.merchantSecret}
+          merchantName={created.name}
+          merchantCode={created.code}
+          loginUsername={created.loginUsername}
+          title={t("merchantNew.modalKeyTitle")}
+          warning={t("merchantNew.modalKeyWarning")}
           onClose={() => router.push(ROUTES.merchants)}
         />
       ) : null}

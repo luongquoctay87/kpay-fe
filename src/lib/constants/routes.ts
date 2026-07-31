@@ -7,6 +7,7 @@ export const ROUTES = {
   merchantDetail: (id: string) => `/merchants/${id}`,
   agents: "/agents",
   agentNew: "/agents/new",
+  agentDetail: (id: string) => `/agents/${id}`,
   payin: "/payin",
   payout: "/payout",
   callbackLogs: "/callback-logs",

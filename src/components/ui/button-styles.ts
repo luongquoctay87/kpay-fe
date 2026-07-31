@@ -3,6 +3,7 @@ import { cn } from "@/lib/cn";
 export type ButtonVariant =
   | "primary"
   | "secondary"
+  | "soft"
   | "ghost"
   | "danger"
   | "danger-ghost"
@@ -29,6 +30,8 @@ const variantClass: Record<ButtonVariant, string> = {
     "!bg-accent !text-on-accent hover:!bg-accent-hover hover:!text-on-accent shadow-none focus-visible:ring-accent/30",
   secondary:
     "!border !border-edge !bg-elevated !text-ink hover:!border-edge-strong hover:!bg-surface hover:!text-ink focus-visible:ring-edge-strong/40",
+  soft:
+    "!border !border-accent/35 !bg-accent/8 !text-accent hover:!border-accent/55 hover:!bg-accent/14 hover:!text-accent focus-visible:ring-accent/25",
   ghost:
     "!bg-transparent !text-ink-secondary hover:!bg-hover hover:!text-ink focus-visible:ring-edge-strong/40",
   danger:

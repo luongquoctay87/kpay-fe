@@ -1,20 +1,11 @@
 "use client";
 
 import dayjs from "dayjs";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { CopyButton } from "@/components/common";
 import { IconCheckCircle, IconDownload } from "@/components/icons/NavIcons";
 import { Button, Input } from "@/components/ui";
-import type { CreateMerchantResp } from "@/features/merchants/types";
 import { useI18n } from "@/i18n/use-i18n";
-
-function IconCopy() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="9" y="9" width="13" height="13" rx="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  );
-}
 
 function CredentialRow({
   id,
@@ -26,24 +17,13 @@ function CredentialRow({
   value: string;
 }) {
   const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
-
-  async function onCopy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard blocked — the value stays selectable in the input.
-    }
-  }
 
   return (
     <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-      <label htmlFor={id} className="shrink-0 text-label text-muted sm:w-[76px]">
+      <label htmlFor={id} className="shrink-0 text-label text-muted sm:w-[7.5rem]">
         {label}
       </label>
-      <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
         <Input
           id={id}
           value={value}
@@ -52,47 +32,60 @@ function CredentialRow({
           className="min-w-0 font-mono"
           onFocus={(e) => e.currentTarget.select()}
         />
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => void onCopy()}
-          leftIcon={<IconCopy />}
-          className="shrink-0"
-        >
-          {copied ? t("merchantNew.modalKeyCopied") : t("merchantNew.modalKeyCopy")}
-        </Button>
+        <CopyButton
+          value={value}
+          label={t("common.copy")}
+          showCheck
+          className="inline-flex shrink-0 items-center gap-0.5 rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
+        />
       </div>
     </div>
   );
 }
 
-type MerchantCredentialsModalProps = {
-  merchant: CreateMerchantResp;
+export type MerchantCredentialsModalProps = {
+  merchantKey: string;
+  merchantSecret: string;
+  merchantName: string;
+  merchantCode: string;
+  loginUsername?: string | null;
+  title: string;
+  warning: string;
   onClose: () => void;
 };
 
-/** Shown once right after create — the secret is never retrievable in plain text again. */
-export function MerchantCredentialsModal({ merchant, onClose }: MerchantCredentialsModalProps) {
+/** One-time plaintext credentials — secret is never retrievable again after close (reset/create). */
+export function MerchantCredentialsModal({
+  merchantKey,
+  merchantSecret,
+  merchantName,
+  merchantCode,
+  loginUsername,
+  title,
+  warning,
+  onClose,
+}: MerchantCredentialsModalProps) {
   const { t } = useI18n();
 
   function onDownload() {
-    const content = `${[
-      `${t("merchantNew.modalKeyFileMerchant")}: ${merchant.name} (${merchant.code})`,
-      `${t("merchantNew.labelUsername")}: ${merchant.loginUsername}`,
-      `${t("merchantNew.modalKeyApiKey")}: ${merchant.merchantKey}`,
-      `${t("merchantNew.modalKeyApiSecret")}: ${merchant.merchantSecret}`,
-      `${t("merchantNew.modalKeyFileCreatedAt")}: ${dayjs().format("DD/MM/YYYY HH:mm:ss")}`,
-      "",
-      t("merchantNew.modalKeyWarning"),
-    ].join("\n")}\n`;
+    const lines = [
+      `${t("common.fileLabelMerchant")}: ${merchantName} (${merchantCode})`,
+    ];
+    if (loginUsername) {
+      lines.push(`${t("merchantNew.labelUsername")}: ${loginUsername}`);
+    }
+    lines.push(
+      `${t("merchantDetail.labelMerchantKey")}: ${merchantKey}`,
+      `${t("merchantDetail.labelSecretKey")}: ${merchantSecret}`,
+      `${t("common.fileLabelCreatedAt")}: ${dayjs().format("DD/MM/YYYY HH:mm:ss")}`,
+    );
 
     const url = URL.createObjectURL(
-      new Blob([content], { type: "text/plain;charset=utf-8" }),
+      new Blob([`${lines.join("\n")}\n`], { type: "text/plain;charset=utf-8" }),
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = "merchant-apiKey.txt";
+    link.download = `merchant-apiKey-${merchantCode}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -116,13 +109,13 @@ export function MerchantCredentialsModal({ merchant, onClose }: MerchantCredenti
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-edge px-4 py-4 sm:px-5">
           <p id="mc-creds-title" className="kpay-text-title font-semibold">
-            {t("merchantNew.modalKeyTitle")}
+            {title}
           </p>
           <button
             type="button"
             onClick={onClose}
             className="rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
-            aria-label={t("merchantNew.modalKeyClose")}
+            aria-label={t("common.close")}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
               <path d="M18 6 6 18" />
@@ -136,19 +129,19 @@ export function MerchantCredentialsModal({ merchant, onClose }: MerchantCredenti
             role="alert"
             className="rounded-lg border border-danger-edge bg-danger-bg px-3.5 py-2.5 text-label leading-relaxed text-danger"
           >
-            {t("merchantNew.modalKeyWarning")}
+            {warning}
           </p>
 
           <div className="flex flex-col gap-3">
             <CredentialRow
               id="mc-api-key"
-              label={t("merchantNew.modalKeyApiKey")}
-              value={merchant.merchantKey}
+              label={t("merchantDetail.labelMerchantKey")}
+              value={merchantKey}
             />
             <CredentialRow
               id="mc-api-secret"
-              label={t("merchantNew.modalKeyApiSecret")}
-              value={merchant.merchantSecret}
+              label={t("merchantDetail.labelSecretKey")}
+              value={merchantSecret}
             />
           </div>
         </div>
@@ -162,7 +155,7 @@ export function MerchantCredentialsModal({ merchant, onClose }: MerchantCredenti
             onClick={onDownload}
             leftIcon={<IconDownload width={16} height={16} />}
           >
-            {t("merchantNew.modalKeyDownload")}
+            {t("common.downloadTxt")}
           </Button>
           <Button
             type="button"
@@ -172,7 +165,7 @@ export function MerchantCredentialsModal({ merchant, onClose }: MerchantCredenti
             onClick={onClose}
             leftIcon={<IconCheckCircle width={16} height={16} />}
           >
-            {t("merchantNew.modalKeyDone")}
+            {t("common.close")}
           </Button>
         </div>
       </div>

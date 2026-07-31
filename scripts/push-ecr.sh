@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
 # Build amd64 Next.js image and push to ECR (repo: kpay/kpay-fe).
 #
-# BACKEND_ORIGIN is baked at build time (Next rewrite) — required.
-# Prefer Cloud Map origin from Terraform:
-#   export BACKEND_ORIGIN=$(cd ../infra/terraform && terraform output -raw api_internal_origin)
-# Compose network:
-#   export BACKEND_ORIGIN=http://backend:8756
+# BACKEND_ORIGIN is baked at build time (Next rewrite).
+# If unset, auto-reads: terraform output -raw api_internal_origin
+#   → typically http://api.kpay.staging.local:8756
+# Override when needed:
+#   export BACKEND_ORIGIN=http://backend:8756   # compose
 #
 # Usage:
-#   export AWS_ACCOUNT_ID=…
-#   export BACKEND_ORIGIN=http://api.kpay.staging.local:8756
-#   export AWS_REGION=ap-southeast-1          # optional
-#   export NEXT_PUBLIC_APP_ENV=staging       # optional: staging|production (default staging)
 #   ./scripts/push-ecr.sh [tag]
+#   export AWS_REGION=ap-southeast-1          # optional
+#   export NEXT_PUBLIC_APP_ENV=staging       # optional
 #
 # Examples:
 #   ./scripts/push-ecr.sh                 # tag = git short SHA + :latest
@@ -32,6 +30,28 @@ default_tag() {
   fi
 }
 
+resolve_backend_origin() {
+  if [[ -n "${BACKEND_ORIGIN:-}" ]]; then
+    printf '%s' "$BACKEND_ORIGIN"
+    return 0
+  fi
+  local tf_dir
+  tf_dir="$(cd "$(dirname "$0")/../../infra/terraform" && pwd)"
+  if [[ -d "$tf_dir" ]] && command -v terraform >/dev/null 2>&1; then
+    local origin
+    origin="$(cd "$tf_dir" && terraform output -raw api_internal_origin 2>/dev/null || true)"
+    if [[ -n "$origin" ]]; then
+      echo "==> BACKEND_ORIGIN from terraform: ${origin}" >&2
+      printf '%s' "$origin"
+      return 0
+    fi
+  fi
+  echo "ERROR: set BACKEND_ORIGIN (e.g. http://api.kpay.staging.local:8756)" >&2
+  echo "  or run terraform apply so 'api_internal_origin' is available:" >&2
+  echo "  export BACKEND_ORIGIN=\$(cd infra/terraform && terraform output -raw api_internal_origin)" >&2
+  return 1
+}
+
 TAG="${1:-$(default_tag)}"
 APP_ENV="${NEXT_PUBLIC_APP_ENV:-staging}"
 REGION="${AWS_REGION:-ap-southeast-1}"
@@ -40,7 +60,7 @@ if [[ -z "${ACCOUNT_ID}" || "${ACCOUNT_ID}" == "None" ]]; then
   echo "ERROR: set AWS_ACCOUNT_ID or configure AWS CLI (aws sts get-caller-identity)" >&2
   exit 1
 fi
-BACKEND_ORIGIN="${BACKEND_ORIGIN:?set BACKEND_ORIGIN (e.g. http://api.kpay.staging.local:8756)}"
+BACKEND_ORIGIN="$(resolve_backend_origin)"
 
 REGISTRY="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
 IMAGE_LOCAL="kpay/kpay-fe"

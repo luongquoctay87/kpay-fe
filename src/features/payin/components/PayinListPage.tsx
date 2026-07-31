@@ -470,7 +470,7 @@ export function PayinListPage() {
                 </Button>
                 <Button
                   type="submit"
-                  variant="primary"
+                  variant="soft"
                   size="md"
                   className="flex-1 sm:flex-none"
                   leftIcon={<IconSearch width={15} height={15} />}
@@ -521,7 +521,7 @@ export function PayinListPage() {
               <div className="flex w-full gap-2 sm:w-auto">
                 <Button
                   type="submit"
-                  variant="primary"
+                  variant="soft"
                   size="md"
                   className="flex-1 sm:flex-none"
                   leftIcon={<IconSearch width={15} height={15} />}

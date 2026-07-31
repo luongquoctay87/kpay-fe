@@ -219,11 +219,13 @@ Align backend `FE_URI` with the public portal origin (e.g. `https://portal-test.
 
 | Doc | Topic |
 |-----|--------|
-| [`docs/GUIDELINE.md`](../docs/GUIDELINE.md) | Architecture & deploy topology |
+| [`docs/README.md`](../docs/README.md) | **Mục lục tài liệu** |
+| [`docs/05-flows/BUSINESS_FLOWS.md`](../docs/05-flows/BUSINESS_FLOWS.md) | Luồng nghiệp vụ & kiến trúc |
+| [`docs/02-design/APP_ARCHITECTURE.md`](../docs/02-design/APP_ARCHITECTURE.md) | Thiết kế App |
 | [`kpay-backend/README.md`](../kpay-backend/README.md) | API run, profiles, deploy |
-| [`docs/PAYIN_API_TEST.md`](../docs/PAYIN_API_TEST.md) | Merchant payin HMAC QC |
-| [`docs/PAYOUT_API_TEST.md`](../docs/PAYOUT_API_TEST.md) | Merchant payout HMAC QC |
-| [`docs/CALLBACK_OUTBOUND.md`](../docs/CALLBACK_OUTBOUND.md) | Callback retry / resend |
-| [`docs/BALANCE_IP_WHITELIST.md`](../docs/BALANCE_IP_WHITELIST.md) | Balance API + IP whitelist |
-| [`docs/SECURITY_FIXES.md`](../docs/SECURITY_FIXES.md) | Security fixes log |
+| [`docs/07-testing/PAYIN_API_TEST.md`](../docs/07-testing/PAYIN_API_TEST.md) | Merchant payin HMAC QC |
+| [`docs/07-testing/PAYOUT_API_TEST.md`](../docs/07-testing/PAYOUT_API_TEST.md) | Merchant payout HMAC QC |
+| [`docs/05-flows/CALLBACK_OUTBOUND.md`](../docs/05-flows/CALLBACK_OUTBOUND.md) | Callback retry / resend |
+| [`docs/06-security/BALANCE_IP_WHITELIST.md`](../docs/06-security/BALANCE_IP_WHITELIST.md) | Balance API + IP whitelist |
+| [`docs/06-security/SECURITY_FIXES.md`](../docs/06-security/SECURITY_FIXES.md) | Security fixes log |
 | Backend Swagger (dev) | `http://localhost:8756/api/swagger-ui.html` |

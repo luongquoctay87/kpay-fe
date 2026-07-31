@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import Link from "next/link";
 import {
   IconActivity,
   IconBan,
@@ -278,7 +279,12 @@ export function AgentListPage() {
             {rows.map((row) => (
               <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
                 <td className="truncate px-3 py-2.5 sm:px-5">
-                  <span className="text-label font-medium text-ink">{row.name}</span>
+                  <Link
+                    href={ROUTES.agentDetail(row.id)}
+                    className="text-label font-medium text-accent hover:underline"
+                  >
+                    {row.name}
+                  </Link>
                 </td>
                 <td className="truncate px-3 py-2.5 text-label text-ink sm:px-5">
                   {row.phone ?? "—"}

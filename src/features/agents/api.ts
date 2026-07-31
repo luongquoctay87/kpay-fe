@@ -48,4 +48,52 @@ export const agentApi = {
   updateStatus(id: string, body: { active: boolean }): Promise<AgentDetail> {
     return unwrap(apiClient.patch(`/agents/${id}/status`, body));
   },
+
+  resetPassword(
+    id: string,
+    body: { password: string; totpCode?: string; newPassword: string },
+  ): Promise<void> {
+    return unwrap(apiClient.post(`/agents/${id}/reset-password`, body));
+  },
+
+  adjustWallet(
+    id: string,
+    body: {
+      deltaAvailable: number;
+      note?: string;
+      password: string;
+      totpCode?: string;
+    },
+  ): Promise<AgentDetail["wallet"]> {
+    return unwrap(apiClient.patch(`/agents/${id}/wallet`, body));
+  },
+
+  linkMerchant(id: string, merchantId: string): Promise<AgentDetail> {
+    return unwrap(apiClient.post(`/agents/${id}/merchants`, { merchantId }));
+  },
+
+  unlinkMerchant(id: string, merchantId: string): Promise<AgentDetail> {
+    return unwrap(apiClient.delete(`/agents/${id}/merchants/${merchantId}`));
+  },
+
+  updateCommissions(
+    id: string,
+    body: {
+      merchantId: string;
+      rates: { channelId: string; commissionRateBps: number; active: boolean }[];
+    },
+  ): Promise<AgentDetail> {
+    return unwrap(apiClient.put(`/agents/${id}/commissions`, body));
+  },
+
+  addLoginIp(
+    id: string,
+    body: { cidr: string; note?: string },
+  ): Promise<{ id: string; cidr: string; note?: string | null }> {
+    return unwrap(apiClient.post(`/agents/${id}/login-ip-whitelist`, body));
+  },
+
+  deleteLoginIp(id: string, entryId: string): Promise<void> {
+    return unwrap(apiClient.delete(`/agents/${id}/login-ip-whitelist/${entryId}`));
+  },
 };

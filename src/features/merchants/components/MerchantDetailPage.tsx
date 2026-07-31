@@ -1,11 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { PageHeader } from "@/components/common";
-import { IconStore, IconUsers } from "@/components/icons/NavIcons";
-import { Button, ConfirmDialog, Field, Input, StatusBadge } from "@/components/ui";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CopyButton, PageHeader } from "@/components/common";
+import { IconDownload, IconRefresh, IconStore, IconUsers } from "@/components/icons/NavIcons";
+import {
+  Button,
+  ConfirmDialog,
+  Field,
+  Input,
+  OtpInput,
+  PasswordVisibilityToggle,
+  Select,
+  StatusBadge,
+} from "@/components/ui";
 import { merchantApi } from "@/features/merchants/api";
+import { MerchantCredentialsModal } from "@/features/merchants/components/MerchantCredentialsModal";
 import { useAuthStore } from "@/features/auth/store";
+import { generateLoginPassword } from "@/lib/password/generate-login-password";
 import {
   MERCHANT_STATUS_LABEL_KEY,
   MERCHANT_STATUS_TONE,
@@ -15,7 +26,7 @@ import type {
   MerchantCredentialsResp,
   MerchantDetail,
   MerchantFee,
-  MerchantIpWhitelistItem,
+  PayoutMode,
   UpdateChannelItem,
   UpdateFeeItem,
 } from "@/features/merchants/types";
@@ -83,36 +94,94 @@ function AdjustBalanceModal({
 }) {
   const { t } = useI18n();
   const totpRequired = useAuthStore((s) => Boolean(s.user?.totpEnabled));
-  const [delta, setDelta] = useState("");
+  const [op, setOp] = useState<"credit" | "debit">("credit");
+  const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
 
+  const amountNum = Number(amount);
+  const amountValid = Number.isFinite(amountNum) && amountNum > 0;
+  const opOptions = [
+    { value: "credit" as const, label: t("merchantDetail.modalAdjustCredit") },
+    { value: "debit" as const, label: t("merchantDetail.modalAdjustDebit") },
+  ];
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !saving) onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, saving]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-xl border border-edge bg-elevated shadow-xl">
-        <div className="border-b border-edge px-5 py-4">
-          <p className="kpay-text-title font-semibold">{t("merchantDetail.modalAdjustTitle")}</p>
-          <p className="mt-1 text-label text-muted">{t("merchantDetail.stepUpHint")}</p>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !saving) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="md-adj-title"
+        className="flex w-full max-w-md flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
+      >
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-edge px-4 py-4 sm:px-5">
+          <p id="md-adj-title" className="kpay-text-title font-semibold">
+            {t("merchantDetail.modalAdjustTitle")}
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded p-1 text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
+            aria-label={t("merchantDetail.modalAdjustCancel")}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
         </div>
-        <div className="flex flex-col gap-4 p-5">
-          <Field label={t("merchantDetail.modalAdjustDelta")} htmlFor="adj-delta" required>
-            <Input
-              id="adj-delta"
-              type="number"
-              value={delta}
-              onChange={(e) => setDelta(e.target.value)}
-              placeholder={t("merchantDetail.placeholderDelta")}
+
+        <div className="flex flex-col gap-4 p-4 sm:p-5">
+          <Field label={t("merchantDetail.modalAdjustOp")} htmlFor="adj-op" required>
+            <Select
+              id="adj-op"
+              options={opOptions}
+              value={op}
+              onChange={(v) => setOp(v ?? "credit")}
+              disabled={saving}
+              clearable={false}
             />
           </Field>
-          <Field label={t("merchantDetail.modalAdjustNote")} htmlFor="adj-note">
+
+          <Field label={t("merchantDetail.modalAdjustAmount")} htmlFor="adj-amount" required>
             <Input
-              id="adj-note"
+              id="adj-amount"
+              type="number"
+              min={0}
+              step="any"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder={t("merchantDetail.placeholderAmount")}
+              disabled={saving}
+              autoFocus
+            />
+          </Field>
+
+          <Field label={t("merchantDetail.modalAdjustReason")} htmlFor="adj-reason">
+            <Input
+              id="adj-reason"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder={t("merchantDetail.placeholderNote")}
+              placeholder={t("merchantDetail.placeholderReason")}
+              disabled={saving}
             />
           </Field>
+
           <Field label={t("merchantDetail.stepUpPassword")} htmlFor="adj-admin-pw" required>
             <Input
               id="adj-admin-pw"
@@ -120,26 +189,40 @@ function AdjustBalanceModal({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
+              disabled={saving}
             />
           </Field>
+
           <Field
-            label={t("merchantDetail.stepUpTotp")}
+            label={t("merchantDetail.modalAdjustTotp")}
             htmlFor="adj-admin-totp"
             required={totpRequired}
           >
-            <Input
+            <OtpInput
               id="adj-admin-totp"
-              inputMode="numeric"
-              autoComplete="one-time-code"
               value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="000000"
+              onChange={setTotpCode}
+              disabled={saving}
+              aria-label={t("merchantDetail.modalAdjustTotp")}
             />
           </Field>
-          {error ? <p className="text-label text-danger">{error}</p> : null}
+
+          {error ? (
+            <p role="alert" className="text-label text-danger">
+              {error}
+            </p>
+          ) : null}
         </div>
-        <div className="flex flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
-          <Button type="button" variant="secondary" size="md" className="w-full sm:w-auto" onClick={onClose} disabled={saving}>
+
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            className="w-full sm:w-auto"
+            onClick={onClose}
+            disabled={saving}
+          >
             {t("merchantDetail.modalAdjustCancel")}
           </Button>
           <Button
@@ -149,18 +232,16 @@ function AdjustBalanceModal({
             className="w-full sm:w-auto"
             loading={saving}
             disabled={
-              !delta.trim() ||
-              Number(delta) === 0 ||
-              Number.isNaN(Number(delta)) ||
+              !amountValid ||
               !password.trim() ||
               (totpRequired && totpCode.length !== 6)
             }
             onClick={() =>
               void onConfirm({
-                deltaAvailable: Number(delta),
-                note: note.trim() ? note : undefined,
+                deltaAvailable: op === "credit" ? amountNum : -amountNum,
+                note: note.trim() || undefined,
                 password,
-                totpCode: totpCode.trim() ? totpCode : undefined,
+                totpCode: totpCode.trim() || undefined,
               })
             }
           >
@@ -193,6 +274,8 @@ function ResetPasswordModal({
   const [adminPassword, setAdminPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -205,10 +288,49 @@ function ResetPasswordModal({
           <Field label={t("merchantDetail.stepUpPassword")} htmlFor="reset-admin-pw" required>
             <Input
               id="reset-admin-pw"
-              type="password"
+              type={showAdminPassword ? "text" : "password"}
               value={adminPassword}
               onChange={(e) => setAdminPassword(e.target.value)}
               autoComplete="current-password"
+              rightAddon={
+                <PasswordVisibilityToggle
+                  visible={showAdminPassword}
+                  onToggle={() => setShowAdminPassword((v) => !v)}
+                  showLabel={t("common.showPassword")}
+                  hideLabel={t("common.hidePassword")}
+                />
+              }
+            />
+          </Field>
+          <Field label={t("merchantDetail.modalResetPwLabel")} htmlFor="new-pw" required>
+            <Input
+              id="new-pw"
+              type={showNewPassword ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              rightAddon={
+                <span className="flex shrink-0 items-center gap-0.5 pr-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewPassword(generateLoginPassword());
+                      setShowNewPassword(true);
+                    }}
+                    title={t("common.generatePassword")}
+                    aria-label={t("common.generatePassword")}
+                    className="flex items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
+                  >
+                    <IconRefresh width={15} height={15} />
+                  </button>
+                  <PasswordVisibilityToggle
+                    visible={showNewPassword}
+                    onToggle={() => setShowNewPassword((v) => !v)}
+                    showLabel={t("common.showPassword")}
+                    hideLabel={t("common.hidePassword")}
+                  />
+                </span>
+              }
             />
           </Field>
           <Field
@@ -216,22 +338,11 @@ function ResetPasswordModal({
             htmlFor="reset-admin-totp"
             required={totpRequired}
           >
-            <Input
+            <OtpInput
               id="reset-admin-totp"
-              inputMode="numeric"
-              autoComplete="one-time-code"
               value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="000000"
-            />
-          </Field>
-          <Field label={t("merchantDetail.modalResetPwLabel")} htmlFor="new-pw" required>
-            <Input
-              id="new-pw"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
+              onChange={setTotpCode}
+              aria-label={t("merchantDetail.stepUpTotp")}
             />
           </Field>
           {error ? <p className="text-label text-danger">{error}</p> : null}
@@ -267,6 +378,193 @@ function ResetPasswordModal({
   );
 }
 
+/* ─── Modal: Webhook & security (IP whitelist + callback retry) ───────── */
+function WebhookSecurityConfigModal({
+  merchant,
+  onClose,
+  onSaved,
+}: {
+  merchant: MerchantDetail;
+  onClose: () => void;
+  onSaved: (m: MerchantDetail) => void;
+}) {
+  const { t } = useI18n();
+  const [ips, setIps] = useState<string[]>(() =>
+    (merchant.ipWhitelist ?? []).map((row) => row.cidr),
+  );
+  const [draft, setDraft] = useState("");
+  const [retry, setRetry] = useState(String(merchant.callbackRetryMax ?? 3));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !saving) onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, saving]);
+
+  function addIp(raw: string) {
+    const value = raw.trim();
+    if (!value) return;
+    setIps((prev) => (prev.includes(value) ? prev : [...prev, value]));
+    setDraft("");
+  }
+
+  function removeIp(value: string) {
+    setIps((prev) => prev.filter((ip) => ip !== value));
+  }
+
+  async function onSave() {
+    setError(null);
+    const n = Number(retry);
+    if (!Number.isFinite(n) || n < 1 || n > 10) {
+      setError(t("merchantDetail.configRetryInvalid"));
+      return;
+    }
+    if (merchant.ipWhitelistEnabled && ips.length === 0) {
+      setError(t("merchantDetail.configIpRequired"));
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const existing = merchant.ipWhitelist ?? [];
+      const existingByCidr = new Map(existing.map((row) => [row.cidr, row]));
+      const nextSet = new Set(ips);
+
+      for (const cidr of ips) {
+        if (!existingByCidr.has(cidr)) {
+          await merchantApi.addIpWhitelist(merchant.id, { cidr });
+        }
+      }
+      for (const row of existing) {
+        if (!nextSet.has(row.cidr)) {
+          await merchantApi.deleteIpWhitelist(merchant.id, row.id);
+        }
+      }
+
+      const detail = await merchantApi.update(merchant.id, { callbackRetryMax: n });
+      onSaved(detail);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : t("merchantDetail.saveError"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !saving) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="md-webhook-title"
+        className="flex w-full max-w-lg flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
+      >
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-edge px-4 py-4 sm:px-5">
+          <p id="md-webhook-title" className="kpay-text-title font-semibold">
+            {t("merchantDetail.modalWebhookTitle")}
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded p-1 text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
+            aria-label={t("merchantDetail.btnCancel")}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4 sm:p-5">
+          <div className="space-y-2">
+            <label htmlFor="md-ip-draft" className="text-label font-medium text-ink">
+              {t("merchantDetail.labelIpWhitelist")}
+            </label>
+            <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-md border border-edge bg-surface px-2 py-1.5 focus-within:border-accent">
+              {ips.map((ip) => (
+                <span
+                  key={ip}
+                  className="inline-flex items-center gap-1 rounded border border-edge bg-elevated px-2 py-0.5 font-mono text-caption text-ink"
+                >
+                  {ip}
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => removeIp(ip)}
+                    className="text-muted hover:text-ink disabled:opacity-50"
+                    aria-label={t("merchantDetail.btnRemoveIp")}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              <input
+                id="md-ip-draft"
+                value={draft}
+                disabled={saving}
+                placeholder={ips.length === 0 ? t("merchantDetail.placeholderIpTag") : undefined}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addIp(draft);
+                  } else if (e.key === "Backspace" && !draft && ips.length > 0) {
+                    removeIp(ips[ips.length - 1]!);
+                  }
+                }}
+                onBlur={() => {
+                  if (draft.trim()) addIp(draft);
+                }}
+                className="min-w-[8rem] flex-1 bg-transparent py-1 text-label text-ink outline-none placeholder:text-muted"
+              />
+            </div>
+            <p className="text-caption leading-relaxed text-muted">
+              {t("merchantDetail.ipTagHint")}
+            </p>
+          </div>
+
+          <Field label={t("merchantDetail.labelCallbackRetryRange")} htmlFor="md-retry-cfg">
+            <Input
+              id="md-retry-cfg"
+              type="number"
+              min={1}
+              max={10}
+              value={retry}
+              onChange={(e) => setRetry(e.target.value)}
+              disabled={saving}
+            />
+          </Field>
+
+          {error ? (
+            <p role="alert" className="text-label text-danger">
+              {error}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+            {t("merchantDetail.btnCancel")}
+          </Button>
+          <Button type="button" variant="primary" loading={saving} onClick={() => void onSave()}>
+            {t("merchantDetail.btnSave")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Section: Basic info ──────────────────────────────────────────────── */
 function SectionBasic({
   m,
@@ -283,7 +581,6 @@ function SectionBasic({
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState(m.name);
   const [email, setEmail] = useState(m.email ?? "");
-  const [callbackRetryMax, setCallbackRetryMax] = useState(String(m.callbackRetryMax));
   const [autoFinalize, setAutoFinalize] = useState(m.autoFinalizeWrongDenomination);
   const [includeStats, setIncludeStats] = useState(m.includeInStatistics);
   const [ipWhitelist, setIpWhitelist] = useState(m.ipWhitelistEnabled);
@@ -291,7 +588,6 @@ function SectionBasic({
   useEffect(() => {
     setName(m.name);
     setEmail(m.email ?? "");
-    setCallbackRetryMax(String(m.callbackRetryMax));
     setAutoFinalize(m.autoFinalizeWrongDenomination);
     setIncludeStats(m.includeInStatistics);
     setIpWhitelist(m.ipWhitelistEnabled);
@@ -301,11 +597,9 @@ function SectionBasic({
     setSaving(true);
     setError(null);
     try {
-      const retry = Number(callbackRetryMax);
       const res = await merchantApi.update(merchantId, {
         name: name.trim(),
         email: email.trim() || null,
-        callbackRetryMax: Number.isFinite(retry) ? retry : undefined,
         autoFinalizeWrongDenomination: autoFinalize,
         includeInStatistics: includeStats,
         ipWhitelistEnabled: ipWhitelist,
@@ -323,13 +617,18 @@ function SectionBasic({
     key: "autoFinalizeWrongDenomination" | "includeInStatistics" | "ipWhitelistEnabled",
     value: boolean,
   ) {
-    // IP whitelist is security-sensitive: always persist immediately so UI sections stay in sync.
     if (editing && key !== "ipWhitelistEnabled") {
       if (key === "autoFinalizeWrongDenomination") setAutoFinalize(value);
       if (key === "includeInStatistics") setIncludeStats(value);
       return;
     }
-    if (key === "ipWhitelistEnabled") setIpWhitelist(value);
+    if (key === "ipWhitelistEnabled") {
+      if (value && (m.ipWhitelist ?? []).length === 0) {
+        setError(t("merchantDetail.configIpRequired"));
+        return;
+      }
+      setIpWhitelist(value);
+    }
     if (key === "autoFinalizeWrongDenomination") setAutoFinalize(value);
     if (key === "includeInStatistics") setIncludeStats(value);
 
@@ -344,7 +643,6 @@ function SectionBasic({
       }
       if (key === "includeInStatistics") setIncludeStats(res.includeInStatistics);
     } catch (e) {
-      // revert optimistic local flip
       if (key === "ipWhitelistEnabled") setIpWhitelist(!value);
       if (key === "autoFinalizeWrongDenomination") setAutoFinalize(!value);
       if (key === "includeInStatistics") setIncludeStats(!value);
@@ -369,7 +667,6 @@ function SectionBasic({
                   setEditing(false);
                   setName(m.name);
                   setEmail(m.email ?? "");
-                  setCallbackRetryMax(String(m.callbackRetryMax));
                   setAutoFinalize(m.autoFinalizeWrongDenomination);
                   setIncludeStats(m.includeInStatistics);
                   setIpWhitelist(m.ipWhitelistEnabled);
@@ -408,17 +705,6 @@ function SectionBasic({
             <Field label={t("merchantDetail.labelEmail")} htmlFor="md-email">
               <Input id="md-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={saving} />
             </Field>
-            <Field label={t("merchantDetail.labelCallbackRetry")} htmlFor="md-retry">
-              <Input
-                id="md-retry"
-                type="number"
-                min={1}
-                max={10}
-                value={callbackRetryMax}
-                onChange={(e) => setCallbackRetryMax(e.target.value)}
-                disabled={saving}
-              />
-            </Field>
           </>
         ) : (
           <>
@@ -430,12 +716,13 @@ function SectionBasic({
               <span className="text-label text-muted">{t("merchantDetail.labelEmail")}</span>
               <span className="text-label font-medium text-ink">{m.email ?? "—"}</span>
             </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-label text-muted">{t("merchantDetail.labelCallbackRetry")}</span>
-              <span className="text-label font-medium text-ink">{m.callbackRetryMax}</span>
-            </div>
           </>
         )}
+
+        <div className="flex flex-col gap-0.5">
+          <span className="text-label text-muted">{t("merchantDetail.labelCallbackRetry")}</span>
+          <span className="text-label font-medium text-ink">{m.callbackRetryMax}</span>
+        </div>
 
         <div className="flex flex-col gap-0.5">
           <span className="text-label text-muted">{t("merchantDetail.labelCreated")}</span>
@@ -462,8 +749,18 @@ function SectionBasic({
             disabled={saving}
           />
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-label text-muted">{t("merchantDetail.labelIpWhitelist")}</span>
+        <div className="flex items-center justify-between sm:col-span-2">
+          <div className="min-w-0 pr-3">
+            <span className="text-label text-muted">{t("merchantDetail.labelIpWhitelist")}</span>
+            <p className="mt-0.5 text-caption text-muted">
+              {m.ipWhitelistEnabled
+                ? t("merchantDetail.ipWhitelistOnHint")
+                : t("merchantDetail.ipWhitelistOffHint")}
+              {(m.ipWhitelist ?? []).length > 0
+                ? ` (${(m.ipWhitelist ?? []).length})`
+                : ""}
+            </p>
+          </div>
           <Toggle
             checked={editing ? ipWhitelist : m.ipWhitelistEnabled}
             onChange={(v) => void toggleFlag("ipWhitelistEnabled", v)}
@@ -519,152 +816,217 @@ function SectionWallet({
   );
 }
 
-/* ─── Section: IP whitelist ────────────────────────────────────────────── */
-function SectionIpWhitelist({
+/* ─── Modal: Payout channel config ─────────────────────────────────────── */
+function PayoutConfigModal({
+  channel,
+  allChannels,
   merchantId,
-  enabled,
-  initial,
-  onUpdated,
+  onClose,
+  onSaved,
 }: {
+  channel: MerchantChannelConfig;
+  allChannels: MerchantChannelConfig[];
   merchantId: string;
-  enabled: boolean;
-  initial: MerchantIpWhitelistItem[];
-  onUpdated: (m: MerchantDetail) => void;
+  onClose: () => void;
+  onSaved: (m: MerchantDetail) => void;
 }) {
   const { t } = useI18n();
-  const [entries, setEntries] = useState(initial);
-  const [cidr, setCidr] = useState("");
-  const [note, setNote] = useState("");
+  const [mode, setMode] = useState<PayoutMode>(channel.payoutMode ?? "off");
+  const [minAmount, setMinAmount] = useState(String(channel.minAmount ?? 0));
+  const [maxAmount, setMaxAmount] = useState(String(channel.maxAmount ?? 0));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const modeOptions = useMemo(
+    () => [
+      { value: "off" as const, label: t("merchantDetail.payoutModeOff") },
+      { value: "manual" as const, label: t("merchantDetail.payoutModeManual") },
+      { value: "auto" as const, label: t("merchantDetail.payoutModeAuto") },
+    ],
+    [t],
+  );
+
   useEffect(() => {
-    setEntries(initial);
-  }, [initial]);
-
-  async function refreshDetail() {
-    const detail = await merchantApi.getById(merchantId);
-    onUpdated(detail);
-    setEntries(detail.ipWhitelist ?? []);
-  }
-
-  async function onAdd() {
-    const value = cidr.trim();
-    if (!value) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await merchantApi.addIpWhitelist(merchantId, {
-        cidr: value,
-        note: note.trim() || undefined,
-      });
-      setCidr("");
-      setNote("");
-      await refreshDetail();
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("merchantDetail.ipAddError"));
-    } finally {
-      setSaving(false);
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !saving) onClose();
     }
-  }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, saving]);
 
-  async function onDelete(entryId: string) {
-    setSaving(true);
+  async function onSave() {
     setError(null);
+    const minRaw = Number(minAmount);
+    const maxRaw = Number(maxAmount);
+    if (!Number.isFinite(minRaw) || minRaw < 0 || !Number.isFinite(maxRaw) || maxRaw < 0) {
+      setError(t("merchantDetail.payoutLimitInvalid"));
+      return;
+    }
+    // 0 = system default → gửi null để BE/COALESCE dùng default channel.
+    const min = minRaw === 0 ? null : minRaw;
+    const max = maxRaw === 0 ? null : maxRaw;
+    if (min != null && max != null && min > max) {
+      setError(t("merchantDetail.payoutLimitOrder"));
+      return;
+    }
+
+    setSaving(true);
     try {
-      await merchantApi.deleteIpWhitelist(merchantId, entryId);
-      await refreshDetail();
+      const updated: UpdateChannelItem[] = allChannels.map((c) => {
+        if (c.channelId !== channel.channelId) {
+          return {
+            channelId: c.channelId,
+            enabled: c.enabled,
+            payoutMode: c.payoutMode ?? undefined,
+            minAmount: c.minAmount ?? undefined,
+            maxAmount: c.maxAmount ?? undefined,
+            dailyLimit: c.dailyLimit ?? undefined,
+          };
+        }
+        return {
+          channelId: c.channelId,
+          enabled: mode !== "off",
+          payoutMode: mode,
+          minAmount: min ?? undefined,
+          maxAmount: max ?? undefined,
+          dailyLimit: c.dailyLimit ?? undefined,
+        };
+      });
+      const res = await merchantApi.updateChannels(merchantId, updated);
+      onSaved(res);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("merchantDetail.ipDeleteError"));
+      setError(e instanceof ApiError ? e.message : t("merchantDetail.saveError"));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <section className="min-w-0 rounded-lg border border-edge bg-elevated">
-      <div className="border-b border-edge px-4 py-3 sm:px-5">
-        <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionIpWhitelist")}</p>
-        <p className="mt-1 text-caption text-muted">
-          {enabled
-            ? t("merchantDetail.ipWhitelistOnHint")
-            : t("merchantDetail.ipWhitelistOffHint")}
-        </p>
-      </div>
-      <div className="flex flex-col gap-4 p-4 sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="min-w-0 flex-1">
-            <Field label={t("merchantDetail.labelCidr")} htmlFor="ip-cidr" required>
-              <Input
-                id="ip-cidr"
-                value={cidr}
-                onChange={(e) => setCidr(e.target.value)}
-                placeholder={t("merchantDetail.placeholderCidr")}
-                disabled={saving}
-              />
-            </Field>
-          </div>
-          <div className="min-w-0 flex-1">
-            <Field label={t("merchantDetail.labelIpNote")} htmlFor="ip-note">
-              <Input
-                id="ip-note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={t("merchantDetail.placeholderIpNote")}
-                disabled={saving}
-              />
-            </Field>
-          </div>
-          <Button
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !saving) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="md-payout-cfg-title"
+        className="flex w-full max-w-md flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
+      >
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-edge px-4 py-4 sm:px-5">
+          <p id="md-payout-cfg-title" className="kpay-text-title font-semibold">
+            {t("merchantDetail.modalPayoutTitle")}
+          </p>
+          <button
             type="button"
-            variant="primary"
-            size="md"
-            className="w-full shrink-0 sm:w-auto"
-            loading={saving}
-            disabled={!cidr.trim()}
-            onClick={() => void onAdd()}
+            onClick={onClose}
+            disabled={saving}
+            className="rounded p-1 text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
+            aria-label={t("merchantDetail.btnCancel")}
           >
-            {t("merchantDetail.btnAddIp")}
-          </Button>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
         </div>
 
-        {error ? (
-          <p role="alert" className="text-label text-danger">
-            {error}
-          </p>
-        ) : null}
+        <div className="space-y-4 p-4 sm:p-5">
+          <Field label={t("merchantDetail.payoutProcessingMode")} htmlFor="payout-mode">
+            <Select
+              id="payout-mode"
+              options={modeOptions}
+              value={mode}
+              onChange={(v) => setMode(v ?? "off")}
+              disabled={saving}
+              clearable={false}
+            />
+          </Field>
 
-        {entries.length === 0 ? (
-          <p className="text-label text-muted">{t("merchantDetail.ipEmpty")}</p>
-        ) : (
-          <ul className="divide-y divide-edge rounded-md border border-edge">
-            {entries.map((row) => (
-              <li
-                key={row.id}
-                className="flex items-center justify-between gap-3 px-4 py-2.5"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-mono text-label text-ink">{row.cidr}</p>
-                  {row.note ? (
-                    <p className="truncate text-caption text-muted">{row.note}</p>
-                  ) : null}
+          <div className="space-y-3">
+            <p className="text-label font-medium text-ink">{t("merchantDetail.payoutPerOrder")}</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                <div className="flex items-center gap-1">
+                  <label htmlFor="payout-min" className="text-label text-muted">
+                    {t("merchantDetail.payoutMinLabel")}
+                  </label>
+                  <span
+                    className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-edge-strong text-[10px] leading-none text-muted"
+                    title={t("merchantDetail.payoutLimitHint")}
+                    aria-label={t("merchantDetail.payoutLimitHint")}
+                  >
+                    ?
+                  </span>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
+                <Input
+                  id="payout-min"
+                  type="number"
+                  min={0}
+                  value={minAmount}
+                  onChange={(e) => setMinAmount(e.target.value)}
                   disabled={saving}
-                  onClick={() => void onDelete(row.id)}
-                >
-                  {t("merchantDetail.btnRemoveIp")}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
+                  rightAddon="đ"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1">
+                  <label htmlFor="payout-max" className="text-label text-muted">
+                    {t("merchantDetail.payoutMaxLabel")}
+                  </label>
+                  <span
+                    className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-edge-strong text-[10px] leading-none text-muted"
+                    title={t("merchantDetail.payoutLimitHint")}
+                    aria-label={t("merchantDetail.payoutLimitHint")}
+                  >
+                    ?
+                  </span>
+                </div>
+                <Input
+                  id="payout-max"
+                  type="number"
+                  min={0}
+                  value={maxAmount}
+                  onChange={(e) => setMaxAmount(e.target.value)}
+                  disabled={saving}
+                  rightAddon="đ"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 text-caption leading-relaxed text-ink-secondary">
+            {t("merchantDetail.payoutConfigHint")}
+          </div>
+
+          {error ? (
+            <p role="alert" className="text-label text-danger">
+              {error}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+            {t("merchantDetail.btnCancel")}
+          </Button>
+          <Button type="button" variant="primary" loading={saving} onClick={() => void onSave()}>
+            {t("merchantDetail.btnSave")}
+          </Button>
+        </div>
       </div>
-    </section>
+    </div>
   );
+}
+
+function payoutModeLabel(
+  mode: PayoutMode | null | undefined,
+  t: (key: "merchantDetail.payoutModeAutoShort" | "merchantDetail.payoutModeManualShort" | "merchantDetail.payoutModeOffShort") => string,
+): string {
+  if (mode === "auto") return t("merchantDetail.payoutModeAutoShort");
+  if (mode === "manual") return t("merchantDetail.payoutModeManualShort");
+  return t("merchantDetail.payoutModeOffShort");
 }
 
 /* ─── Section: Channels ────────────────────────────────────────────────── */
@@ -681,6 +1043,7 @@ function SectionChannels({
   const payin = channels.filter((c) => c.flow === "payin" || c.flow === "card" || c.flow === "crypto");
   const payout = channels.filter((c) => c.flow === "payout");
   const [saving, setSaving] = useState(false);
+  const [configChannel, setConfigChannel] = useState<MerchantChannelConfig | null>(null);
 
   async function toggle(ch: MerchantChannelConfig) {
     setSaving(true);
@@ -711,7 +1074,7 @@ function SectionChannels({
     return (
       <div className="flex min-w-0 flex-col gap-2">
         <p className="kpay-text-title font-semibold">{title}</p>
-        <div className="rounded-lg border border-edge">
+        <div className="rounded-lg border border-edge bg-elevated">
           {rows.map((ch) => (
             <div
               key={ch.channelId}
@@ -737,38 +1100,69 @@ function SectionChannels({
     <section className="grid min-w-0 gap-5 lg:grid-cols-2">
       <ChannelTable rows={payin} title={t("merchantDetail.sectionPayinChannels")} />
       <div className="flex min-w-0 flex-col gap-2">
-        <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionPayoutChannels")}</p>
-        <div className="rounded-lg border border-edge">
-          {payout.map((ch) => (
-            <div
-              key={ch.channelId}
-              className="border-b border-edge px-3 py-3 last:border-0 sm:px-4"
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionPayoutChannels")}</p>
+          {payout[0] ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saving}
+              onClick={() => setConfigChannel(payout[0]!)}
             >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="text-label text-ink">{ch.channelName}</span>
-                  <StatusBadge tone={ch.enabled ? "active" : "disabled"}>
-                    {ch.enabled
-                      ? t("merchantDetail.channelEnabled")
-                      : t("merchantDetail.channelDisabled")}
-                  </StatusBadge>
+              {t("merchantDetail.btnConfigChannels")}
+            </Button>
+          ) : null}
+        </div>
+        <div className="rounded-lg border border-edge bg-elevated">
+          {payout.length === 0 ? (
+            <p className="px-4 py-3 text-label text-muted">{t("merchantDetail.payoutEmpty")}</p>
+          ) : (
+            payout.map((ch) => (
+              <div
+                key={ch.channelId}
+                className="border-b border-edge px-3 py-3 last:border-0 sm:px-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="text-label font-medium text-ink">{ch.channelName}</span>
+                    <StatusBadge tone={ch.enabled && ch.payoutMode !== "off" ? "active" : "disabled"}>
+                      {ch.enabled && ch.payoutMode !== "off"
+                        ? t("merchantDetail.channelEnabled")
+                        : t("merchantDetail.channelDisabled")}
+                    </StatusBadge>
+                  </div>
                 </div>
-                <Toggle checked={ch.enabled} onChange={() => void toggle(ch)} disabled={saving} />
-              </div>
-              {ch.payoutMode != null && (
                 <div className="mt-2 grid grid-cols-1 gap-1 text-label text-muted min-[400px]:grid-cols-2">
                   <span>{t("merchantDetail.payoutMode")}</span>
-                  <span className="text-ink capitalize">{ch.payoutMode}</span>
+                  <span className="text-ink">{payoutModeLabel(ch.payoutMode, t)}</span>
                   <span>{t("merchantDetail.payoutMin")}</span>
-                  <span className="tabular-nums text-ink">{formatMoney(ch.minAmount ?? 0)}</span>
+                  <span className="tabular-nums text-ink">
+                    {formatMoney(ch.minAmount ?? 0)}
+                  </span>
                   <span>{t("merchantDetail.payoutMax")}</span>
-                  <span className="tabular-nums text-ink">{formatMoney(ch.maxAmount ?? 0)}</span>
+                  <span className="tabular-nums text-ink">
+                    {formatMoney(ch.maxAmount ?? 0)}
+                  </span>
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            ))
+          )}
         </div>
       </div>
+
+      {configChannel ? (
+        <PayoutConfigModal
+          channel={configChannel}
+          allChannels={channels}
+          merchantId={merchantId}
+          onClose={() => setConfigChannel(null)}
+          onSaved={(m) => {
+            onUpdated(m);
+            setConfigChannel(null);
+          }}
+        />
+      ) : null}
     </section>
   );
 }
@@ -825,7 +1219,7 @@ function SectionFees({
         {editing ? (
           <div className="flex gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(false)} disabled={saving}>
-              {t("merchantNew.btnCancel")}
+              {t("merchantDetail.btnCancel")}
             </Button>
             <Button type="button" variant="primary" size="sm" loading={saving} onClick={() => void save()}>
               {t("merchantDetail.btnSave")}
@@ -937,6 +1331,7 @@ function CredentialsStepUpModal({
   const { t } = useI18n();
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -953,10 +1348,18 @@ function CredentialsStepUpModal({
           <Field label={t("merchantDetail.stepUpPassword")} htmlFor="cred-step-up-pw" required>
             <Input
               id="cred-step-up-pw"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
+              rightAddon={
+                <PasswordVisibilityToggle
+                  visible={showPassword}
+                  onToggle={() => setShowPassword((v) => !v)}
+                  showLabel={t("common.showPassword")}
+                  hideLabel={t("common.hidePassword")}
+                />
+              }
             />
           </Field>
           <Field
@@ -964,13 +1367,11 @@ function CredentialsStepUpModal({
             htmlFor="cred-step-up-totp"
             required={totpRequired}
           >
-            <Input
+            <OtpInput
               id="cred-step-up-totp"
-              inputMode="numeric"
-              autoComplete="one-time-code"
               value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="000000"
+              onChange={setTotpCode}
+              aria-label={t("merchantDetail.stepUpTotp")}
             />
           </Field>
           {error ? <p className="text-label text-danger">{error}</p> : null}
@@ -1003,17 +1404,38 @@ function CredentialsStepUpModal({
 /* ─── Section: Credentials ─────────────────────────────────────────────── */
 function SectionCredentials({
   merchantId,
-  initialHint,
+  merchantName,
+  merchantCode,
 }: {
   merchantId: string;
-  initialHint?: string | null;
+  merchantName: string;
+  merchantCode: string;
 }) {
   const { t } = useI18n();
   const totpRequired = useAuthStore((s) => Boolean(s.user?.totpEnabled));
   const [creds, setCreds] = useState<MerchantCredentialsResp | null>(null);
   const [stepUpMode, setStepUpMode] = useState<"reveal" | "reset" | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [stepUpError, setStepUpError] = useState<string | null>(null);
+
+  function downloadCredentials(keys: MerchantCredentialsResp) {
+    const content = `${[
+      `${t("common.fileLabelMerchant")}: ${merchantName} (${merchantCode})`,
+      `${t("merchantDetail.labelMerchantKey")}: ${keys.merchantKey}`,
+      `${t("merchantDetail.labelSecretKey")}: ${keys.merchantSecret}`,
+      `${t("common.fileLabelCreatedAt")}: ${formatDateTime(new Date().toISOString())}`,
+    ].join("\n")}\n`;
+
+    const url = URL.createObjectURL(
+      new Blob([content], { type: "text/plain;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `merchant-apiKey-${merchantCode}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function submitStepUp(password: string, totpCode?: string) {
     if (!stepUpMode) return;
@@ -1021,12 +1443,16 @@ function SectionCredentials({
     setStepUpError(null);
     try {
       const body = { password, totpCode };
+      const mode = stepUpMode;
       const res =
-        stepUpMode === "reveal"
+        mode === "reveal"
           ? await merchantApi.revealCredentials(merchantId, body)
           : await merchantApi.resetCredentials(merchantId, body);
       setCreds(res);
       setStepUpMode(null);
+      if (mode === "reset") {
+        setShowResetModal(true);
+      }
     } catch (e) {
       setStepUpError(
         e instanceof ApiError ? e.message : t("merchantDetail.stepUpError"),
@@ -1040,31 +1466,54 @@ function SectionCredentials({
     <section className="min-w-0 rounded-lg border border-edge bg-elevated">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-4 py-3 sm:px-5">
         <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionCredentials")}</p>
-        <Button
-          type="button"
-          variant="danger-ghost"
-          size="sm"
-          onClick={() => {
-            setStepUpError(null);
-            setStepUpMode("reset");
-          }}
-        >
-          {t("merchantDetail.btnResetKey")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {creds ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => downloadCredentials(creds)}
+              leftIcon={<IconDownload width={15} height={15} />}
+            >
+              {t("common.downloadTxt")}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="danger-ghost"
+            size="sm"
+            onClick={() => {
+              setStepUpError(null);
+              setStepUpMode("reset");
+            }}
+          >
+            {t("merchantDetail.btnResetKey")}
+          </Button>
+        </div>
       </div>
       <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
         <div className="flex min-w-0 flex-col gap-1.5">
           <span className="text-label text-muted">{t("merchantDetail.labelMerchantKey")}</span>
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-            <span className="min-w-0 flex-1 break-all font-mono text-label text-ink sm:truncate sm:break-normal">
-              {creds ? creds.merchantKey : "••••••••••••••••••••••••"}
-            </span>
-            {!creds && (
+          {creds ? (
+            <div className="flex w-fit max-w-full items-start gap-1.5">
+              <span className="min-w-0 break-all font-mono text-label text-ink">
+                {creds.merchantKey}
+              </span>
+              <CopyButton
+                value={creds.merchantKey}
+                label={t("common.copy")}
+                showCheck
+                className="mt-0.5 inline-flex shrink-0 items-center gap-0.5 rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
+              />
+            </div>
+          ) : (
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="font-mono text-label text-ink">••••••••••••••••••••••••</span>
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="w-full shrink-0 sm:w-auto"
+                className="shrink-0"
                 onClick={() => {
                   setStepUpError(null);
                   setStepUpMode("reveal");
@@ -1072,16 +1521,26 @@ function SectionCredentials({
               >
                 {t("merchantDetail.btnReveal")}
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
         <div className="flex min-w-0 flex-col gap-1.5">
           <span className="text-label text-muted">{t("merchantDetail.labelSecretKey")}</span>
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="min-w-0 flex-1 break-all font-mono text-label text-ink sm:truncate sm:break-normal">
-              {creds ? creds.merchantSecret : "••••••••••••••••••••••••"}
-            </span>
-          </div>
+          {creds ? (
+            <div className="flex w-fit max-w-full items-start gap-1.5">
+              <span className="min-w-0 break-all font-mono text-label text-ink">
+                {creds.merchantSecret}
+              </span>
+              <CopyButton
+                value={creds.merchantSecret}
+                label={t("common.copy")}
+                showCheck
+                className="mt-0.5 inline-flex shrink-0 items-center gap-0.5 rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
+              />
+            </div>
+          ) : (
+            <span className="font-mono text-label text-ink">••••••••••••••••••••••••</span>
+          )}
         </div>
       </div>
       {stepUpMode ? (
@@ -1094,6 +1553,17 @@ function SectionCredentials({
             if (!saving) setStepUpMode(null);
           }}
           onConfirm={submitStepUp}
+        />
+      ) : null}
+      {showResetModal && creds ? (
+        <MerchantCredentialsModal
+          merchantKey={creds.merchantKey}
+          merchantSecret={creds.merchantSecret}
+          merchantName={merchantName}
+          merchantCode={merchantCode}
+          title={t("merchantDetail.modalResetKeyTitle")}
+          warning={t("merchantDetail.modalResetKeyWarning")}
+          onClose={() => setShowResetModal(false)}
         />
       ) : null}
     </section>
@@ -1180,6 +1650,7 @@ export function MerchantDetailPage({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAdjust, setShowAdjust] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
   const [showResetPw, setShowResetPw] = useState(false);
   const [confirmStatus, setConfirmStatus] = useState(false);
   const [actionSaving, setActionSaving] = useState(false);
@@ -1316,6 +1787,15 @@ export function MerchantDetailPage({ id }: { id: string }) {
             variant="secondary"
             size="md"
             className="w-full min-[400px]:flex-1 sm:w-auto sm:flex-none"
+            onClick={() => setShowConfig(true)}
+          >
+            {t("merchantDetail.btnConfig")}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            className="w-full min-[400px]:flex-1 sm:w-auto sm:flex-none"
             onClick={() => setShowResetPw(true)}
           >
             {t("merchantDetail.btnResetPassword")}
@@ -1341,13 +1821,6 @@ export function MerchantDetailPage({ id }: { id: string }) {
         />
       </div>
 
-      <SectionIpWhitelist
-        merchantId={id}
-        enabled={merchant.ipWhitelistEnabled}
-        initial={merchant.ipWhitelist ?? []}
-        onUpdated={setMerchant}
-      />
-
       {/* Channels */}
       <SectionChannels
         channels={merchant.channels}
@@ -1361,7 +1834,8 @@ export function MerchantDetailPage({ id }: { id: string }) {
       {/* Credentials */}
       <SectionCredentials
         merchantId={id}
-        initialHint={merchant.credentials?.secretHint}
+        merchantName={merchant.name}
+        merchantCode={merchant.code}
       />
 
       {/* VietPM Bot */}
@@ -1381,6 +1855,16 @@ export function MerchantDetailPage({ id }: { id: string }) {
           onConfirm={adjustBalance}
           saving={actionSaving}
           error={adjustError}
+        />
+      )}
+      {showConfig && (
+        <WebhookSecurityConfigModal
+          merchant={merchant}
+          onClose={() => setShowConfig(false)}
+          onSaved={(m) => {
+            setMerchant(m);
+            setShowConfig(false);
+          }}
         />
       )}
       {showResetPw && (

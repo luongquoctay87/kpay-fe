@@ -1,15 +1,16 @@
 "use client";
 
-import { Alert, Button, Card, Form, Input, Space, Typography } from "antd";
+import { Alert, Card, Typography } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { DocumentTitle } from "@/components/layout/DocumentTitle";
-import { OtpInput } from "@/components/ui";
+import { Button, Field, Input, OtpInput } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { getTwoFaToken } from "@/features/auth/token";
 import { useI18n } from "@/i18n/use-i18n";
+import { useRequiredFields } from "@/lib/forms/use-required-fields";
 import { ROUTES, safeInternalPath } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
 
@@ -17,7 +18,7 @@ const { Title, Paragraph, Text } = Typography;
 
 /**
  * TOTP enroll (QR) / verify (6-digit hoặc backup code).
- * Sau verify thành công → accessToken + vào portal.
+ * OTP UI khớp LoginForm (OtpInput 6 ô).
  */
 export function TotpForm() {
   const { t } = useI18n();
@@ -29,12 +30,13 @@ export function TotpForm() {
   const confirmTotp = useAuthStore((s) => s.confirmTotp);
   const verifyTotp = useAuthStore((s) => s.verifyTotp);
 
-  const [form] = Form.useForm<{ code: string }>();
   const [otpauthUrl, setOtpauthUrl] = useState<string | null>(null);
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [useBackup, setUseBackup] = useState(false);
+  const [code, setCode] = useState("");
+  const required = useRequiredFields({ code });
 
   useEffect(() => {
     if (!getTwoFaToken()) {
@@ -52,35 +54,46 @@ export function TotpForm() {
     })();
   }, [enrollTotp, router, step, t]);
 
-  const onConfirm = async (values: { code: string }) => {
-    setLoading(true);
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
     setError(null);
-    try {
-      const result = await confirmTotp(values.code);
-      setBackupCodes(result.backupCodes ?? []);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("auth.totpConfirmFailed"));
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const onVerify = async (values: { code: string }) => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (useBackup) {
-        await verifyTotp("", values.code);
-      } else {
-        await verifyTotp(values.code);
+    if (useBackup) {
+      if (!code.trim()) {
+        required.reveal();
+        return;
       }
-      router.replace(nextPath);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("auth.invalidCode"));
+    } else if (code.replace(/\D/g, "").length !== 6) {
+      required.reveal();
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (step === "enroll") {
+        const result = await confirmTotp(code.trim());
+        setBackupCodes(result.backupCodes ?? []);
+        setCode("");
+        required.hide();
+      } else if (useBackup) {
+        await verifyTotp("", code.trim());
+        router.replace(nextPath);
+      } else {
+        await verifyTotp(code.trim());
+        router.replace(nextPath);
+      }
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : step === "enroll"
+            ? t("auth.totpConfirmFailed")
+            : t("auth.invalidCode"),
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   if (backupCodes) {
     const codes = backupCodes;
@@ -113,18 +126,26 @@ export function TotpForm() {
             <div key={c}>{c}</div>
           ))}
         </div>
-        <Space direction="vertical" className="w-full" size="middle">
+        <div className="flex w-full flex-col gap-3">
           <Button
-            block
-            icon={<DownloadOutlined />}
+            type="button"
+            variant="secondary"
+            fullWidth
+            leftIcon={<DownloadOutlined />}
             onClick={downloadBackupCodes}
           >
             {t("auth.totpSetupDownload")}
           </Button>
           <Button
-            type="primary"
-            block
+            type="button"
+            variant="primary"
+            fullWidth
             onClick={() => {
+              setBackupCodes(null);
+              setError(null);
+              setUseBackup(false);
+              setCode("");
+              required.hide();
               const qs = new URLSearchParams({ step: "verify" });
               if (nextPath && nextPath !== ROUTES.home) qs.set("next", nextPath);
               router.replace(`${ROUTES.totp}?${qs.toString()}`);
@@ -132,7 +153,7 @@ export function TotpForm() {
           >
             {t("auth.backupContinue")}
           </Button>
-        </Space>
+        </div>
       </Card>
     );
   }
@@ -159,71 +180,86 @@ export function TotpForm() {
       ) : null}
 
       {step === "enroll" && otpauthUrl ? (
-        <Space direction="vertical" align="center" className="mb-4 w-full">
+        <div className="mb-4 flex w-full flex-col items-center gap-2">
           <QRCodeSVG value={otpauthUrl} size={180} />
           <Text type="secondary" className="break-all text-center text-xs">
             {otpauthUrl}
           </Text>
-        </Space>
+        </div>
       ) : null}
 
-      <Form
-        form={form}
-        layout="vertical"
-        size="large"
-        initialValues={{ code: "" }}
-        onFinish={step === "enroll" ? onConfirm : onVerify}
-        requiredMark={false}
-      >
-        <Form.Item
-          label={useBackup ? t("auth.backupCode") : t("auth.totpLabel")}
-          name="code"
-          rules={
-            useBackup
-              ? [{ required: true, message: t("auth.backupRequired") }]
-              : [
-                  { required: true, message: t("auth.totpRequired") },
-                  { len: 6, message: t("auth.totpLength") },
-                ]
-          }
+      <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
+        <Field
+          label={useBackup ? t("auth.backupCode") : t("auth.otpCode")}
+          htmlFor="totp-code"
+          required
+          error={required.errorOf("code")}
         >
           {useBackup ? (
             <Input
+              id="totp-code"
+              name="code"
+              type="text"
+              size="lg"
+              required
+              invalid={Boolean(required.errorOf("code"))}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              autoFocus
               inputMode="text"
               maxLength={32}
-              placeholder="XXXXXXXXXX"
               autoComplete="one-time-code"
+              placeholder="XXXXXXXXXX"
+              className="tracking-widest"
             />
           ) : (
-            <OtpInput aria-label={t("auth.totpLabel")} autoFocus />
+            <OtpInput
+              id="totp-code"
+              name="code"
+              value={code}
+              onChange={setCode}
+              autoFocus
+              invalid={Boolean(required.errorOf("code"))}
+              aria-label={t("auth.otpCode")}
+            />
           )}
-        </Form.Item>
-        <Button type="primary" htmlType="submit" block loading={loading}>
-          {step === "enroll" ? t("auth.totpConfirm") : t("auth.verify")}
+        </Field>
+
+        <Button
+          type="submit"
+          shape="pill"
+          size="lg"
+          fullWidth
+          loading={loading}
+          disabled={!useBackup && code.replace(/\D/g, "").length < 6}
+        >
+          {loading
+            ? t("auth.verifying")
+            : step === "enroll"
+              ? t("auth.totpConfirm")
+              : t("auth.verify")}
         </Button>
+
         {step === "verify" ? (
           <Button
-            type="link"
-            block
-            className="!mt-1"
+            type="button"
+            variant="link"
+            fullWidth
             onClick={() => {
               setUseBackup((v) => !v);
               setError(null);
-              form.setFieldValue("code", "");
+              setCode("");
+              required.hide();
             }}
           >
             {useBackup ? t("auth.useAuthenticator") : t("auth.useBackup")}
           </Button>
         ) : null}
-        <Button
-          type="link"
-          block
-          className="!mt-1"
-          onClick={() => router.push(ROUTES.login)}
-        >
+
+        <Button type="button" variant="link" fullWidth onClick={() => router.push(ROUTES.login)}>
           {t("auth.backToSignIn")}
         </Button>
-      </Form>
+      </form>
     </Card>
   );
 }

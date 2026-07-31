@@ -49,7 +49,7 @@ export function FilterBar({
       <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
         <Button
           type="submit"
-          variant="primary"
+          variant="soft"
           size="md"
           className="flex-1 sm:flex-none"
           loading={loading}
