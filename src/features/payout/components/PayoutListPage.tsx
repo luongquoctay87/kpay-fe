@@ -7,6 +7,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import Link from "next/link";
 import {
   IconActivity,
   IconArrowOut,
@@ -39,6 +40,7 @@ import { bankAccountApi } from "@/features/bank-accounts/api";
 import { merchantApi } from "@/features/merchants/api";
 import { payoutApi } from "@/features/payout/api";
 import { ColumnPicker } from "@/features/payout/components/ColumnPicker";
+import { PayoutDetailDrawer } from "@/features/payout/components/PayoutDetailDrawer";
 import {
   PAYOUT_COLUMN_ALIGN,
   PAYOUT_COLUMN_WIDTH,
@@ -69,6 +71,7 @@ import {
 } from "@/features/payout/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { formatDateTime, formatMoney, localDateTimeInputToIso } from "@/lib/format/datetime";
+import { ROUTES } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
 
 export function PayoutListPage() {
@@ -82,6 +85,7 @@ export function PayoutListPage() {
   const [size, setSize] = useState(20);
   const [expanded, setExpanded] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [detailRow, setDetailRow] = useState<PayoutOrderListItem | null>(null);
 
   const [transIdDraft, setTransIdDraft] = useState("");
   const [transferContentDraft, setTransferContentDraft] = useState("");
@@ -777,16 +781,33 @@ export function PayoutListPage() {
                 {show.requestId ? (
                   <td className="px-3 py-3">
                     <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate font-mono text-label font-medium text-ink" title={row.requestId}>
+                      <button
+                        type="button"
+                        className="truncate text-left font-mono text-label font-medium text-ink transition hover:text-link-hover hover:underline"
+                        title={row.requestId}
+                        onClick={() => setDetailRow(row)}
+                      >
                         {row.requestId}
-                      </span>
+                      </button>
                       <CopyButton value={row.requestId} label={t("payout.copyRequestId")} />
                     </div>
                   </td>
                 ) : null}
                 {show.merchant ? (
-                  <td className="truncate px-3 py-3 text-label text-ink" title={row.merchantName ?? undefined}>
-                    {row.merchantName ?? "—"}
+                  <td
+                    className="truncate px-3 py-3 text-label text-ink"
+                    title={row.merchantName ?? row.merchantCode ?? undefined}
+                  >
+                    {row.merchantId ? (
+                      <Link
+                        href={ROUTES.merchantDetail(row.merchantId)}
+                        className="font-medium"
+                      >
+                        {row.merchantName ?? row.merchantCode ?? row.merchantId}
+                      </Link>
+                    ) : (
+                      (row.merchantName ?? row.merchantCode ?? "—")
+                    )}
                   </td>
                 ) : null}
                 {show.beneficiaryName ? (
@@ -936,6 +957,10 @@ export function PayoutListPage() {
           </tbody>
         </table>
       </TableCard>
+
+      {detailRow ? (
+        <PayoutDetailDrawer row={detailRow} onClose={() => setDetailRow(null)} />
+      ) : null}
     </div>
   );
 }

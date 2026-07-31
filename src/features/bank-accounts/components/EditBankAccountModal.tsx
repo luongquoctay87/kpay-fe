@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Button, Field, Input, Select, Textarea } from "@/components/ui";
+import { Button, Field, Input, MoneyInput, Select, Textarea } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import {
   BANK_ACCOUNT_STATUS_LABEL_KEY,
@@ -14,6 +14,7 @@ import type {
 import { BANK_ACCOUNT_STATUS_OPTIONS } from "@/features/bank-accounts/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
+import { parseMoneyNumber } from "@/lib/format/money";
 import { ApiError } from "@/lib/types/api";
 
 type EditBankAccountModalProps = {
@@ -94,8 +95,8 @@ export function EditBankAccountModal({
     const weightNum = weight.trim() ? Number(weight) : 0;
     const rotationRaw = rotationGroup.trim();
     const rotationNum = rotationRaw ? Number(rotationRaw) : null;
-    const dailyNum = dailyLimit.trim() ? Number(dailyLimit) : 0;
-    const openingNum = openingBalance.trim() ? Number(openingBalance) : 0;
+    const dailyNum = dailyLimit.trim() ? parseMoneyNumber(dailyLimit) : 0;
+    const openingNum = openingBalance.trim() ? parseMoneyNumber(openingBalance) : 0;
 
     if (
       Number.isNaN(dailyNum) ||
@@ -252,23 +253,21 @@ export function EditBankAccountModal({
                 htmlFor="ba-edit-limit"
                 hint={t("bankAccounts.placeholderDailyLimit")}
               >
-                <Input
+                <MoneyInput
                   id="ba-edit-limit"
-                  type="number"
-                  min={0}
                   value={dailyLimit}
-                  onChange={(e) => setDailyLimit(e.target.value)}
+                  onValueChange={setDailyLimit}
                   disabled={submitting}
+                  rightAddon="đ"
                 />
               </Field>
               <Field label={t("bankAccounts.labelOpeningBalance")} htmlFor="ba-edit-opening">
-                <Input
+                <MoneyInput
                   id="ba-edit-opening"
-                  type="number"
-                  min={0}
                   value={openingBalance}
-                  onChange={(e) => setOpeningBalance(e.target.value)}
+                  onValueChange={setOpeningBalance}
                   disabled={submitting}
+                  rightAddon="đ"
                 />
               </Field>
             </div>

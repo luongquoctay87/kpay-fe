@@ -103,7 +103,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         );
       }
       return (
-        <Link href={href} className={classes}>
+        <Link href={href} className={classes} data-kpay-chrome>
           {content}
         </Link>
       );

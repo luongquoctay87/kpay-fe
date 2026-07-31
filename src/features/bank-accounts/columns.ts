@@ -1,6 +1,6 @@
 import type { MessageKey } from "@/i18n/types";
 
-/** Toggleable data columns (Actions is always visible). */
+/** Toggleable data columns. */
 export const BANK_ACCOUNT_COLUMNS = [
   "account",
   "holder",
@@ -31,8 +31,8 @@ export const BANK_ACCOUNT_COLUMN_LABEL_KEY: Record<BankAccountColumn, MessageKey
   notif: "bankAccounts.colNotif",
 };
 
-/** Widths tuned for the default visible set (+ Actions). */
-export const BANK_ACCOUNT_COLUMN_WIDTH: Record<BankAccountColumn | "actions", string> = {
+/** Widths tuned for the default visible set. */
+export const BANK_ACCOUNT_COLUMN_WIDTH: Record<BankAccountColumn, string> = {
   account: "w-[15%]",
   holder: "w-[22%]",
   bank: "w-[9%]",
@@ -44,10 +44,9 @@ export const BANK_ACCOUNT_COLUMN_WIDTH: Record<BankAccountColumn | "actions", st
   web: "w-[6%]",
   app: "w-[6%]",
   notif: "w-[7%]",
-  actions: "w-[16%]",
 };
 
-export const BANK_ACCOUNT_COLUMN_ALIGN: Record<BankAccountColumn | "actions", string> = {
+export const BANK_ACCOUNT_COLUMN_ALIGN: Record<BankAccountColumn, string> = {
   account: "text-left",
   holder: "text-left",
   bank: "text-left",
@@ -59,7 +58,6 @@ export const BANK_ACCOUNT_COLUMN_ALIGN: Record<BankAccountColumn | "actions", st
   web: "text-center",
   app: "text-center",
   notif: "text-center",
-  actions: "text-center",
 };
 
 export const DEFAULT_VISIBLE_COLUMNS: readonly BankAccountColumn[] = [
@@ -111,6 +109,5 @@ export function saveColumnVisibility(visibility: ColumnVisibility) {
 }
 
 export function visibleColumnCount(visibility: ColumnVisibility): number {
-  // +1 for always-visible Actions column
-  return BANK_ACCOUNT_COLUMNS.reduce((n, col) => n + (visibility[col] ? 1 : 0), 1);
+  return BANK_ACCOUNT_COLUMNS.reduce((n, col) => n + (visibility[col] ? 1 : 0), 0);
 }

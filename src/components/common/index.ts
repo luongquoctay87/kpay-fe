@@ -7,6 +7,7 @@ export { Pagination } from "@/components/common/Pagination";
 export { LoadingScreen } from "@/components/common/LoadingScreen";
 export { ColumnHeader } from "@/components/common/ColumnHeader";
 export { CopyButton } from "@/components/common/CopyButton";
+export { MoneyAmount } from "@/components/common/MoneyAmount";
 export { StatCard } from "@/components/common/StatCard";
 export {
   FilterField,

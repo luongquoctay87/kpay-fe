@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Button, Field, Input } from "@/components/ui";
+import { Button, Field, Input, Switch } from "@/components/ui";
 import { agentApi } from "@/features/agents/api";
 import type { AgentDetail, AgentListItem } from "@/features/agents/types";
 import { useI18n } from "@/i18n/use-i18n";
@@ -21,53 +21,36 @@ type EditAgentModalProps = {
   onUpdated: (detail?: AgentDetail) => void;
 };
 
-function Toggle({
-  checked,
-  onChange,
-  disabled,
-}: {
-  checked: boolean;
-  onChange?: (v: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => onChange?.(!checked)}
-      className={[
-        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        checked ? "bg-accent" : "bg-edge-strong",
-      ].join(" ")}
-    >
-      <span
-        className={[
-          "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
-          checked ? "translate-x-5" : "translate-x-0",
-        ].join(" ")}
-      />
-    </button>
-  );
+function isFullDetail(
+  a: EditAgentModalProps["agent"],
+): a is Pick<AgentDetail, "id" | "name" | "phone" | "email" | "telegramId" | "active"> & {
+  email?: string | null;
+  telegramId?: string | null;
+} {
+  return "email" in a && "telegramId" in a;
+}
+
+function emptyToNull(v: string): string | null {
+  const t = v.trim();
+  return t ? t : null;
 }
 
 export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProps) {
   const { t } = useI18n();
+  const hasInitialDetail = isFullDetail(agent);
 
   const [name, setName] = useState(agent.name);
   const [phone, setPhone] = useState(agent.phone ?? "");
-  const [email, setEmail] = useState("email" in agent ? (agent.email ?? "") : "");
+  const [email, setEmail] = useState(hasInitialDetail ? (agent.email ?? "") : "");
   const [telegramId, setTelegramId] = useState(
-    "telegramId" in agent ? (agent.telegramId ?? "") : "",
+    hasInitialDetail ? (agent.telegramId ?? "") : "",
   );
   const [active, setActive] = useState(Boolean(agent.active));
   const [initialActive, setInitialActive] = useState(Boolean(agent.active));
 
-  const [loadingDetail, setLoadingDetail] = useState(true);
+  const [loadingDetail, setLoadingDetail] = useState(!hasInitialDetail);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [loadKey, setLoadKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +63,19 @@ export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProp
     required.revealed && phoneInvalid ? t("common.fieldInvalidPhone") : undefined;
 
   useEffect(() => {
+    const skipFetch = isFullDetail(agent) && loadKey === 0;
+    if (skipFetch) {
+      setName(agent.name);
+      setEmail(agent.email ?? "");
+      setPhone(agent.phone ?? "");
+      setTelegramId(agent.telegramId ?? "");
+      setActive(Boolean(agent.active));
+      setInitialActive(Boolean(agent.active));
+      setLoadingDetail(false);
+      setDetailError(null);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       setLoadingDetail(true);
@@ -104,7 +100,8 @@ export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProp
     return () => {
       cancelled = true;
     };
-  }, [agent.id, t]);
+    // Reload when agent id changes or user retries after load error.
+  }, [agent.id, loadKey, t]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -127,9 +124,9 @@ export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProp
     try {
       let detail = await agentApi.update(agent.id, {
         name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        telegramId: telegramId.trim(),
+        email: emptyToNull(email),
+        phone: emptyToNull(phone),
+        telegramId: emptyToNull(telegramId),
       });
       if (active !== initialActive) {
         detail = await agentApi.updateStatus(agent.id, { active });
@@ -142,9 +139,7 @@ export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProp
     }
   }
 
-  const disabled = submitting || loadingDetail || detailError != null;
-  const banner = detailError ?? error;
-  const enterPh = t("agents.placeholderEnter");
+  const formLocked = submitting || loadingDetail || detailError != null;
 
   return (
     <div
@@ -168,7 +163,7 @@ export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProp
             onClick={onClose}
             disabled={submitting}
             className="rounded p-1 text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
-            aria-label={t("agentNew.btnCancel")}
+            aria-label={t("agents.btnCancel")}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
               <path d="M18 6 6 18" />
@@ -178,84 +173,109 @@ export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProp
         </div>
 
         <form onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
-            <Field
-              label={t("agentNew.labelName")}
-              htmlFor="ag-edit-name"
-              required
-              error={required.errorOf("name")}
-            >
-              <Input
-                id="ag-edit-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={enterPh}
-                required
-                invalid={Boolean(required.errorOf("name"))}
-                autoFocus
-                disabled={disabled}
-              />
-            </Field>
-
-            <Field label={t("agentNew.labelEmail")} htmlFor="ag-edit-email" error={emailError}>
-              <Input
-                id="ag-edit-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={enterPh}
-                maxLength={EMAIL_MAX_LENGTH}
-                invalid={Boolean(emailError)}
-                disabled={disabled}
-              />
-            </Field>
-
-            <Field label={t("agentNew.labelPhone")} htmlFor="ag-edit-phone" error={phoneError}>
-              <Input
-                id="ag-edit-phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder={enterPh}
-                maxLength={PHONE_MAX_LENGTH}
-                invalid={Boolean(phoneError)}
-                disabled={disabled}
-              />
-            </Field>
-
-            <Field label={t("agentNew.labelTelegram")} htmlFor="ag-edit-telegram">
-              <Input
-                id="ag-edit-telegram"
-                value={telegramId}
-                onChange={(e) => setTelegramId(e.target.value)}
-                placeholder={enterPh}
-                maxLength={TELEGRAM_ID_MAX_LENGTH}
-                disabled={disabled}
-              />
-            </Field>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5">
-                <span className="text-label font-medium text-ink">
-                  {t("agents.labelActiveStatus")}
-                </span>
-                <span
-                  className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-edge-strong text-[10px] leading-none text-muted"
-                  title={t("agents.activeStatusHint")}
-                  aria-label={t("agents.activeStatusHint")}
+          <div className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
+            {loadingDetail ? (
+              <p className="py-8 text-center text-label text-muted">{t("agents.loading")}</p>
+            ) : detailError ? (
+              <div className="space-y-3 py-4 text-center">
+                <p role="alert" className="text-label text-danger">
+                  {detailError}
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setLoadKey((k) => k + 1)}
                 >
-                  ?
-                </span>
+                  {t("agents.retryLoad")}
+                </Button>
               </div>
-              <Toggle checked={active} disabled={disabled} onChange={setActive} />
-            </div>
+            ) : (
+              <>
+                <Field
+                  label={t("agentNew.labelName")}
+                  htmlFor="ag-edit-name"
+                  required
+                  error={required.errorOf("name")}
+                >
+                  <Input
+                    id="ag-edit-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t("agentNew.placeholderName")}
+                    required
+                    invalid={Boolean(required.errorOf("name"))}
+                    autoFocus
+                    disabled={formLocked}
+                  />
+                </Field>
 
-            {banner ? (
+                <Field label={t("agentNew.labelEmail")} htmlFor="ag-edit-email" error={emailError}>
+                  <Input
+                    id="ag-edit-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t("agentNew.placeholderEmail")}
+                    maxLength={EMAIL_MAX_LENGTH}
+                    invalid={Boolean(emailError)}
+                    disabled={formLocked}
+                  />
+                </Field>
+
+                <Field label={t("agentNew.labelPhone")} htmlFor="ag-edit-phone" error={phoneError}>
+                  <Input
+                    id="ag-edit-phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder={t("agents.placeholderEnter")}
+                    maxLength={PHONE_MAX_LENGTH}
+                    invalid={Boolean(phoneError)}
+                    disabled={formLocked}
+                  />
+                </Field>
+
+                <Field label={t("agentNew.labelTelegram")} htmlFor="ag-edit-telegram">
+                  <Input
+                    id="ag-edit-telegram"
+                    value={telegramId}
+                    onChange={(e) => setTelegramId(e.target.value)}
+                    placeholder={t("agents.placeholderEnter")}
+                    maxLength={TELEGRAM_ID_MAX_LENGTH}
+                    disabled={formLocked}
+                  />
+                </Field>
+
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="text-label font-medium text-ink">
+                      {t("agents.labelActiveStatus")}
+                    </span>
+                    <span
+                      className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-edge-strong text-[10px] leading-none text-muted"
+                      title={t("agents.activeStatusHint")}
+                      aria-label={t("agents.activeStatusHint")}
+                    >
+                      ?
+                    </span>
+                  </div>
+                  <Switch
+                    checked={active}
+                    disabled={formLocked}
+                    onChange={setActive}
+                    aria-label={t("agents.labelActiveStatus")}
+                  />
+                </div>
+              </>
+            )}
+
+            {error ? (
               <p
                 role="alert"
                 className="rounded-lg border border-danger-edge bg-danger-bg px-3 py-2.5 text-label text-danger"
               >
-                {banner}
+                {error}
               </p>
             ) : null}
           </div>
@@ -269,7 +289,7 @@ export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProp
               onClick={onClose}
               disabled={submitting}
             >
-              {t("agentDetail.btnCancel")}
+              {t("agents.btnCancel")}
             </Button>
             <Button
               type="submit"
@@ -277,7 +297,7 @@ export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProp
               size="md"
               className="w-full sm:w-auto"
               loading={submitting}
-              disabled={disabled}
+              disabled={formLocked}
             >
               {t("agents.btnConfirm")}
             </Button>

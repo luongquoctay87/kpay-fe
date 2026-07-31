@@ -11,7 +11,8 @@ export type PayinFinalizeOutcome =
   | "success"
   | "expired"
   | "failure"
-  | "wrong_denomination";
+  | "wrong_denomination"
+  | "credit";
 
 export const payinApi = {
   list(params: PayinOrderListParams = {}): Promise<PayinOrderListResp> {

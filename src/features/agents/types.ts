@@ -91,12 +91,12 @@ export interface CreateAgentBody {
   phone?: string;
 }
 
-/** Partial update — chuỗi rỗng được BE hiểu là xoá giá trị. */
+/** Partial update — omit / null clears optional contact fields (email must not be ""). */
 export interface UpdateAgentBody {
   name?: string;
-  email?: string;
-  telegramId?: string;
-  phone?: string;
+  email?: string | null;
+  telegramId?: string | null;
+  phone?: string | null;
   loginIpWhitelistEnabled?: boolean;
 }
 

@@ -43,6 +43,8 @@ export interface PayinOrderListItem {
   processedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  /** Merchant create body snapshot (null for older orders). */
+  createRequestJson?: Record<string, unknown> | null;
 }
 
 export interface PayinOrderListResp {

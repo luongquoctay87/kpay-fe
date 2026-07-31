@@ -62,6 +62,7 @@ export interface UpdateMerchantBody {
   name?: string;
   email?: string | null;
   callbackRetryMax?: number;
+  /** @deprecated Unused by payin finalize; kept for API shape compatibility. */
   autoFinalizeWrongDenomination?: boolean;
   includeInStatistics?: boolean;
   ipWhitelistEnabled?: boolean;
@@ -138,6 +139,7 @@ export interface MerchantDetail {
   email?: string | null;
   loginUsername?: string | null;
   callbackRetryMax: number;
+  /** @deprecated Unused by payin finalize; kept for API shape compatibility. */
   autoFinalizeWrongDenomination: boolean;
   includeInStatistics: boolean;
   ipWhitelistEnabled: boolean;

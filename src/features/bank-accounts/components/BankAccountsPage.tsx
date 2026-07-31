@@ -6,24 +6,19 @@ import {
   IconArrowIn,
   IconArrowOut,
   IconBank,
-  IconBan,
-  IconBell,
-  IconCheckCircle,
   IconGlobe,
   IconHash,
   IconLayers,
-  IconMoreHorizontal,
-  IconPencil,
   IconPlus,
   IconRefresh,
   IconSearch,
   IconSettings,
   IconSmartphone,
-  IconTrash,
+  IconBell,
   IconUser,
 } from "@/components/icons/NavIcons";
 import { ColumnHeader, CopyButton, FilterBar, PageHeader, Pagination, TableCard } from "@/components/common";
-import { Button, ConfirmDialog, Input, Select, StatusBadge } from "@/components/ui";
+import { Button, Input, Select, StatusBadge } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import { ColumnPicker } from "@/features/bank-accounts/components/ColumnPicker";
 import { CreateBankAccountModal } from "@/features/bank-accounts/components/CreateBankAccountModal";
@@ -156,11 +151,6 @@ export function BankAccountsPage() {
   const [size, setSize] = useState(20);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<BankAccountListItem | null>(null);
-  const [actionId, setActionId] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<{
-    row: BankAccountListItem;
-    action: "toggle" | "delete";
-  } | null>(null);
 
   const [accountDraft, setAccountDraft] = useState("");
   const [bankDraft, setBankDraft] = useState("");
@@ -288,59 +278,6 @@ export function BankAccountsPage() {
     setDisburseDraft(null);
     setFilters({});
     setPage(0);
-  }
-
-  function confirmCopy({ row, action }: { row: BankAccountListItem; action: "toggle" | "delete" }) {
-    const account = row.accountNumber;
-    if (action === "delete") {
-      return {
-        tone: "danger" as const,
-        title: t("bankAccounts.confirmDeleteTitle"),
-        message: t("bankAccounts.confirmDeleteBody", { account }),
-        confirmLabel: t("bankAccounts.btnDelete"),
-      };
-    }
-    if (row.status === "active") {
-      return {
-        tone: "danger" as const,
-        title: t("bankAccounts.confirmDeactivateTitle"),
-        message: t("bankAccounts.confirmDeactivateBody", { account }),
-        confirmLabel: t("bankAccounts.btnDeactivate"),
-      };
-    }
-    return {
-      tone: "default" as const,
-      title: t("bankAccounts.confirmActivateTitle"),
-      message: t("bankAccounts.confirmActivateBody", { account }),
-      confirmLabel: t("bankAccounts.btnActivate"),
-    };
-  }
-
-  async function runConfirmed() {
-    if (!confirming) return;
-    const { row, action } = confirming;
-    setActionId(row.id);
-    setError(null);
-    try {
-      if (action === "delete") {
-        await bankAccountApi.delete(row.id);
-      } else {
-        // Khoá tạm → blocked; kích hoạt lại từ blocked/inactive → active
-        const next: BankAccountStatus = row.status === "active" ? "blocked" : "active";
-        await bankAccountApi.updateStatus(row.id, next);
-      }
-      await fetchList();
-    } catch (e) {
-      const fallback =
-        action === "delete"
-          ? t("bankAccounts.errorDeleteFailed")
-          : t("bankAccounts.errorUpdateFailed");
-      setError(e instanceof ApiError ? e.message : fallback);
-    } finally {
-      setActionId(null);
-      // Always close: the error banner sits behind the dialog.
-      setConfirming(null);
-    }
   }
 
   return (
@@ -577,11 +514,6 @@ export function BankAccountsPage() {
                   </ColumnHeader>
                 </th>
               ) : null}
-              <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.actions} ${BANK_ACCOUNT_COLUMN_ALIGN.actions} px-3 py-3`}>
-                <ColumnHeader align="center" icon={<IconMoreHorizontal width={13} height={13} />}>
-                  {t("bankAccounts.colActions")}
-                </ColumnHeader>
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -641,8 +573,14 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.holder ? (
-                  <td className="truncate px-3 py-3 text-label text-ink" title={row.accountHolder}>
-                    {row.accountHolder}
+                  <td className="truncate px-3 py-3" title={row.accountHolder}>
+                    <button
+                      type="button"
+                      className="max-w-full truncate text-left text-label font-medium text-ink transition hover:text-link-hover hover:underline"
+                      onClick={() => setEditing(row)}
+                    >
+                      {row.accountHolder}
+                    </button>
                   </td>
                 ) : null}
                 {show.bank ? (
@@ -719,59 +657,6 @@ export function BankAccountsPage() {
                     />
                   </td>
                 ) : null}
-                <td className="px-3 py-3">
-                  <div className="flex items-center justify-center gap-1 whitespace-nowrap">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      iconOnly
-                      aria-label={t("bankAccounts.btnEdit")}
-                      title={t("bankAccounts.btnEdit")}
-                      leftIcon={<IconPencil width={15} height={15} />}
-                      onClick={() => setEditing(row)}
-                      disabled={actionId === row.id}
-                    />
-                    {row.status === "active" ? (
-                      <Button
-                        type="button"
-                        variant="danger-outline"
-                        size="sm"
-                        iconOnly
-                        aria-label={t("bankAccounts.btnDeactivate")}
-                        title={t("bankAccounts.btnDeactivate")}
-                        leftIcon={<IconBan width={15} height={15} />}
-                        onClick={() => setConfirming({ row, action: "toggle" })}
-                        disabled={actionId === row.id || loading}
-                        loading={actionId === row.id}
-                      />
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        iconOnly
-                        aria-label={t("bankAccounts.btnActivate")}
-                        title={t("bankAccounts.btnActivate")}
-                        leftIcon={<IconCheckCircle width={15} height={15} />}
-                        onClick={() => setConfirming({ row, action: "toggle" })}
-                        disabled={actionId === row.id || loading}
-                        loading={actionId === row.id}
-                      />
-                    )}
-                    <Button
-                      type="button"
-                      variant="danger-ghost"
-                      size="sm"
-                      iconOnly
-                      aria-label={t("bankAccounts.btnDelete")}
-                      title={t("bankAccounts.btnDelete")}
-                      leftIcon={<IconTrash width={15} height={15} />}
-                      onClick={() => setConfirming({ row, action: "delete" })}
-                      disabled={actionId === row.id || row.status === "inactive"}
-                    />
-                  </div>
-                </td>
               </tr>
             ))}
           </tbody>
@@ -796,16 +681,6 @@ export function BankAccountsPage() {
             setEditing(null);
             void fetchList();
           }}
-        />
-      ) : null}
-
-      {confirming ? (
-        <ConfirmDialog
-          {...confirmCopy(confirming)}
-          cancelLabel={t("common.cancel")}
-          loading={actionId === confirming.row.id}
-          onConfirm={() => void runConfirmed()}
-          onCancel={() => setConfirming(null)}
         />
       ) : null}
     </div>

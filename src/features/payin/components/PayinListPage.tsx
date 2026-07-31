@@ -7,6 +7,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import Link from "next/link";
 import {
   IconActivity,
   IconArrowIn,
@@ -38,6 +39,7 @@ import { Button, Input, Select, StatusBadge } from "@/components/ui";
 import { merchantApi } from "@/features/merchants/api";
 import { payinApi } from "@/features/payin/api";
 import { FinalizePayinModal } from "@/features/payin/components/FinalizePayinModal";
+import { PayinDetailDrawer } from "@/features/payin/components/PayinDetailDrawer";
 import { ColumnPicker } from "@/features/payin/components/ColumnPicker";
 import {
   PAYIN_COLUMN_ALIGN,
@@ -69,6 +71,7 @@ import {
 } from "@/features/payin/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { formatDateTime, formatMoney, localDateTimeInputToIso } from "@/lib/format/datetime";
+import { ROUTES } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
 
 export function PayinListPage() {
@@ -83,6 +86,7 @@ export function PayinListPage() {
   const [expanded, setExpanded] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [finalizeRow, setFinalizeRow] = useState<PayinOrderListItem | null>(null);
+  const [detailRow, setDetailRow] = useState<PayinOrderListItem | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const [transIdDraft, setTransIdDraft] = useState("");
@@ -754,16 +758,33 @@ export function PayinListPage() {
                 {show.requestId ? (
                   <td className="px-3 py-3">
                     <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate font-mono text-label font-medium text-ink" title={row.requestId}>
+                      <button
+                        type="button"
+                        className="truncate text-left font-mono text-label font-medium text-ink transition hover:text-link-hover hover:underline"
+                        title={row.requestId}
+                        onClick={() => setDetailRow(row)}
+                      >
                         {row.requestId}
-                      </span>
+                      </button>
                       <CopyButton value={row.requestId} label={t("payin.copyRequestId")} />
                     </div>
                   </td>
                 ) : null}
                 {show.merchant ? (
-                  <td className="truncate px-3 py-3 text-label text-ink" title={row.merchantName ?? undefined}>
-                    {row.merchantName ?? "—"}
+                  <td
+                    className="truncate px-3 py-3 text-label text-ink"
+                    title={row.merchantName ?? row.merchantCode ?? undefined}
+                  >
+                    {row.merchantId ? (
+                      <Link
+                        href={ROUTES.merchantDetail(row.merchantId)}
+                        className="font-medium"
+                      >
+                        {row.merchantName ?? row.merchantCode ?? row.merchantId}
+                      </Link>
+                    ) : (
+                      (row.merchantName ?? row.merchantCode ?? "—")
+                    )}
                   </td>
                 ) : null}
                 {show.channel ? (
@@ -878,6 +899,15 @@ export function PayinListPage() {
                     >
                       {t("payin.btnFinalize")}
                     </Button>
+                  ) : row.status === "wrong_denomination" ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setFinalizeRow(row)}
+                    >
+                      {t("payin.outcomeCredit")}
+                    </Button>
                   ) : (
                     <span className="text-label text-muted">—</span>
                   )}
@@ -935,6 +965,17 @@ export function PayinListPage() {
           </tbody>
         </table>
       </TableCard>
+
+      {detailRow ? (
+        <PayinDetailDrawer
+          row={detailRow}
+          onClose={() => setDetailRow(null)}
+          onCompensate={() => {
+            setFinalizeRow(detailRow);
+            setDetailRow(null);
+          }}
+        />
+      ) : null}
 
       {finalizeRow ? (
         <FinalizePayinModal

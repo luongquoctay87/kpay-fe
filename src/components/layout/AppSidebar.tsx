@@ -149,6 +149,7 @@ export function AppSidebar({
       >
         <Link
           href={ROUTES.home}
+          data-kpay-chrome
           className="flex min-w-0 items-center gap-2.5 rounded-md !text-ink outline-none focus-visible:ring-2 focus-visible:ring-edge-strong"
           title={brandName}
         >
@@ -185,6 +186,7 @@ export function AppSidebar({
                 <li key={entry.href}>
                   <Link
                     href={entry.href}
+                    data-kpay-chrome
                     title={label}
                     aria-current={active ? "page" : undefined}
                     className={cn(
@@ -252,6 +254,7 @@ export function AppSidebar({
                         <li key={child.href}>
                           <Link
                             href={child.href}
+                            data-kpay-chrome
                             title={childLabel}
                             aria-current={active ? "page" : undefined}
                             className={cn(

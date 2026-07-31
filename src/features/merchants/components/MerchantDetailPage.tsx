@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CopyButton, PageHeader } from "@/components/common";
+import { CopyButton, MoneyAmount, PageHeader } from "@/components/common";
 import { IconDownload, IconRefresh, IconStore, IconUsers } from "@/components/icons/NavIcons";
 import {
   Button,
   ConfirmDialog,
   Field,
   Input,
+  MoneyInput,
   OtpInput,
   PasswordVisibilityToggle,
   Select,
@@ -33,6 +34,7 @@ import type {
 import { useI18n } from "@/i18n/use-i18n";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { parseMoneyNumber } from "@/lib/format/money";
 import { ApiError } from "@/lib/types/api";
 
 /* ─── helpers ──────────────────────────────────────────────────────────── */
@@ -100,7 +102,7 @@ function AdjustBalanceModal({
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
 
-  const amountNum = Number(amount);
+  const amountNum = parseMoneyNumber(amount);
   const amountValid = Number.isFinite(amountNum) && amountNum > 0;
   const opOptions = [
     { value: "credit" as const, label: t("merchantDetail.modalAdjustCredit") },
@@ -159,16 +161,14 @@ function AdjustBalanceModal({
           </Field>
 
           <Field label={t("merchantDetail.modalAdjustAmount")} htmlFor="adj-amount" required>
-            <Input
+            <MoneyInput
               id="adj-amount"
-              type="number"
-              min={0}
-              step="any"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onValueChange={setAmount}
               placeholder={t("merchantDetail.placeholderAmount")}
               disabled={saving}
               autoFocus
+              rightAddon="đ"
             />
           </Field>
 
@@ -581,14 +581,12 @@ function SectionBasic({
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState(m.name);
   const [email, setEmail] = useState(m.email ?? "");
-  const [autoFinalize, setAutoFinalize] = useState(m.autoFinalizeWrongDenomination);
   const [includeStats, setIncludeStats] = useState(m.includeInStatistics);
   const [ipWhitelist, setIpWhitelist] = useState(m.ipWhitelistEnabled);
 
   useEffect(() => {
     setName(m.name);
     setEmail(m.email ?? "");
-    setAutoFinalize(m.autoFinalizeWrongDenomination);
     setIncludeStats(m.includeInStatistics);
     setIpWhitelist(m.ipWhitelistEnabled);
   }, [m]);
@@ -600,7 +598,6 @@ function SectionBasic({
       const res = await merchantApi.update(merchantId, {
         name: name.trim(),
         email: email.trim() || null,
-        autoFinalizeWrongDenomination: autoFinalize,
         includeInStatistics: includeStats,
         ipWhitelistEnabled: ipWhitelist,
       });
@@ -614,11 +611,10 @@ function SectionBasic({
   }
 
   async function toggleFlag(
-    key: "autoFinalizeWrongDenomination" | "includeInStatistics" | "ipWhitelistEnabled",
+    key: "includeInStatistics" | "ipWhitelistEnabled",
     value: boolean,
   ) {
     if (editing && key !== "ipWhitelistEnabled") {
-      if (key === "autoFinalizeWrongDenomination") setAutoFinalize(value);
       if (key === "includeInStatistics") setIncludeStats(value);
       return;
     }
@@ -629,7 +625,6 @@ function SectionBasic({
       }
       setIpWhitelist(value);
     }
-    if (key === "autoFinalizeWrongDenomination") setAutoFinalize(value);
     if (key === "includeInStatistics") setIncludeStats(value);
 
     setSaving(true);
@@ -638,13 +633,9 @@ function SectionBasic({
       const res = await merchantApi.update(merchantId, { [key]: value });
       onUpdated(res);
       if (key === "ipWhitelistEnabled") setIpWhitelist(res.ipWhitelistEnabled);
-      if (key === "autoFinalizeWrongDenomination") {
-        setAutoFinalize(res.autoFinalizeWrongDenomination);
-      }
       if (key === "includeInStatistics") setIncludeStats(res.includeInStatistics);
     } catch (e) {
       if (key === "ipWhitelistEnabled") setIpWhitelist(!value);
-      if (key === "autoFinalizeWrongDenomination") setAutoFinalize(!value);
       if (key === "includeInStatistics") setIncludeStats(!value);
       setError(e instanceof ApiError ? e.message : t("merchantDetail.saveError"));
     } finally {
@@ -667,7 +658,6 @@ function SectionBasic({
                   setEditing(false);
                   setName(m.name);
                   setEmail(m.email ?? "");
-                  setAutoFinalize(m.autoFinalizeWrongDenomination);
                   setIncludeStats(m.includeInStatistics);
                   setIpWhitelist(m.ipWhitelistEnabled);
                   setError(null);
@@ -734,14 +724,6 @@ function SectionBasic({
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-label text-muted">{t("merchantDetail.labelAutoFinalize")}</span>
-          <Toggle
-            checked={editing ? autoFinalize : m.autoFinalizeWrongDenomination}
-            onChange={(v) => void toggleFlag("autoFinalizeWrongDenomination", v)}
-            disabled={saving}
-          />
-        </div>
-        <div className="flex items-center justify-between">
           <span className="text-label text-muted">{t("merchantDetail.labelIncludeStats")}</span>
           <Toggle
             checked={editing ? includeStats : m.includeInStatistics}
@@ -806,9 +788,10 @@ function SectionWallet({
             className="flex flex-col items-start gap-1 py-3 first:pt-0 last:pb-0 sm:items-center sm:px-4 sm:py-0 sm:first:pl-0 sm:first:pt-0 sm:last:pr-0 sm:last:pb-0"
           >
             <span className="text-label text-muted">{label}</span>
-            <span className="text-label font-semibold tabular-nums text-ink">
-              {formatMoney(val as number)}
-            </span>
+            <MoneyAmount
+              value={val as number}
+              amountClassName="text-label font-semibold text-ink"
+            />
           </div>
         ))}
       </div>
@@ -856,8 +839,8 @@ function PayoutConfigModal({
 
   async function onSave() {
     setError(null);
-    const minRaw = Number(minAmount);
-    const maxRaw = Number(maxAmount);
+    const minRaw = parseMoneyNumber(minAmount || "0");
+    const maxRaw = parseMoneyNumber(maxAmount || "0");
     if (!Number.isFinite(minRaw) || minRaw < 0 || !Number.isFinite(maxRaw) || maxRaw < 0) {
       setError(t("merchantDetail.payoutLimitInvalid"));
       return;
@@ -960,12 +943,10 @@ function PayoutConfigModal({
                     ?
                   </span>
                 </div>
-                <Input
+                <MoneyInput
                   id="payout-min"
-                  type="number"
-                  min={0}
                   value={minAmount}
-                  onChange={(e) => setMinAmount(e.target.value)}
+                  onValueChange={setMinAmount}
                   disabled={saving}
                   rightAddon="đ"
                 />
@@ -983,12 +964,10 @@ function PayoutConfigModal({
                     ?
                   </span>
                 </div>
-                <Input
+                <MoneyInput
                   id="payout-max"
-                  type="number"
-                  min={0}
                   value={maxAmount}
-                  onChange={(e) => setMaxAmount(e.target.value)}
+                  onValueChange={setMaxAmount}
                   disabled={saving}
                   rightAddon="đ"
                 />
@@ -1810,7 +1789,7 @@ export function MerchantDetailPage({ id }: { id: string }) {
       ) : null}
 
       {/* Top two-column: Basic info + Wallet */}
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[1fr_280px]">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[1fr_360px]">
         <SectionBasic m={merchant} merchantId={id} onUpdated={setMerchant} />
         <SectionWallet
           wallet={merchant.wallet}

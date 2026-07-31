@@ -40,7 +40,7 @@ const variantClass: Record<ButtonVariant, string> = {
     "!bg-transparent !text-danger hover:!bg-danger-bg hover:!text-danger focus-visible:ring-danger/25",
   "danger-outline":
     "!border !border-danger-edge !bg-elevated !text-danger hover:!bg-danger-bg hover:!text-danger focus-visible:ring-danger/25",
-  link: "h-auto gap-1 !bg-transparent !px-0 !py-0 !text-ink-secondary underline-offset-4 hover:!text-ink hover:underline focus-visible:ring-0",
+  link: "h-auto gap-1 !bg-transparent !px-0 !py-0 !text-ink-secondary underline-offset-4 hover:!text-link-hover hover:underline focus-visible:ring-0",
 };
 
 const iconSizeClass: Record<ButtonSize, string> = {

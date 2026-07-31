@@ -293,12 +293,21 @@ export function MerchantListPage() {
                 <td className="truncate px-3 py-2.5 sm:px-5">
                   <Link
                     href={ROUTES.merchantDetail(row.id)}
-                    className="text-label font-medium !text-ink hover:underline"
+                    className="text-label font-medium"
+                    title={row.code}
                   >
                     {row.code}
                   </Link>
                 </td>
-                <td className="truncate px-3 py-2.5 text-label text-ink sm:px-5">{row.name}</td>
+                <td className="truncate px-3 py-2.5 sm:px-5">
+                  <Link
+                    href={ROUTES.merchantDetail(row.id)}
+                    className="text-label font-medium"
+                    title={row.name}
+                  >
+                    {row.name}
+                  </Link>
+                </td>
                 <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink sm:px-5">
                   {formatMoney(row.availableBalance)}
                 </td>

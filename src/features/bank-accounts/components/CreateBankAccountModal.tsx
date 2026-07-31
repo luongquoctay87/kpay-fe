@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { IconSave } from "@/components/icons/NavIcons";
-import { Button, Field, Input, Select, Textarea } from "@/components/ui";
+import { Button, Field, Input, MoneyInput, Select, Textarea } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import type { BankOption, CreateBankAccountBody } from "@/features/bank-accounts/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
+import { parseMoneyNumber } from "@/lib/format/money";
 import { ApiError } from "@/lib/types/api";
 
 type CreateBankAccountModalProps = {
@@ -91,8 +92,8 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
     const weightNum = weight.trim() ? Number(weight) : 0;
     const rotationRaw = rotationGroup.trim();
     const rotationNum = rotationRaw ? Number(rotationRaw) : null;
-    const dailyNum = dailyLimit.trim() ? Number(dailyLimit) : 0;
-    const openingNum = openingBalance.trim() ? Number(openingBalance) : 0;
+    const dailyNum = dailyLimit.trim() ? parseMoneyNumber(dailyLimit) : 0;
+    const openingNum = openingBalance.trim() ? parseMoneyNumber(openingBalance) : 0;
 
     if (
       Number.isNaN(dailyNum) ||
@@ -239,25 +240,23 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
                 htmlFor="ba-limit"
                 hint={t("bankAccounts.placeholderDailyLimit")}
               >
-                <Input
+                <MoneyInput
                   id="ba-limit"
-                  type="number"
-                  min={0}
                   value={dailyLimit}
-                  onChange={(e) => setDailyLimit(e.target.value)}
+                  onValueChange={setDailyLimit}
                   placeholder="0"
                   disabled={submitting}
+                  rightAddon="đ"
                 />
               </Field>
               <Field label={t("bankAccounts.labelOpeningBalance")} htmlFor="ba-opening">
-                <Input
+                <MoneyInput
                   id="ba-opening"
-                  type="number"
-                  min={0}
                   value={openingBalance}
-                  onChange={(e) => setOpeningBalance(e.target.value)}
+                  onValueChange={setOpeningBalance}
                   placeholder={t("bankAccounts.placeholderOpeningBalance")}
                   disabled={submitting}
+                  rightAddon="đ"
                 />
               </Field>
             </div>

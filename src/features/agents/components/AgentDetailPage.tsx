@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { PageHeader } from "@/components/common";
+import { MoneyAmount, PageHeader } from "@/components/common";
 import { IconHeadset, IconRefresh, IconUsers } from "@/components/icons/NavIcons";
 import {
   Button,
   ConfirmDialog,
   Field,
   Input,
+  MoneyInput,
   OtpInput,
   PasswordVisibilityToggle,
   Select,
@@ -30,7 +31,8 @@ import { merchantApi } from "@/features/merchants/api";
 import type { MerchantListItem } from "@/features/merchants/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { ROUTES } from "@/lib/constants/routes";
-import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatDateTime } from "@/lib/format/datetime";
+import { parseMoneyNumber } from "@/lib/format/money";
 import { generateLoginPassword } from "@/lib/password/generate-login-password";
 import { ApiError } from "@/lib/types/api";
 
@@ -93,7 +95,7 @@ function AdjustBalanceModal({
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
 
-  const amountNum = Number(amount);
+  const amountNum = parseMoneyNumber(amount);
   const amountValid = Number.isFinite(amountNum) && amountNum > 0;
 
   return (
@@ -129,9 +131,10 @@ function AdjustBalanceModal({
         <div className="flex flex-col gap-4 p-5">
           <p className="text-label text-ink">
             {t("agentDetail.modalAdjustCurrent")}{" "}
-            <span className="font-semibold tabular-nums text-accent">
-              {formatMoney(currentBalance)}
-            </span>
+            <MoneyAmount
+              value={currentBalance}
+              amountClassName="font-semibold text-accent"
+            />
           </p>
 
           <fieldset className="min-w-0">
@@ -166,15 +169,13 @@ function AdjustBalanceModal({
           </fieldset>
 
           <Field label={t("agentDetail.modalAdjustAmount")} htmlFor="ag-adj-amount" required>
-            <Input
+            <MoneyInput
               id="ag-adj-amount"
-              type="number"
-              min={1}
-              step={1}
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onValueChange={setAmount}
               placeholder={t("agentDetail.placeholderAmount")}
               disabled={saving}
+              rightAddon="đ"
             />
           </Field>
 
@@ -440,9 +441,10 @@ function SectionWallet({
       </div>
       <div className="flex flex-col items-start gap-1 p-4 sm:p-5">
         <span className="text-label text-muted">{t("agentDetail.walletBalance")}</span>
-        <span className="text-2xl font-semibold tabular-nums text-accent">
-          {formatMoney(balance)}
-        </span>
+        <MoneyAmount
+          value={balance}
+          amountClassName="text-2xl font-semibold text-accent"
+        />
       </div>
     </section>
   );
@@ -639,7 +641,7 @@ function SectionLinkedMerchants({
                   <td className="py-2.5">
                     <Link
                       href={ROUTES.merchantDetail(row.merchantId)}
-                      className="font-medium text-accent hover:underline"
+                      className="font-medium"
                     >
                       {row.merchantName ?? row.merchantCode ?? row.merchantId}
                     </Link>
@@ -1238,7 +1240,7 @@ export function AgentDetailPage({ id }: { id: string }) {
         </p>
       ) : null}
 
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[1fr_280px]">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[1fr_360px]">
         <SectionBasic agent={agent} onEdit={() => setShowEdit(true)} />
         <SectionWallet
           balance={balance}

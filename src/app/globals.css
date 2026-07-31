@@ -30,6 +30,9 @@
   --kpay-accent-hover: #27272a;
   --kpay-on-accent: #ffffff;
 
+  /* Inline text links */
+  --kpay-link-hover: #0ea5e9; /* sky-500 */
+
   /* Feedback */
   --kpay-danger: #b91c1c;
   --kpay-danger-bg: #fef2f2;
@@ -81,6 +84,7 @@
   --color-accent: var(--kpay-accent);
   --color-accent-hover: var(--kpay-accent-hover);
   --color-on-accent: var(--kpay-on-accent);
+  --color-link-hover: var(--kpay-link-hover);
 
   --color-danger: var(--kpay-danger);
   --color-danger-bg: var(--kpay-danger-bg);
@@ -187,12 +191,20 @@ a {
 
 /* —— Shell / Ant Design link reset —— */
 .kpay-shell a {
-  color: inherit !important;
+  color: inherit;
   text-decoration: none;
 }
 
-.kpay-shell a:hover {
-  color: inherit !important;
+/* Inline / content links: light-blue hover app-wide */
+.kpay-shell a:not([data-kpay-chrome]):hover {
+  color: var(--kpay-link-hover) !important;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Buttons, sidebar, and other chrome links keep their own hover styles */
+.kpay-shell a[data-kpay-chrome]:hover {
+  text-decoration: none;
 }
 
 /* Align Ant Design base type with Geist + our scale */

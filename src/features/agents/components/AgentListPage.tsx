@@ -281,7 +281,7 @@ export function AgentListPage() {
                 <td className="truncate px-3 py-2.5 sm:px-5">
                   <Link
                     href={ROUTES.agentDetail(row.id)}
-                    className="text-label font-medium text-accent hover:underline"
+                    className="text-label font-medium"
                   >
                     {row.name}
                   </Link>

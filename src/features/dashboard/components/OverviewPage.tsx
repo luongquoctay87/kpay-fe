@@ -92,6 +92,7 @@ export function OverviewPage() {
             <li key={q.href}>
               <Link
                 href={q.href}
+                data-kpay-chrome
                 className="flex items-start justify-between gap-3 px-3.5 py-3.5 transition hover:bg-surface sm:items-center sm:gap-4 sm:px-4"
               >
                 <div className="min-w-0 flex-1">
@@ -121,6 +122,7 @@ export function OverviewPage() {
             <Link
               key={item.href}
               href={item.href}
+              data-kpay-chrome
               className="inline-flex h-9 items-center justify-center rounded-md border border-edge bg-elevated px-3 text-center text-label font-medium text-ink-secondary transition hover:border-edge-strong hover:bg-surface hover:text-ink sm:h-8 sm:justify-start sm:text-left"
             >
               {item.label}

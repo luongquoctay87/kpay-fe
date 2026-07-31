@@ -64,7 +64,7 @@ export function Breadcrumbs({
             {item.href ? (
               <Link
                 href={item.href}
-                className="flex items-center gap-1 transition hover:text-ink"
+                className="flex items-center gap-1 transition"
               >
                 {content}
               </Link>
