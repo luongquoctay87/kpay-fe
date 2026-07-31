@@ -2,11 +2,12 @@ import { Suspense } from "react";
 import { AuthShell } from "@/components/layout/AuthShell";
 import { TotpForm } from "@/features/auth";
 
-export default function TotpPage() {
+/** Merchant / Agent TOTP — current UI, /auth API. */
+export default function PortalTotpPage() {
   return (
     <AuthShell>
       <Suspense>
-        <TotpForm />
+        <TotpForm realm="portal" />
       </Suspense>
     </AuthShell>
   );

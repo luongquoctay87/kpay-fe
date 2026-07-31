@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/common";
 import { Button, Field, Input, toast } from "@/components/ui";
 import { merchantApi } from "@/features/merchants/api";
 import { MerchantCredentialsModal } from "@/features/merchants/components/MerchantCredentialsModal";
+import { invalidateActiveMerchantOptionsCache } from "@/features/merchants/options-cache";
 import type { CreateMerchantResp, FeeItem, FeeItemReq } from "@/features/merchants/types";
 import { percentToBps } from "@/features/merchants/types";
 import { useI18n } from "@/i18n/use-i18n";
@@ -178,6 +179,7 @@ export function MerchantCreatePage() {
         loginPassword: password,
         fees: buildFeesPayload(fees),
       });
+      invalidateActiveMerchantOptionsCache();
       // Redirect only once the one-time secret has been acknowledged.
       setCreated(resp);
       toast.success(t("merchantNew.successCreated"));

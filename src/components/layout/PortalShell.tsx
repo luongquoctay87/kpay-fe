@@ -10,7 +10,7 @@ import { TotpSetupRequiredModal } from "@/features/auth/components/TotpSetupRequ
 import { useAuthStore } from "@/features/auth/store";
 import { getAccessToken } from "@/features/auth/token";
 import { useI18n } from "@/i18n/use-i18n";
-import { ROUTES } from "@/lib/constants/routes";
+import { adminLoginHref } from "@/lib/constants/routes";
 
 export function PortalShell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -47,7 +47,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     if (!getAccessToken()) {
-      router.replace(`${ROUTES.login}?next=${encodeURIComponent(pathname)}`);
+      router.replace(adminLoginHref(pathname));
     }
   }, [hydrated, pathname, router]);
 

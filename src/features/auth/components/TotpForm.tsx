@@ -8,7 +8,13 @@ import { QRCodeSVG } from "qrcode.react";
 import { DocumentTitle } from "@/components/layout/DocumentTitle";
 import { Button, Field, Input, OtpInput } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
-import { getTwoFaToken } from "@/features/auth/token";
+import { portalAuthApi } from "@/features/auth/api";
+import {
+  clearTwoFaToken,
+  getTwoFaToken,
+  setAccessToken,
+  setStoredUserJson,
+} from "@/features/auth/token";
 import { useI18n } from "@/i18n/use-i18n";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
 import { ROUTES, safeInternalPath } from "@/lib/constants/routes";
@@ -19,16 +25,21 @@ const { Title, Paragraph, Text } = Typography;
 /**
  * TOTP enroll (QR) / verify (6-digit hoặc backup code).
  * OTP UI khớp LoginForm (OtpInput 6 ô).
+ * @param realm admin → /admin/auth + /admin/login; portal → /auth + /login
  */
-export function TotpForm() {
+export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const step = searchParams.get("step") === "enroll" ? "enroll" : "verify";
-  const nextPath = safeInternalPath(searchParams.get("next"));
-  const enrollTotp = useAuthStore((s) => s.enrollTotp);
-  const confirmTotp = useAuthStore((s) => s.confirmTotp);
-  const verifyTotp = useAuthStore((s) => s.verifyTotp);
+  const nextPath = safeInternalPath(
+    searchParams.get("next"),
+    realm === "admin" ? ROUTES.home : ROUTES.portalHome,
+  );
+  const loginRoute = realm === "admin" ? ROUTES.login : ROUTES.portalLogin;
+  const enrollTotpAdmin = useAuthStore((s) => s.enrollTotp);
+  const confirmTotpAdmin = useAuthStore((s) => s.confirmTotp);
+  const verifyTotpAdmin = useAuthStore((s) => s.verifyTotp);
 
   const [otpauthUrl, setOtpauthUrl] = useState<string | null>(null);
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
@@ -40,19 +51,20 @@ export function TotpForm() {
 
   useEffect(() => {
     if (!getTwoFaToken()) {
-      router.replace(ROUTES.login);
+      router.replace(loginRoute);
       return;
     }
     if (step !== "enroll") return;
     void (async () => {
       try {
-        const result = await enrollTotp();
+        const result =
+          realm === "admin" ? await enrollTotpAdmin() : await portalAuthApi.enrollTotp();
         setOtpauthUrl(result.otpauthUrl ?? null);
       } catch (e) {
         setError(e instanceof ApiError ? e.message : t("auth.totpEnrollFailed"));
       }
     })();
-  }, [enrollTotp, router, step, t]);
+  }, [enrollTotpAdmin, loginRoute, realm, router, step, t]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -71,15 +83,40 @@ export function TotpForm() {
     setLoading(true);
     try {
       if (step === "enroll") {
-        const result = await confirmTotp(code.trim());
+        const result =
+          realm === "admin"
+            ? await confirmTotpAdmin(code.trim())
+            : await portalAuthApi.confirmTotp({ code: code.trim() });
+        if (realm === "portal" && result.accessToken) {
+          setAccessToken(result.accessToken, result.expiresIn);
+          if (result.user) setStoredUserJson(JSON.stringify(result.user));
+          clearTwoFaToken();
+        }
         setBackupCodes(result.backupCodes ?? []);
         setCode("");
         required.hide();
       } else if (useBackup) {
-        await verifyTotp("", code.trim());
+        if (realm === "admin") {
+          await verifyTotpAdmin("", code.trim());
+        } else {
+          const result = await portalAuthApi.verifyTotp({ code: code.trim() });
+          if (result.accessToken) {
+            setAccessToken(result.accessToken, result.expiresIn);
+            if (result.user) setStoredUserJson(JSON.stringify(result.user));
+            clearTwoFaToken();
+          }
+        }
+        router.replace(nextPath);
+      } else if (realm === "admin") {
+        await verifyTotpAdmin(code.trim());
         router.replace(nextPath);
       } else {
-        await verifyTotp(code.trim());
+        const result = await portalAuthApi.verifyTotp({ code: code.trim() });
+        if (result.accessToken) {
+          setAccessToken(result.accessToken, result.expiresIn);
+          if (result.user) setStoredUserJson(JSON.stringify(result.user));
+          clearTwoFaToken();
+        }
         router.replace(nextPath);
       }
     } catch (err) {
@@ -98,8 +135,9 @@ export function TotpForm() {
   if (backupCodes) {
     const codes = backupCodes;
     function downloadBackupCodes() {
+      const brand = realm === "admin" ? t("brand.admin") : t("brand.name");
       const body = [
-        "Kpay Admin — TOTP backup codes",
+        `${brand} — TOTP backup codes`,
         `Generated: ${new Date().toISOString()}`,
         "",
         t("auth.backupHint"),
@@ -118,7 +156,9 @@ export function TotpForm() {
 
     return (
       <Card className="w-full max-w-md shadow-md">
-        <DocumentTitle title={`${t("auth.backupTitle")} · ${t("brand.admin")}`} />
+        <DocumentTitle
+          title={`${t("auth.backupTitle")} · ${realm === "admin" ? t("brand.admin") : t("brand.name")}`}
+        />
         <Title level={4}>{t("auth.backupTitle")}</Title>
         <Paragraph type="secondary">{t("auth.backupHint")}</Paragraph>
         <div className="mb-4 rounded border border-dashed border-neutral-300 bg-neutral-50 p-3 font-mono text-sm">
@@ -141,14 +181,8 @@ export function TotpForm() {
             variant="primary"
             fullWidth
             onClick={() => {
-              setBackupCodes(null);
-              setError(null);
-              setUseBackup(false);
-              setCode("");
-              required.hide();
-              const qs = new URLSearchParams({ step: "verify" });
-              if (nextPath && nextPath !== ROUTES.home) qs.set("next", nextPath);
-              router.replace(`${ROUTES.totp}?${qs.toString()}`);
+              // Session already issued on confirm — go home (no second OTP).
+              router.replace(nextPath);
             }}
           >
             {t("auth.backupContinue")}
@@ -160,10 +194,11 @@ export function TotpForm() {
 
   const pageHeading =
     step === "enroll" ? t("auth.totpEnrollTitle") : t("auth.totpVerifyTitle");
+  const brandLabel = realm === "admin" ? t("brand.admin") : t("brand.name");
 
   return (
     <Card className="w-full max-w-md shadow-md">
-      <DocumentTitle title={`${pageHeading} · ${t("brand.admin")}`} />
+      <DocumentTitle title={`${pageHeading} · ${brandLabel}`} />
       <Title level={3} className="!mb-1">
         {pageHeading}
       </Title>
@@ -256,7 +291,7 @@ export function TotpForm() {
           </Button>
         ) : null}
 
-        <Button type="button" variant="link" fullWidth onClick={() => router.push(ROUTES.login)}>
+        <Button type="button" variant="link" fullWidth onClick={() => router.push(loginRoute)}>
           {t("auth.backToSignIn")}
         </Button>
       </form>

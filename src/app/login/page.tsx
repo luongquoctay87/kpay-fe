@@ -1,13 +1,14 @@
 import { Suspense } from "react";
 import { LoadingScreen } from "@/components/common";
 import { AuthShell } from "@/components/layout/AuthShell";
-import { LoginForm } from "@/features/auth";
+import { PortalLoginForm } from "@/features/auth/components/PortalLoginForm";
 
-export default function LoginPage() {
+/** Merchant / Agent portal login — current UI, /auth API. */
+export default function PortalLoginPage() {
   return (
     <AuthShell>
       <Suspense fallback={<LoadingScreen />}>
-        <LoginForm />
+        <PortalLoginForm />
       </Suspense>
     </AuthShell>
   );

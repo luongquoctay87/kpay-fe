@@ -1,4 +1,8 @@
 import type { MessageKey } from "@/i18n/types";
+import {
+  loadStoredColumnVisibility,
+  saveStoredColumnVisibility,
+} from "@/lib/columns/storage";
 
 /** Toggleable data columns (STT is always visible). */
 export const PAYIN_COLUMNS = [
@@ -148,30 +152,15 @@ export function defaultColumnVisibility(): ColumnVisibility {
 }
 
 export function loadColumnVisibility(): ColumnVisibility {
-  const base = defaultColumnVisibility();
-  if (typeof window === "undefined") return base;
-  try {
-    const raw = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
-    if (!raw) return base;
-    const parsed = JSON.parse(raw) as Partial<Record<PayinColumn, boolean>>;
-    for (const col of PAYIN_COLUMNS) {
-      if (typeof parsed[col] === "boolean") base[col] = parsed[col];
-    }
-  } catch {
-    // ignore
-  }
-  if (!PAYIN_COLUMNS.some((col) => base[col])) {
-    return defaultColumnVisibility();
-  }
-  return base;
+  return loadStoredColumnVisibility(
+    COLUMN_VISIBILITY_STORAGE_KEY,
+    PAYIN_COLUMNS,
+    defaultColumnVisibility,
+  );
 }
 
 export function saveColumnVisibility(visibility: ColumnVisibility) {
-  try {
-    localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(visibility));
-  } catch {
-    // ignore
-  }
+  saveStoredColumnVisibility(COLUMN_VISIBILITY_STORAGE_KEY, visibility);
 }
 
 export function visibleColumnCount(visibility: ColumnVisibility): number {

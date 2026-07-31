@@ -29,7 +29,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("password");
   const [useBackup, setUseBackup] = useState(false);
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(() => searchParams.get("username")?.trim() ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMeChecked] = useState(true);
@@ -43,6 +43,11 @@ export function LoginForm() {
   useEffect(() => {
     setRememberMeChecked(getRememberMePreference());
   }, []);
+
+  useEffect(() => {
+    const fromQuery = searchParams.get("username")?.trim();
+    if (fromQuery) setUsername(fromQuery);
+  }, [searchParams]);
 
   async function onPasswordSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -58,7 +63,6 @@ export function LoginForm() {
       const result = await login({
         username: username.trim(),
         password,
-        role: "ADMIN",
         rememberMe,
       });
 
@@ -77,6 +81,14 @@ export function LoginForm() {
 
       setError(t("auth.invalidResponse"));
     } catch (err) {
+      if (err instanceof ApiError && err.code === "WRONG_LOGIN_PORTAL") {
+        const qs = new URLSearchParams();
+        if (username.trim()) qs.set("username", username.trim());
+        router.replace(
+          qs.size ? `${ROUTES.portalLogin}?${qs.toString()}` : ROUTES.portalLogin,
+        );
+        return;
+      }
       setError(err instanceof ApiError ? err.message : t("auth.loginFailed"));
     } finally {
       setLoading(false);
@@ -248,6 +260,11 @@ export function LoginForm() {
             >
               {loading ? t("auth.signingIn") : t("auth.signIn")}
             </Button>
+            <p className="text-center text-caption text-muted">
+              <a href={ROUTES.portalLogin} className="text-accent hover:underline">
+                {t("auth.portalLoginLink")}
+              </a>
+            </p>
           </form>
         ) : (
           <form className="flex flex-col gap-4" onSubmit={onOtpSubmit} noValidate>

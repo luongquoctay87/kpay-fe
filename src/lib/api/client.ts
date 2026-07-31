@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { refreshSession } from "@/features/auth/refresh";
 import { getAccessToken, getTwoFaToken } from "@/features/auth/token";
+import { adminLoginHref } from "@/lib/constants/routes";
 import { ApiError, type ApiResponse } from "@/lib/types/api";
 
 /** Same-origin proxy → Spring Boot (`next.config` rewrites). */
@@ -32,7 +33,7 @@ apiClient.interceptors.response.use(
 
     if (status === 401 && original && !original._retry) {
       const url = original.url ?? "";
-      if (url.includes("/auth/login") || url.includes("/auth/refresh-token")) {
+      if (url.includes("/admin/auth/login") || url.includes("/admin/auth/refresh-token") || url.includes("/auth/login")) {
         return Promise.reject(toApiError(error));
       }
 
@@ -44,8 +45,8 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       }
 
-      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/admin/login") && !window.location.pathname.startsWith("/login")) {
+        window.location.href = adminLoginHref(window.location.pathname);
       }
     }
 

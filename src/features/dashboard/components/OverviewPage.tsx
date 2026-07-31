@@ -1,6 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
+import {
+  IconArrowIn,
+  IconArrowOut,
+  IconBank,
+  IconChevronRight,
+  IconHeadset,
+  IconStore,
+  IconWebhook,
+} from "@/components/icons/NavIcons";
 import { useI18n } from "@/i18n/use-i18n";
 import { ROUTES } from "@/lib/constants/routes";
 
@@ -31,35 +41,68 @@ export function OverviewPage() {
     },
   ] as const;
 
-  const queues = [
+  const queues: {
+    title: string;
+    count: number;
+    href: string;
+    description: string;
+    icon: ReactNode;
+  }[] = [
     {
       title: t("overview.queuePayinTitle"),
       count: 0,
       href: ROUTES.payin,
       description: t("overview.queuePayinDesc"),
+      icon: <IconArrowIn width={16} height={16} />,
     },
     {
       title: t("overview.queuePayoutTitle"),
       count: 0,
       href: ROUTES.payout,
       description: t("overview.queuePayoutDesc"),
+      icon: <IconArrowOut width={16} height={16} />,
     },
     {
       title: t("overview.queueCallbackTitle"),
       count: 0,
       href: ROUTES.callbackLogs,
       description: t("overview.queueCallbackDesc"),
+      icon: <IconWebhook width={16} height={16} />,
     },
-  ] as const;
+  ];
 
-  const shortcuts = [
-    { label: t("nav.merchant"), href: ROUTES.merchants },
-    { label: t("nav.agent"), href: ROUTES.agents },
-    { label: t("nav.payin"), href: ROUTES.payin },
-    { label: t("nav.payout"), href: ROUTES.payout },
-    { label: t("nav.callback"), href: ROUTES.callbackLogs },
-    { label: t("nav.bankAccounts"), href: ROUTES.bankAccounts },
-  ] as const;
+  const shortcuts: { label: string; href: string; icon: ReactNode }[] = [
+    {
+      label: t("nav.merchant"),
+      href: ROUTES.merchants,
+      icon: <IconStore width={15} height={15} />,
+    },
+    {
+      label: t("nav.agent"),
+      href: ROUTES.agents,
+      icon: <IconHeadset width={15} height={15} />,
+    },
+    {
+      label: t("nav.payin"),
+      href: ROUTES.payin,
+      icon: <IconArrowIn width={15} height={15} />,
+    },
+    {
+      label: t("nav.payout"),
+      href: ROUTES.payout,
+      icon: <IconArrowOut width={15} height={15} />,
+    },
+    {
+      label: t("nav.callback"),
+      href: ROUTES.callbackLogs,
+      icon: <IconWebhook width={15} height={15} />,
+    },
+    {
+      label: t("nav.bankAccounts"),
+      href: ROUTES.bankAccounts,
+      icon: <IconBank width={15} height={15} />,
+    },
+  ];
 
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-6 px-4 py-5 sm:gap-8 sm:px-8 lg:px-10">
@@ -95,19 +138,27 @@ export function OverviewPage() {
                 data-kpay-chrome
                 className="flex items-start justify-between gap-3 px-3.5 py-3.5 transition hover:bg-surface sm:items-center sm:gap-4 sm:px-4"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="text-body font-medium text-ink">{q.title}</p>
-                  <p className="mt-0.5 text-caption text-muted sm:truncate">
-                    {q.description}
-                  </p>
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-surface text-ink-secondary">
+                    {q.icon}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-body font-medium text-ink">{q.title}</p>
+                    <p className="mt-0.5 text-caption text-muted sm:truncate">
+                      {q.description}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2 pt-0.5 sm:gap-3 sm:pt-0">
                   <span className="text-body font-semibold tabular-nums text-ink">
                     {q.count}
                   </span>
-                  <span aria-hidden className="text-subtle">
-                    →
-                  </span>
+                  <IconChevronRight
+                    width={16}
+                    height={16}
+                    className="text-subtle"
+                    aria-hidden
+                  />
                 </div>
               </Link>
             </li>
@@ -123,8 +174,9 @@ export function OverviewPage() {
               key={item.href}
               href={item.href}
               data-kpay-chrome
-              className="inline-flex h-9 items-center justify-center rounded-md border border-edge bg-elevated px-3 text-center text-label font-medium text-ink-secondary transition hover:border-edge-strong hover:bg-surface hover:text-ink sm:h-8 sm:justify-start sm:text-left"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-edge bg-elevated px-3 text-center text-label font-medium text-ink-secondary transition hover:border-edge-strong hover:bg-surface hover:text-ink sm:h-8 sm:justify-start sm:text-left"
             >
+              <span className="shrink-0 text-muted">{item.icon}</span>
               {item.label}
             </Link>
           ))}

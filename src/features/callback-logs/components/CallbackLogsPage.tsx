@@ -56,6 +56,7 @@ import {
   CALLBACK_TYPE_OPTIONS,
 } from "@/features/callback-logs/types";
 import { useI18n } from "@/i18n/use-i18n";
+import { usePagedList } from "@/lib/async/use-paged-list";
 import { ApiError } from "@/lib/types/api";
 import { useAuthStore } from "@/features/auth/store";
 
@@ -63,6 +64,11 @@ type JsonModalState = {
   title: string;
   data: Record<string, unknown> | null | undefined;
 } | null;
+
+const EMPTY_CALLBACK_LIST = {
+  rows: [] as CallbackLogListItem[],
+  total: 0,
+};
 
 function HttpStatusCell({ status }: { status?: number | null }) {
   if (status == null) return <span className="text-label text-muted">—</span>;
@@ -104,16 +110,10 @@ function truncateUrl(url: string, max = 36): string {
 export function CallbackLogsPage() {
   const { t } = useI18n();
   const permissions = useAuthStore((s) => s.user?.permissions);
-  const canResend =
-    !permissions ||
-    permissions.length === 0 ||
-    permissions.includes("callbacks:resend");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Fail-closed: missing permissions means no privileged actions.
+  const canResend = Boolean(permissions?.includes("callbacks:resend"));
   const [notice, setNotice] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
-  const [rows, setRows] = useState<CallbackLogListItem[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
 
@@ -173,25 +173,24 @@ export function CallbackLogsPage() {
     [t],
   );
 
-  const fetchList = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await callbackLogApi.list({ ...filters, page, size });
-      setRows(data.items ?? []);
-      setTotal(data.totalElements ?? 0);
-    } catch (e) {
-      setRows([]);
-      setTotal(0);
-      setError(e instanceof ApiError ? e.message : t("callbackLogs.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, page, size, t]);
+  const loadList = useCallback(async () => {
+    const data = await callbackLogApi.list({ ...filters, page, size });
+    return {
+      rows: data.items ?? [],
+      total: data.totalElements ?? 0,
+    };
+  }, [filters, page, size]);
 
-  useEffect(() => {
-    void fetchList();
-  }, [fetchList]);
+  const mapError = useCallback(
+    (e: unknown) => (e instanceof ApiError ? e.message : t("callbackLogs.loadError")),
+    [t],
+  );
+
+  const { loading, error, setError, rows, total, refresh } = usePagedList({
+    load: loadList,
+    empty: EMPTY_CALLBACK_LIST,
+    mapError,
+  });
 
   const hasFilters = Boolean(
     filters.externalRequestId || filters.type || filters.direction || filters.status,
@@ -267,7 +266,7 @@ export function CallbackLogsPage() {
     try {
       await callbackLogApi.resend(row.id);
       setNotice(t("callbackLogs.resendOk"));
-      await fetchList();
+      await refresh();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t("callbackLogs.resendError"));
     } finally {
@@ -365,9 +364,9 @@ export function CallbackLogsPage() {
           />
         }
         error={error}
-        onRetry={fetchList}
+        onRetry={refresh}
         retryLabel={t("callbackLogs.refresh")}
-        onRefresh={fetchList}
+        onRefresh={refresh}
         loading={loading}
         refreshLabel={t("callbackLogs.refresh")}
         pagination={

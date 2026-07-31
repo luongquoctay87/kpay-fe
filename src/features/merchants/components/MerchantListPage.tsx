@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useState, type FormEvent } from "react";
 import {
   IconActivity,
   IconBan,
@@ -26,6 +26,7 @@ import {
 } from "@/components/common";
 import { Button, ConfirmDialog, Select, StatusBadge } from "@/components/ui";
 import { merchantApi } from "@/features/merchants/api";
+import { invalidateActiveMerchantOptionsCache } from "@/features/merchants/options-cache";
 import {
   MERCHANT_STATUS_LABEL_KEY,
   MERCHANT_STATUS_TONE,
@@ -36,17 +37,19 @@ import {
   type MerchantStatus,
 } from "@/features/merchants/types";
 import { useI18n } from "@/i18n/use-i18n";
+import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatDate, formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 
+const EMPTY_MERCHANT_LIST = {
+  rows: [] as MerchantListItem[],
+  total: 0,
+  totalBalance: null as number | null,
+};
+
 export function MerchantListPage() {
   const { t } = useI18n();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<MerchantListItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [totalBalance, setTotalBalance] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
   const [nameDraft, setNameDraft] = useState("");
@@ -68,29 +71,27 @@ export function MerchantListPage() {
     [t],
   );
 
-  const fetchList = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await merchantApi.list({ ...filters, page, size });
-      setRows(data.items ?? []);
-      setTotal(data.totalElements ?? 0);
-      setTotalBalance(
+  const loadList = useCallback(async () => {
+    const data = await merchantApi.list({ ...filters, page, size });
+    return {
+      rows: data.items ?? [],
+      total: data.totalElements ?? 0,
+      totalBalance:
         data.totalAvailableBalance != null ? Number(data.totalAvailableBalance) : null,
-      );
-    } catch (e) {
-      setRows([]);
-      setTotal(0);
-      setTotalBalance(null);
-      setError(e instanceof ApiError ? e.message : t("merchants.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, page, size, t]);
+    };
+  }, [filters, page, size]);
 
-  useEffect(() => {
-    void fetchList();
-  }, [fetchList]);
+  const mapError = useCallback(
+    (e: unknown) => (e instanceof ApiError ? e.message : t("merchants.loadError")),
+    [t],
+  );
+
+  const { loading, error, setError, rows, total, data, refresh } = usePagedList({
+    load: loadList,
+    empty: EMPTY_MERCHANT_LIST,
+    mapError,
+  });
+  const totalBalance = data.totalBalance;
 
   const hasFilters = Boolean(filters.name || filters.status);
   const canReset = hasFilters || Boolean(nameDraft) || statusDraft != null;
@@ -129,7 +130,8 @@ export function MerchantListPage() {
       await merchantApi.updateStatus(row.id, {
         status: action === "suspend" ? "suspended" : "active",
       });
-      await fetchList();
+      invalidateActiveMerchantOptionsCache();
+      await refresh();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t("merchants.actionError"));
     } finally {
@@ -216,9 +218,9 @@ export function MerchantListPage() {
           </>
         }
         error={error}
-        onRetry={fetchList}
+        onRetry={refresh}
         retryLabel={t("merchants.refresh")}
-        onRefresh={fetchList}
+        onRefresh={refresh}
         loading={loading}
         refreshLabel={t("merchants.refresh")}
         pagination={

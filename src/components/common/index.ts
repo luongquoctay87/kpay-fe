@@ -9,6 +9,8 @@ export { ColumnHeader } from "@/components/common/ColumnHeader";
 export { CopyButton } from "@/components/common/CopyButton";
 export { MoneyAmount } from "@/components/common/MoneyAmount";
 export { StatCard } from "@/components/common/StatCard";
+export { AdjustBalanceModal } from "@/components/common/AdjustBalanceModal";
+export { ResetPasswordModal } from "@/components/common/ResetPasswordModal";
 export {
   FilterField,
   filterControlClass,

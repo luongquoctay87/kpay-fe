@@ -37,7 +37,7 @@ import {
 
 import { Button, Input, Select, StatusBadge } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
-import { merchantApi } from "@/features/merchants/api";
+import { getActiveMerchantOptions } from "@/features/merchants/options-cache";
 import { payoutApi } from "@/features/payout/api";
 import { ColumnPicker } from "@/features/payout/components/ColumnPicker";
 import { PayoutDetailDrawer } from "@/features/payout/components/PayoutDetailDrawer";
@@ -61,7 +61,6 @@ import type {
   OrderCallbackStatus,
   PayoutOrderListItem,
   PayoutOrderListParams,
-  PayoutOrderStats,
   PayoutStatus,
 } from "@/features/payout/types";
 import {
@@ -70,17 +69,19 @@ import {
   PAYOUT_STATUS_OPTIONS,
 } from "@/features/payout/types";
 import { useI18n } from "@/i18n/use-i18n";
+import { usePagedList } from "@/lib/async/use-paged-list";
 import { formatDateTime, formatMoney, localDateTimeInputToIso } from "@/lib/format/datetime";
 import { ROUTES } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
 
+const EMPTY_PAYOUT_LIST = {
+  rows: [] as PayoutOrderListItem[],
+  total: 0,
+  stats: EMPTY_PAYOUT_STATS,
+};
+
 export function PayoutListPage() {
   const { t } = useI18n();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<PayoutOrderListItem[]>([]);
-  const [stats, setStats] = useState<PayoutOrderStats>(EMPTY_PAYOUT_STATS);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
   const [expanded, setExpanded] = useState(true);
@@ -116,10 +117,11 @@ export function PayoutListPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
       try {
         const [merchants, bankAccounts] = await Promise.all([
-          merchantApi.list({ page: 0, size: 200, status: "active" }),
+          getActiveMerchantOptions(),
           bankAccountApi.list({
             page: 0,
             size: 100,
@@ -127,12 +129,8 @@ export function PayoutListPage() {
             canDisburse: true,
           }),
         ]);
-        setMerchantOptions(
-          (merchants.items ?? []).map((m) => ({
-            value: m.id,
-            label: `${m.code} — ${m.name}`,
-          })),
-        );
+        if (cancelled) return;
+        setMerchantOptions(merchants);
         setSourceAccountOptions(
           (bankAccounts.items ?? []).map((account) => ({
             value: account.id,
@@ -143,6 +141,9 @@ export function PayoutListPage() {
         // dropdowns stay empty; list still works
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function onColumnVisibilityChange(next: ColumnVisibility) {
@@ -171,27 +172,26 @@ export function PayoutListPage() {
     [t],
   );
 
-  const fetchList = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await payoutApi.list({ ...filters, page, size });
-      setRows(data.items ?? []);
-      setTotal(data.totalElements ?? 0);
-      setStats(data.stats ?? EMPTY_PAYOUT_STATS);
-    } catch (e) {
-      setRows([]);
-      setTotal(0);
-      setStats(EMPTY_PAYOUT_STATS);
-      setError(e instanceof ApiError ? e.message : t("payout.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, page, size, t]);
+  const loadList = useCallback(async () => {
+    const data = await payoutApi.list({ ...filters, page, size });
+    return {
+      rows: data.items ?? [],
+      total: data.totalElements ?? 0,
+      stats: data.stats ?? EMPTY_PAYOUT_STATS,
+    };
+  }, [filters, page, size]);
 
-  useEffect(() => {
-    void fetchList();
-  }, [fetchList]);
+  const mapError = useCallback(
+    (e: unknown) => (e instanceof ApiError ? e.message : t("payout.loadError")),
+    [t],
+  );
+
+  const { loading, error, setError, rows, total, data, refresh } = usePagedList({
+    load: loadList,
+    empty: EMPTY_PAYOUT_LIST,
+    mapError,
+  });
+  const stats = data.stats;
 
   const hasFilters = Boolean(
     filters.transId ||
@@ -597,9 +597,9 @@ export function PayoutListPage() {
           </>
         }
         error={error}
-        onRetry={fetchList}
+        onRetry={refresh}
         retryLabel={t("payout.refresh")}
-        onRefresh={fetchList}
+        onRefresh={refresh}
         loading={loading}
         refreshLabel={t("payout.refresh")}
         pagination={

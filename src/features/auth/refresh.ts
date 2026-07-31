@@ -30,7 +30,7 @@ export async function refreshSession(): Promise<AuthResult | null> {
 async function doRefresh(): Promise<AuthResult | null> {
   try {
     const { data } = await axios.post<ApiResponse<AuthResult>>(
-      `${API_BASE}/auth/refresh-token`,
+      `${API_BASE}/admin/auth/refresh-token`,
       {},
       { withCredentials: true },
     );

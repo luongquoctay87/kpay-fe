@@ -21,6 +21,7 @@ import {
   IconSearch,
   IconStore,
   IconUser,
+  IconWallet,
   IconWebhook,
 } from "@/components/icons/NavIcons";
 import {
@@ -36,7 +37,7 @@ import {
 } from "@/components/common";
 
 import { Button, Input, Select, StatusBadge } from "@/components/ui";
-import { merchantApi } from "@/features/merchants/api";
+import { getActiveMerchantOptions } from "@/features/merchants/options-cache";
 import { payinApi } from "@/features/payin/api";
 import { FinalizePayinModal } from "@/features/payin/components/FinalizePayinModal";
 import { PayinDetailDrawer } from "@/features/payin/components/PayinDetailDrawer";
@@ -61,7 +62,6 @@ import type {
   OrderCallbackStatus,
   PayinChannelOption,
   PayinOrderListItem,
-  PayinOrderStats,
   PayinStatus,
 } from "@/features/payin/types";
 import {
@@ -70,17 +70,19 @@ import {
   PAYIN_STATUS_OPTIONS,
 } from "@/features/payin/types";
 import { useI18n } from "@/i18n/use-i18n";
+import { usePagedList } from "@/lib/async/use-paged-list";
 import { formatDateTime, formatMoney, localDateTimeInputToIso } from "@/lib/format/datetime";
 import { ROUTES } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
 
+const EMPTY_PAYIN_LIST = {
+  rows: [] as PayinOrderListItem[],
+  total: 0,
+  stats: EMPTY_PAYIN_STATS,
+};
+
 export function PayinListPage() {
   const { t } = useI18n();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<PayinOrderListItem[]>([]);
-  const [stats, setStats] = useState<PayinOrderStats>(EMPTY_PAYIN_STATS);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
   const [expanded, setExpanded] = useState(true);
@@ -124,23 +126,23 @@ export function PayinListPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
       try {
         const [merchants, channels] = await Promise.all([
-          merchantApi.list({ page: 0, size: 200, status: "active" }),
+          getActiveMerchantOptions(),
           payinApi.listChannels(),
         ]);
-        setMerchantOptions(
-          (merchants.items ?? []).map((m) => ({
-            value: m.id,
-            label: `${m.code} — ${m.name}`,
-          })),
-        );
+        if (cancelled) return;
+        setMerchantOptions(merchants);
         setChannelOptions(channels ?? []);
       } catch {
         // dropdowns stay empty; list still works
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function onColumnVisibilityChange(next: ColumnVisibility) {
@@ -174,27 +176,26 @@ export function PayinListPage() {
     [channelOptions],
   );
 
-  const fetchList = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await payinApi.list({ ...filters, page, size });
-      setRows(data.items ?? []);
-      setTotal(data.totalElements ?? 0);
-      setStats(data.stats ?? EMPTY_PAYIN_STATS);
-    } catch (e) {
-      setRows([]);
-      setTotal(0);
-      setStats(EMPTY_PAYIN_STATS);
-      setError(e instanceof ApiError ? e.message : t("payin.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, page, size, t]);
+  const loadList = useCallback(async () => {
+    const data = await payinApi.list({ ...filters, page, size });
+    return {
+      rows: data.items ?? [],
+      total: data.totalElements ?? 0,
+      stats: data.stats ?? EMPTY_PAYIN_STATS,
+    };
+  }, [filters, page, size]);
 
-  useEffect(() => {
-    void fetchList();
-  }, [fetchList]);
+  const mapError = useCallback(
+    (e: unknown) => (e instanceof ApiError ? e.message : t("payin.loadError")),
+    [t],
+  );
+
+  const { loading, error, setError, rows, total, data, refresh } = usePagedList({
+    load: loadList,
+    empty: EMPTY_PAYIN_LIST,
+    mapError,
+  });
+  const stats = data.stats;
 
   const hasFilters = Boolean(
     filters.transId ||
@@ -574,9 +575,9 @@ export function PayinListPage() {
           </>
         }
         error={error}
-        onRetry={fetchList}
+        onRetry={refresh}
         retryLabel={t("payin.refresh")}
-        onRefresh={fetchList}
+        onRefresh={refresh}
         loading={loading}
         refreshLabel={t("payin.refresh")}
         pagination={
@@ -900,14 +901,23 @@ export function PayinListPage() {
                       {t("payin.btnFinalize")}
                     </Button>
                   ) : row.status === "wrong_denomination" ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setFinalizeRow(row)}
-                    >
-                      {t("payin.outcomeCredit")}
-                    </Button>
+                    <span className="group relative inline-flex">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        aria-label={t("payin.outcomeCredit")}
+                        leftIcon={<IconWallet width={15} height={15} />}
+                        onClick={() => setFinalizeRow(row)}
+                      />
+                      <span
+                        role="tooltip"
+                        className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                      >
+                        {t("payin.outcomeCredit")}
+                      </span>
+                    </span>
                   ) : (
                     <span className="text-label text-muted">—</span>
                   )}
@@ -983,7 +993,7 @@ export function PayinListPage() {
           onClose={() => setFinalizeRow(null)}
           onDone={() => {
             setNotice(t("payin.finalizeOk"));
-            void fetchList();
+            void refresh();
           }}
         />
       ) : null}

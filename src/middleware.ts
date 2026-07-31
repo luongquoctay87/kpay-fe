@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/constants/auth";
-import { isPublicPath, ROUTES } from "@/lib/constants/routes";
+import { adminLoginHref, isPublicPath, ROUTES } from "@/lib/constants/routes";
 
 /**
  * Soft gate via session marker cookie (set with access token).
@@ -18,12 +18,14 @@ export function middleware(request: NextRequest) {
   const publicPath = isPublicPath(pathname);
 
   if (!publicPath && !hasSession) {
-    const login = new URL(ROUTES.login, request.url);
-    login.searchParams.set("next", pathname);
-    return NextResponse.redirect(login);
+    return NextResponse.redirect(new URL(adminLoginHref(pathname), request.url));
   }
 
   if (pathname === ROUTES.login && hasSession) {
+    return NextResponse.redirect(new URL(ROUTES.home, request.url));
+  }
+
+  if (pathname === ROUTES.portalLogin && hasSession) {
     return NextResponse.redirect(new URL(ROUTES.home, request.url));
   }
 

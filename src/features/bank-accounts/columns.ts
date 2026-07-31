@@ -1,4 +1,8 @@
 import type { MessageKey } from "@/i18n/types";
+import {
+  loadStoredColumnVisibility,
+  saveStoredColumnVisibility,
+} from "@/lib/columns/storage";
 
 /** Toggleable data columns. */
 export const BANK_ACCOUNT_COLUMNS = [
@@ -82,30 +86,15 @@ export function defaultColumnVisibility(): ColumnVisibility {
 }
 
 export function loadColumnVisibility(): ColumnVisibility {
-  const base = defaultColumnVisibility();
-  if (typeof window === "undefined") return base;
-  try {
-    const raw = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
-    if (!raw) return base;
-    const parsed = JSON.parse(raw) as Partial<Record<BankAccountColumn, boolean>>;
-    for (const col of BANK_ACCOUNT_COLUMNS) {
-      if (typeof parsed[col] === "boolean") base[col] = parsed[col];
-    }
-  } catch {
-    // ignore corrupt storage
-  }
-  if (!BANK_ACCOUNT_COLUMNS.some((col) => base[col])) {
-    return defaultColumnVisibility();
-  }
-  return base;
+  return loadStoredColumnVisibility(
+    COLUMN_VISIBILITY_STORAGE_KEY,
+    BANK_ACCOUNT_COLUMNS,
+    defaultColumnVisibility,
+  );
 }
 
 export function saveColumnVisibility(visibility: ColumnVisibility) {
-  try {
-    localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(visibility));
-  } catch {
-    // ignore quota / private mode
-  }
+  saveStoredColumnVisibility(COLUMN_VISIBILITY_STORAGE_KEY, visibility);
 }
 
 export function visibleColumnCount(visibility: ColumnVisibility): number {

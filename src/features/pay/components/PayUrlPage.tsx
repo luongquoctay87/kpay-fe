@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Skeleton, Typography, message } from "antd";
 import { CheckOutlined, CopyOutlined } from "@ant-design/icons";
 import { QRCodeSVG } from "qrcode.react";
@@ -57,46 +57,111 @@ function statusTone(status: PublicPayinStatus): "info" | "success" | "warning" |
   }
 }
 
+function useClockMs(): number {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  return nowMs;
+}
+
+const MemoQr = memo(function MemoQr({ value }: { value: string }) {
+  return <QRCodeSVG value={value} size={200} level="M" includeMargin={false} />;
+});
+
+/** Isolated 1 Hz countdown — keeps the parent tree from re-rendering every tick. */
+function ExpiresCountdown({ expiredAt, label }: { expiredAt: string; label: string }) {
+  const nowMs = useClockMs();
+  const countdown = formatCountdown(expiredAt, nowMs);
+  if (new Date(expiredAt).getTime() <= nowMs || !countdown) return null;
+  return (
+    <Text type="secondary" className="text-sm">
+      {label} {countdown}
+    </Text>
+  );
+}
+
+/** QR / expired alert with its own clock so QR SVG is not rebuilt every second. */
+function AwaitingQrSection({
+  expiredAt,
+  qrValue,
+  qrUnavailable,
+  scanHint,
+  expiredMessage,
+}: {
+  expiredAt: string;
+  qrValue: string | null;
+  qrUnavailable: string;
+  scanHint: string;
+  expiredMessage: string;
+}) {
+  const nowMs = useClockMs();
+  if (new Date(expiredAt).getTime() <= nowMs) {
+    return <Alert className="mb-4" type="error" showIcon message={expiredMessage} />;
+  }
+
+  return (
+    <div className="mb-5 flex flex-col items-center">
+      <div className="rounded-xl border border-neutral-100 bg-white p-3">
+        {qrValue ? (
+          <MemoQr value={qrValue} />
+        ) : (
+          <div className="flex h-[200px] w-[200px] items-center justify-center text-center text-sm text-neutral-400">
+            {qrUnavailable}
+          </div>
+        )}
+      </div>
+      <Text type="secondary" className="mt-3 text-center text-xs">
+        {scanHint}
+      </Text>
+    </div>
+  );
+}
+
 /** End-user Pay URL — QR VietQR + thông tin CK. Public, ngoài portal shell. */
 export function PayUrlPage({ token }: { token: string }) {
   const { t } = useI18n();
   const [data, setData] = useState<PublicPayin | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [nowMs, setNowMs] = useState(() => Date.now());
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const requestSeq = useRef(0);
 
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const next = await fetchPublicPayin(token);
-      setData(next);
-      setError(null);
-    } catch (e) {
-      const msg =
-        e instanceof ApiError ? e.message : t("pay.loadError");
-      setError(msg);
-      if (!silent) setData(null);
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [token, t]);
+  const load = useCallback(
+    async (silent = false) => {
+      const id = ++requestSeq.current;
+      if (!silent) setLoading(true);
+      try {
+        const next = await fetchPublicPayin(token);
+        if (id !== requestSeq.current) return;
+        setData(next);
+        setError(null);
+      } catch (e) {
+        if (id !== requestSeq.current) return;
+        const msg = e instanceof ApiError ? e.message : t("pay.loadError");
+        setError(msg);
+        if (!silent) setData(null);
+      } finally {
+        if (id === requestSeq.current && !silent) setLoading(false);
+      }
+    },
+    [token, t],
+  );
 
   useEffect(() => {
     void load(false);
+    return () => {
+      requestSeq.current += 1;
+    };
   }, [load]);
 
+  const pollStatus = data?.status;
   useEffect(() => {
-    if (!data || !isPayinAwaitingPayment(data.status)) return;
+    if (!pollStatus || !isPayinAwaitingPayment(pollStatus)) return;
     const id = window.setInterval(() => void load(true), POLL_MS);
     return () => window.clearInterval(id);
-  }, [data, load]);
-
-  useEffect(() => {
-    if (!data || !isPayinAwaitingPayment(data.status)) return;
-    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, [data]);
+  }, [pollStatus, load]);
 
   /** Exact string embedded in VietQR — display + copy must match. */
   const transferContent = useMemo(
@@ -116,16 +181,6 @@ export function PayUrlPage({ token }: { token: string }) {
       transferContent: transferContent,
     });
   }, [data, transferContent]);
-
-  const countdown =
-    data && isPayinAwaitingPayment(data.status)
-      ? formatCountdown(data.expiredAt, nowMs)
-      : null;
-
-  const expiredByClock =
-    data &&
-    isPayinAwaitingPayment(data.status) &&
-    new Date(data.expiredAt).getTime() <= nowMs;
 
   async function copy(key: string, value: string) {
     try {
@@ -167,6 +222,8 @@ export function PayUrlPage({ token }: { token: string }) {
     );
   }
 
+  const awaiting = data != null && isPayinAwaitingPayment(data.status);
+
   return (
     <div className="pay-page flex min-h-screen flex-col bg-[linear-gradient(165deg,#eef2f6_0%,#f7f8fa_45%,#e8edf2_100%)]">
       <DocumentTitle title={`${t("pay.title")} · ${t("brand.name")}`} />
@@ -203,39 +260,26 @@ export function PayUrlPage({ token }: { token: string }) {
                   <Title level={2} className="!mb-1 !mt-1 !text-neutral-900">
                     {formatVnd(data.amount)}
                   </Title>
-                  {isPayinAwaitingPayment(data.status) && !expiredByClock && countdown ? (
-                    <Text type="secondary" className="text-sm">
-                      {t("pay.expiresIn")} {countdown}
-                    </Text>
+                  {awaiting ? (
+                    <ExpiresCountdown expiredAt={data.expiredAt} label={t("pay.expiresIn")} />
                   ) : null}
                 </div>
 
                 <div className="px-6 py-5">
-                  {isPayinAwaitingPayment(data.status) && !expiredByClock ? (
-                    <div className="mb-5 flex flex-col items-center">
-                      <div className="rounded-xl border border-neutral-100 bg-white p-3">
-                        {qrValue ? (
-                          <QRCodeSVG value={qrValue} size={200} level="M" includeMargin={false} />
-                        ) : (
-                          <div className="flex h-[200px] w-[200px] items-center justify-center text-center text-sm text-neutral-400">
-                            {t("pay.qrUnavailable")}
-                          </div>
-                        )}
-                      </div>
-                      <Text type="secondary" className="mt-3 text-center text-xs">
-                        {t("pay.scanHint")}
-                      </Text>
-                    </div>
+                  {awaiting ? (
+                    <AwaitingQrSection
+                      expiredAt={data.expiredAt}
+                      qrValue={qrValue}
+                      qrUnavailable={t("pay.qrUnavailable")}
+                      scanHint={t("pay.scanHint")}
+                      expiredMessage={t("pay.status.expired")}
+                    />
                   ) : (
                     <Alert
                       className="mb-4"
-                      type={expiredByClock ? "error" : statusTone(data.status)}
+                      type={statusTone(data.status)}
                       showIcon
-                      message={
-                        expiredByClock
-                          ? t("pay.status.expired")
-                          : t(STATUS_KEY[data.status])
-                      }
+                      message={t(STATUS_KEY[data.status])}
                       description={
                         data.status === "success"
                           ? t("pay.statusSuccessHint")

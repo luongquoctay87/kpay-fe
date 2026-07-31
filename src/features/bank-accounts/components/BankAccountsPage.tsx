@@ -17,7 +17,7 @@ import {
   IconBell,
   IconUser,
 } from "@/components/icons/NavIcons";
-import { ColumnHeader, CopyButton, FilterBar, PageHeader, Pagination, TableCard } from "@/components/common";
+import { ColumnHeader, CopyButton, FilterBar, PageHeader, Pagination, StatCard, TableCard } from "@/components/common";
 import { Button, Input, Select, StatusBadge } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import { ColumnPicker } from "@/features/bank-accounts/components/ColumnPicker";
@@ -43,6 +43,7 @@ import type {
 } from "@/features/bank-accounts/types";
 import { BANK_ACCOUNT_STATUS_OPTIONS } from "@/features/bank-accounts/types";
 import { useI18n } from "@/i18n/use-i18n";
+import { usePagedList } from "@/lib/async/use-paged-list";
 import { ApiError } from "@/lib/types/api";
 
 const EMPTY_STATS: BankAccountStats = {
@@ -51,6 +52,12 @@ const EMPTY_STATS: BankAccountStats = {
   with2Sources: 0,
   with1Source: 0,
   with0Sources: 0,
+};
+
+const EMPTY_BANK_ACCOUNT_LIST = {
+  rows: [] as BankAccountListItem[],
+  total: 0,
+  stats: EMPTY_STATS,
 };
 
 function SourceMark({ configured, configuredLabel, notConfiguredLabel }: {
@@ -98,55 +105,8 @@ function coverageClass(count: number): string {
   return "text-danger";
 }
 
-function StatCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "default" | "success" | "info" | "warning" | "danger";
-}) {
-  const barClass =
-    tone === "success"
-      ? "bg-success"
-      : tone === "info"
-        ? "bg-ink-secondary"
-        : tone === "warning"
-          ? "bg-warning"
-          : tone === "danger"
-            ? "bg-danger"
-            : "bg-edge-strong";
-
-  const valueClass =
-    tone === "success"
-      ? "text-success"
-      : tone === "info"
-        ? "text-ink-secondary"
-        : tone === "warning"
-          ? "text-warning"
-          : tone === "danger"
-            ? "text-danger"
-            : "text-ink";
-
-  return (
-    <div className="relative flex h-full min-h-[76px] flex-col justify-center overflow-hidden rounded-lg border border-edge bg-elevated py-3 pl-5 pr-4">
-      <span className={`absolute inset-y-0 left-0 w-0.5 ${barClass}`} aria-hidden />
-      <p className="text-caption text-muted">{label}</p>
-      <p className={`mt-1.5 text-2xl font-semibold leading-none tabular-nums tracking-tight ${valueClass}`}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
 export function BankAccountsPage() {
   const { t } = useI18n();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<BankAccountListItem[]>([]);
-  const [stats, setStats] = useState<BankAccountStats>(EMPTY_STATS);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
   const [showCreate, setShowCreate] = useState(false);
@@ -199,27 +159,26 @@ export function BankAccountsPage() {
     [t],
   );
 
-  const fetchList = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await bankAccountApi.list({ ...filters, page, size });
-      setRows(data.items ?? []);
-      setTotal(data.totalElements ?? 0);
-      setStats(data.stats ?? EMPTY_STATS);
-    } catch (e) {
-      setRows([]);
-      setTotal(0);
-      setStats(EMPTY_STATS);
-      setError(e instanceof ApiError ? e.message : t("bankAccounts.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, page, size, t]);
+  const loadList = useCallback(async () => {
+    const data = await bankAccountApi.list({ ...filters, page, size });
+    return {
+      rows: data.items ?? [],
+      total: data.totalElements ?? 0,
+      stats: data.stats ?? EMPTY_STATS,
+    };
+  }, [filters, page, size]);
 
-  useEffect(() => {
-    void fetchList();
-  }, [fetchList]);
+  const mapError = useCallback(
+    (e: unknown) => (e instanceof ApiError ? e.message : t("bankAccounts.loadError")),
+    [t],
+  );
+
+  const { loading, error, rows, total, data, refresh } = usePagedList({
+    load: loadList,
+    empty: EMPTY_BANK_ACCOUNT_LIST,
+    mapError,
+  });
+  const stats = data.stats;
 
   const hasFilters = Boolean(
     filters.accountNumber ||
@@ -303,11 +262,11 @@ export function BankAccountsPage() {
       />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <StatCard label={t("bankAccounts.statTotal")} value={stats.total} />
-        <StatCard label={t("bankAccounts.stat3")} value={stats.with3Sources} tone="success" />
-        <StatCard label={t("bankAccounts.stat2")} value={stats.with2Sources} tone="info" />
-        <StatCard label={t("bankAccounts.stat1")} value={stats.with1Source} tone="warning" />
-        <StatCard label={t("bankAccounts.stat0")} value={stats.with0Sources} tone="danger" />
+        <StatCard label={t("bankAccounts.statTotal")} value={String(stats.total)} />
+        <StatCard label={t("bankAccounts.stat3")} value={String(stats.with3Sources)} tone="success" />
+        <StatCard label={t("bankAccounts.stat2")} value={String(stats.with2Sources)} tone="info" />
+        <StatCard label={t("bankAccounts.stat1")} value={String(stats.with1Source)} tone="warning" />
+        <StatCard label={t("bankAccounts.stat0")} value={String(stats.with0Sources)} tone="danger" />
       </div>
 
       <FilterBar
@@ -398,7 +357,7 @@ export function BankAccountsPage() {
           />
         }
         error={error}
-        onRetry={fetchList}
+        onRetry={refresh}
         retryLabel={t("bankAccounts.refresh")}
         pagination={
           total > 0 || loading ? (
@@ -655,7 +614,7 @@ export function BankAccountsPage() {
           onClose={() => setShowCreate(false)}
           onCreated={() => {
             setShowCreate(false);
-            void fetchList();
+            void refresh();
           }}
         />
       ) : null}
@@ -666,7 +625,7 @@ export function BankAccountsPage() {
           onClose={() => setEditing(null)}
           onUpdated={() => {
             setEditing(null);
-            void fetchList();
+            void refresh();
           }}
         />
       ) : null}

@@ -29,7 +29,7 @@ interface AuthState {
   /** Restore session: fresh access, or silent refresh via HttpOnly cookie. */
   hydrate: () => Promise<void>;
   login: (
-    body: Omit<SignInRequest, "role"> & { role?: SignInRequest["role"] },
+    body: SignInRequest,
   ) => Promise<AuthResult>;
   verifyTotp: (code: string, backupCode?: string, rememberMe?: boolean) => Promise<AuthResult>;
   confirmTotp: (code: string) => Promise<AuthResult>;
@@ -85,7 +85,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const result = await authApi.login({
       username: body.username.trim(),
       password: body.password,
-      role: body.role ?? "ADMIN",
       rememberMe,
     });
     if (result.twoFaToken) {
@@ -96,7 +95,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   enrollTotp: async () => authApi.enrollTotp(),
 
-  confirmTotp: async (code) => authApi.confirmTotp({ code }),
+  confirmTotp: async (code) => {
+    const remember = getRememberMePreference();
+    const result = await authApi.confirmTotp({ code, rememberMe: remember });
+    // First-login enroll returns accessToken — complete session so backup "Continue" skips verify.
+    if (result.accessToken) {
+      get().completeSession(result, remember);
+    }
+    return result;
+  },
 
   verifyTotp: async (code, backupCode, rememberMe) => {
     const remember = rememberMe ?? getRememberMePreference();

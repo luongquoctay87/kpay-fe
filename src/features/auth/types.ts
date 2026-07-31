@@ -1,4 +1,4 @@
-export type AuthRole = "ADMIN" | "MERCHANT";
+export type AuthRole = "ADMIN" | "MERCHANT" | "AGENT";
 
 export interface User {
   id: string;
@@ -25,14 +25,13 @@ export interface AuthResult {
 export interface SignInRequest {
   username: string;
   password: string;
-  /** Admin Portal phải gửi ADMIN (BE default = MERCHANT). */
-  role: AuthRole;
-  /** Persist refresh cookie ~14 days when true; session-only when false. */
+  /** Persist refresh cookie ~14 days when true; session-only when false (admin). */
   rememberMe?: boolean;
 }
 
 export interface TotpCodeRequest {
   code: string;
+  rememberMe?: boolean;
 }
 
 export interface TotpVerifyRequest {

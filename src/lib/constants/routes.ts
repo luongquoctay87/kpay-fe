@@ -1,7 +1,12 @@
 export const ROUTES = {
   home: "/",
-  login: "/login",
-  totp: "/totp",
+  /** Admin Portal login (dedicated page + /admin/auth API). */
+  login: "/admin/login",
+  totp: "/admin/totp",
+  /** Merchant / Agent portal login — current shared UI at /login. */
+  portalLogin: "/login",
+  portalTotp: "/totp",
+  portalHome: "/portal",
   merchants: "/merchants",
   merchantNew: "/merchants/new",
   merchantDetail: (id: string) => `/merchants/${id}`,
@@ -17,7 +22,14 @@ export const ROUTES = {
 } as const;
 
 /** Paths that skip portal auth (middleware + shell). */
-export const PUBLIC_PATH_PREFIXES = ["/login", "/totp", "/pay"] as const;
+export const PUBLIC_PATH_PREFIXES = [
+  "/admin/login",
+  "/admin/totp",
+  "/login",
+  "/totp",
+  "/portal",
+  "/pay",
+] as const;
 
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATH_PREFIXES.some(
@@ -55,7 +67,23 @@ export function safeInternalPath(
   if (path.includes("://")) return fallback;
 
   // Don't bounce back onto auth screens.
-  if (path === ROUTES.login || path.startsWith(`${ROUTES.login}?`)) return fallback;
-  if (path === ROUTES.totp || path.startsWith(`${ROUTES.totp}?`)) return fallback;
+  const authPrefixes = [
+    ROUTES.login,
+    ROUTES.totp,
+    ROUTES.portalLogin,
+    ROUTES.portalTotp,
+  ] as const;
+  for (const prefix of authPrefixes) {
+    if (path === prefix || path.startsWith(`${prefix}?`)) return fallback;
+  }
   return path;
+}
+
+/**
+ * Admin login URL, optionally with `?next=` for deep-link return after sign-in.
+ * Omits `next` when the target is already home (`/`) — the post-login default.
+ */
+export function adminLoginHref(nextPath?: string | null): string {
+  if (!nextPath || nextPath === ROUTES.home) return ROUTES.login;
+  return `${ROUTES.login}?next=${encodeURIComponent(nextPath)}`;
 }

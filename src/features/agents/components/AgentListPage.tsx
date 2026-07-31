@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import {
   IconActivity,
@@ -30,16 +30,18 @@ import { agentApi } from "@/features/agents/api";
 import { EditAgentModal } from "@/features/agents/components/EditAgentModal";
 import type { AgentListItem } from "@/features/agents/types";
 import { useI18n } from "@/i18n/use-i18n";
+import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatDate, formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 
+const EMPTY_AGENT_LIST = {
+  rows: [] as AgentListItem[],
+  total: 0,
+};
+
 export function AgentListPage() {
   const { t } = useI18n();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<AgentListItem[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
   const [nameDraft, setNameDraft] = useState("");
@@ -61,25 +63,24 @@ export function AgentListPage() {
     [t],
   );
 
-  const fetchList = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await agentApi.list({ ...filters, page, size });
-      setRows(data.items ?? []);
-      setTotal(data.totalElements ?? 0);
-    } catch (e) {
-      setRows([]);
-      setTotal(0);
-      setError(e instanceof ApiError ? e.message : t("agents.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, page, size, t]);
+  const loadList = useCallback(async () => {
+    const data = await agentApi.list({ ...filters, page, size });
+    return {
+      rows: data.items ?? [],
+      total: data.totalElements ?? 0,
+    };
+  }, [filters, page, size]);
 
-  useEffect(() => {
-    void fetchList();
-  }, [fetchList]);
+  const mapError = useCallback(
+    (e: unknown) => (e instanceof ApiError ? e.message : t("agents.loadError")),
+    [t],
+  );
+
+  const { loading, error, setError, rows, total, refresh } = usePagedList({
+    load: loadList,
+    empty: EMPTY_AGENT_LIST,
+    mapError,
+  });
 
   const hasFilters = Boolean(filters.name || filters.active != null);
   const canReset = hasFilters || Boolean(nameDraft) || activeDraft != null;
@@ -113,7 +114,7 @@ export function AgentListPage() {
     setError(null);
     try {
       await agentApi.updateStatus(row.id, { active: action === "activate" });
-      await fetchList();
+      await refresh();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t("agents.actionError"));
     } finally {
@@ -203,9 +204,9 @@ export function AgentListPage() {
           </>
         }
         error={error}
-        onRetry={fetchList}
+        onRetry={refresh}
         retryLabel={t("agents.refresh")}
-        onRefresh={fetchList}
+        onRefresh={refresh}
         loading={loading}
         refreshLabel={t("agents.refresh")}
         pagination={
@@ -354,7 +355,7 @@ export function AgentListPage() {
           onClose={() => setEditing(null)}
           onUpdated={() => {
             setEditing(null);
-            void fetchList();
+            void refresh();
           }}
         />
       ) : null}
