@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DocumentTitle } from "@/components/layout/DocumentTitle";
+import { IconCheckCircle, IconChevronLeft, IconKey, IconLogin, IconSmartphone } from "@/components/icons/NavIcons";
 import { Button, Field, Input, OtpInput } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { clearTwoFaToken, getRememberMePreference } from "@/features/auth/token";
@@ -259,6 +260,7 @@ export function LoginForm() {
                 fullWidth
                 loading={loading}
                 className="mt-1 !rounded-md"
+                leftIcon={<IconLogin width={16} height={16} />}
               >
                 {loading ? t("auth.signingIn") : t("auth.signIn")}
               </Button>
@@ -313,12 +315,20 @@ export function LoginForm() {
                 loading={loading}
                 className="mt-1 !rounded-md"
                 disabled={!useBackup && code.replace(/\D/g, "").length < 6}
+                leftIcon={<IconCheckCircle width={16} height={16} />}
               >
                 {loading ? t("auth.verifying") : t("auth.verify")}
               </Button>
               <Button
                 type="button"
                 variant="link"
+                leftIcon={
+                  useBackup ? (
+                    <IconSmartphone width={15} height={15} />
+                  ) : (
+                    <IconKey width={15} height={15} />
+                  )
+                }
                 onClick={() => {
                   setUseBackup((v) => !v);
                   setError(null);
@@ -328,7 +338,12 @@ export function LoginForm() {
               >
                 {useBackup ? t("auth.useAuthenticator") : t("auth.useBackup")}
               </Button>
-              <Button type="button" variant="link" onClick={backToPassword}>
+              <Button
+                type="button"
+                variant="link"
+                leftIcon={<IconChevronLeft width={15} height={15} />}
+                onClick={backToPassword}
+              >
                 {t("auth.backToSignIn")}
               </Button>
             </form>
