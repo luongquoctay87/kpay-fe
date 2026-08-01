@@ -172,6 +172,12 @@ export const vi = {
   },
   auth: {
     signInContinue: "Đăng nhập để tiếp tục",
+    adminSignInContinue: "Console nội bộ — đăng nhập bằng tài khoản admin",
+    portalSignInContinue: "Đăng nhập tài khoản merchant hoặc agent",
+    adminBadge: "Admin",
+    portalBadge: "Merchant & Agent",
+    adminShellTag: "Vận hành nội bộ",
+    portalShellTag: "Cổng Merchant & Agent",
     enterOtp: "Nhập mã authenticator",
     enterBackup: "Nhập mã dự phòng",
     username: "Tên đăng nhập",

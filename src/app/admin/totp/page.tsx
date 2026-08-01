@@ -5,7 +5,7 @@ import { TotpForm } from "@/features/auth";
 /** Admin Portal TOTP enroll / verify — uses /admin/auth API. */
 export default function AdminTotpPage() {
   return (
-    <AuthShell>
+    <AuthShell variant="admin">
       <Suspense>
         <TotpForm />
       </Suspense>

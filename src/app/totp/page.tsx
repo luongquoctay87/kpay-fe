@@ -5,7 +5,7 @@ import { TotpForm } from "@/features/auth";
 /** Merchant / Agent TOTP — current UI, /auth API. */
 export default function PortalTotpPage() {
   return (
-    <AuthShell>
+    <AuthShell variant="portal">
       <Suspense>
         <TotpForm realm="portal" />
       </Suspense>

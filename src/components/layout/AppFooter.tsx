@@ -8,12 +8,21 @@ type AppFooterProps = {
   className?: string;
   /** Compact bar inside portal shell; fuller padding on auth / pay. */
   variant?: "portal" | "public";
+  /** Which brand label to show in the footer. */
+  brandKey?: "admin" | "name";
+  /** Hide brand + env badge (when already shown elsewhere). */
+  hideBrand?: boolean;
 };
 
 /**
  * Shared site footer — brand, env, private/no-index notice.
  */
-export function AppFooter({ className, variant = "portal" }: AppFooterProps) {
+export function AppFooter({
+  className,
+  variant = "portal",
+  brandKey = "admin",
+  hideBrand = false,
+}: AppFooterProps) {
   const { t } = useI18n();
   const year = new Date().getFullYear();
 
@@ -32,10 +41,14 @@ export function AppFooter({ className, variant = "portal" }: AppFooterProps) {
         )}
       >
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="text-caption font-medium text-ink-secondary">
-            {t("brand.admin")}
-          </span>
-          <EnvBadge />
+          {!hideBrand ? (
+            <>
+              <span className="text-caption font-medium text-ink-secondary">
+                {brandKey === "name" ? t("brand.name") : t("brand.admin")}
+              </span>
+              <EnvBadge />
+            </>
+          ) : null}
           <span className="text-caption text-subtle">
             {t("common.footerCopyright").replace("{year}", String(year))}
           </span>

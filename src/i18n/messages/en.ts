@@ -175,6 +175,12 @@ export const en = {
   },
   auth: {
     signInContinue: "Sign in to continue",
+    adminSignInContinue: "Staff console — sign in with your admin account",
+    portalSignInContinue: "Sign in to your merchant or agent account",
+    adminBadge: "Admin",
+    portalBadge: "Merchant & Agent",
+    adminShellTag: "Internal operations",
+    portalShellTag: "Merchant & Agent portal",
     enterOtp: "Enter your authenticator code",
     enterBackup: "Enter a backup code",
     username: "Username",
