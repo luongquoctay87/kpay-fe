@@ -143,7 +143,13 @@ export function LoginForm() {
       }
       router.replace(nextPath);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("auth.invalidCode"));
+      setError(
+        err instanceof ApiError && err.code === "INVALID_OTP"
+          ? t("auth.invalidCode")
+          : err instanceof ApiError
+            ? err.message
+            : t("auth.invalidCode"),
+      );
     } finally {
       setLoading(false);
     }
@@ -155,6 +161,7 @@ export function LoginForm() {
     setUseBackup(false);
     setError(null);
     setCode("");
+    setPassword("");
     otp.hide();
   }
 
@@ -342,7 +349,10 @@ export function LoginForm() {
                 type="button"
                 variant="link"
                 leftIcon={<IconChevronLeft width={15} height={15} />}
-                onClick={backToPassword}
+                onClick={(e) => {
+                  e.preventDefault();
+                  backToPassword();
+                }}
               >
                 {t("auth.backToSignIn")}
               </Button>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   forwardRef,
   type ButtonHTMLAttributes,
+  type MouseEventHandler,
   type ReactNode,
 } from "react";
 import {
@@ -103,7 +104,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         );
       }
       return (
-        <Link href={href} className={classes} data-kpay-chrome>
+        <Link
+          href={href}
+          className={classes}
+          data-kpay-chrome
+          onClick={rest.onClick as MouseEventHandler<HTMLAnchorElement> | undefined}
+        >
           {content}
         </Link>
       );

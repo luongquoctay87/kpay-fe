@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { IconCheckCircle, IconWallet, IconX } from "@/components/icons/NavIcons";
+import { useState } from "react";
+import { IconCheckCircle, IconX } from "@/components/icons/NavIcons";
 import { Button, Field, MoneyInput, Select, toast } from "@/components/ui";
 import { payinApi, type PayinFinalizeOutcome } from "@/features/payin/api";
 import type { PayinOrderListItem } from "@/features/payin/types";
@@ -16,41 +16,25 @@ type FinalizePayinModalProps = {
   onDone: () => void;
 };
 
-const OPEN_OUTCOMES: PayinFinalizeOutcome[] = [
-  "success",
-  "wrong_denomination",
-  "expired",
-  "failure",
-];
+const OPEN_OUTCOMES: PayinFinalizeOutcome[] = ["success", "expired", "failure"];
 
 export function FinalizePayinModal({ row, onClose, onDone }: FinalizePayinModalProps) {
   const { t } = useI18n();
-  const isWrongDenomCredit = row.status === "wrong_denomination";
-  const outcomes = useMemo<PayinFinalizeOutcome[]>(
-    () => (isWrongDenomCredit ? ["credit"] : OPEN_OUTCOMES),
-    [isWrongDenomCredit],
-  );
-  const [outcome, setOutcome] = useState<PayinFinalizeOutcome>(
-    isWrongDenomCredit ? "credit" : "success",
-  );
+  const [outcome, setOutcome] = useState<PayinFinalizeOutcome>("success");
   const [received, setReceived] = useState(
     String(row.receivedAmount ?? row.acceptedAmount ?? row.requestValue ?? ""),
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const outcomeOptions = outcomes.map((v) => ({
+  const outcomeOptions = OPEN_OUTCOMES.map((v) => ({
     value: v,
     label:
       v === "success"
         ? t("payin.outcomeSuccess")
-        : v === "wrong_denomination"
-          ? t("payin.outcomeWrongDenomination")
-          : v === "expired"
-            ? t("payin.outcomeExpired")
-            : v === "credit"
-              ? t("payin.outcomeCredit")
-              : t("payin.outcomeFailure"),
+        : v === "expired"
+          ? t("payin.outcomeExpired")
+          : t("payin.outcomeFailure"),
   }));
 
   async function confirm() {
@@ -58,17 +42,12 @@ export function FinalizePayinModal({ row, onClose, onDone }: FinalizePayinModalP
     setError(null);
     try {
       const body: { outcome: PayinFinalizeOutcome; receivedAmount?: number } = { outcome };
-      if (outcome === "success" || outcome === "wrong_denomination") {
+      if (outcome === "success") {
         const trimmed = received.trim();
-        if (outcome === "wrong_denomination" || trimmed !== "") {
+        if (trimmed !== "") {
           const n = parseMoneyNumber(trimmed);
           if (!Number.isFinite(n) || n < 1) {
             setError(t("payin.finalizeInvalidAmount"));
-            setSaving(false);
-            return;
-          }
-          if (outcome === "wrong_denomination" && n === row.requestValue) {
-            setError(t("payin.finalizeWrongDenomSame"));
             setSaving(false);
             return;
           }
@@ -76,9 +55,7 @@ export function FinalizePayinModal({ row, onClose, onDone }: FinalizePayinModalP
         }
       }
       await payinApi.finalize(row.id, body);
-      toast.success(
-        isWrongDenomCredit ? t("payin.creditOk") : t("payin.finalizeOk"),
-      );
+      toast.success(t("payin.finalizeOk"));
       onDone();
       onClose();
     } catch (e) {
@@ -103,19 +80,11 @@ export function FinalizePayinModal({ row, onClose, onDone }: FinalizePayinModalP
         className="flex max-h-[min(100dvh-1.5rem,90vh)] w-full max-w-md flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
       >
         <div className="shrink-0 border-b border-edge px-4 py-4 sm:px-5">
-          <p className="kpay-text-title font-semibold">
-            {isWrongDenomCredit ? t("payin.creditTitle") : t("payin.finalizeTitle")}
-          </p>
+          <p className="kpay-text-title font-semibold">{t("payin.finalizeTitle")}</p>
           <p className="mt-1 break-all font-mono text-caption text-muted">{row.requestId}</p>
           <p className="text-caption text-muted">
             {t("payin.colRequestValue")}: {formatMoney(row.requestValue)}
           </p>
-          {isWrongDenomCredit ? (
-            <p className="text-caption text-muted">
-              {t("payin.colReceivedAmount")}:{" "}
-              {formatMoney(row.receivedAmount ?? row.acceptedAmount ?? 0)}
-            </p>
-          ) : null}
         </div>
         <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4 sm:p-5">
           <Field label={t("payin.finalizeOutcome")} htmlFor="payin-outcome">
@@ -126,18 +95,14 @@ export function FinalizePayinModal({ row, onClose, onDone }: FinalizePayinModalP
               onChange={(v) => {
                 if (v) setOutcome(v);
               }}
-              disabled={saving || isWrongDenomCredit}
+              disabled={saving}
             />
           </Field>
-          {isWrongDenomCredit ? (
-            <p className="text-caption text-muted">{t("payin.creditHint")}</p>
-          ) : null}
-          {outcome === "success" || outcome === "wrong_denomination" ? (
+          {outcome === "success" ? (
             <Field
               label={t("payin.finalizeReceived")}
               htmlFor="payin-received"
               hint={t("payin.finalizeReceivedHint")}
-              required={outcome === "wrong_denomination"}
             >
               <MoneyInput
                 id="payin-received"
@@ -173,15 +138,9 @@ export function FinalizePayinModal({ row, onClose, onDone }: FinalizePayinModalP
             className="w-full sm:w-auto"
             loading={saving}
             onClick={() => void confirm()}
-            leftIcon={
-              isWrongDenomCredit ? (
-                <IconWallet width={15} height={15} />
-              ) : (
-                <IconCheckCircle width={15} height={15} />
-              )
-            }
+            leftIcon={<IconCheckCircle width={15} height={15} />}
           >
-            {isWrongDenomCredit ? t("payin.creditConfirm") : t("payin.finalizeConfirm")}
+            {t("payin.finalizeConfirm")}
           </Button>
         </div>
       </div>

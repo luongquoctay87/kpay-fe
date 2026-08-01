@@ -1,11 +1,12 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Skeleton, Typography, message } from "antd";
+import { Alert, Button, Skeleton, Typography } from "antd";
 import { CheckOutlined, CopyOutlined } from "@ant-design/icons";
 import { QRCodeSVG } from "qrcode.react";
 import { AppFooter } from "@/components/layout/AppFooter";
 import { DocumentTitle } from "@/components/layout/DocumentTitle";
+import { toast } from "@/components/ui";
 import { useI18n } from "@/i18n/use-i18n";
 import { fetchPublicPayin } from "@/features/pay/api";
 import {
@@ -14,6 +15,7 @@ import {
   type PublicPayinStatus,
 } from "@/features/pay/types";
 import { buildVietQrPayload, sanitizeTransferContent } from "@/features/pay/vietqr";
+import { writeClipboard } from "@/lib/clipboard";
 import { ApiError } from "@/lib/types/api";
 import type { MessageKey } from "@/i18n/types";
 
@@ -32,6 +34,12 @@ const STATUS_KEY: Record<PublicPayinStatus, MessageKey> = {
 
 function formatVnd(amount: number): string {
   return new Intl.NumberFormat("vi-VN").format(amount) + " ₫";
+}
+
+/** Short display ref from UUID when NDCK is unavailable (last 8 hex chars). */
+function shortOrderRef(orderId: string): string {
+  const hex = orderId.replace(/-/g, "").toLowerCase();
+  return hex.length >= 8 ? hex.slice(-8) : orderId;
 }
 
 function formatCountdown(expiredAt: string, nowMs: number): string | null {
@@ -98,7 +106,7 @@ function AwaitingQrSection({
 }) {
   const nowMs = useClockMs();
   if (new Date(expiredAt).getTime() <= nowMs) {
-    return <Alert className="mb-4" type="error" showIcon message={expiredMessage} />;
+    return <Alert className="mb-4" type="error" showIcon title={expiredMessage} />;
   }
 
   return (
@@ -183,13 +191,18 @@ export function PayUrlPage({ token }: { token: string }) {
   }, [data, transferContent]);
 
   async function copy(key: string, value: string) {
+    const text = value.trim();
+    if (!text) {
+      toast.error(t("pay.copyFailed"));
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(value);
+      await writeClipboard(text);
       setCopiedKey(key);
-      message.success(t("pay.copied"));
+      toast.success(t("pay.copied"));
       window.setTimeout(() => setCopiedKey(null), 1500);
     } catch {
-      message.error(t("pay.copyFailed"));
+      toast.error(t("pay.copyFailed"));
     }
   }
 
@@ -223,6 +236,15 @@ export function PayUrlPage({ token }: { token: string }) {
   }
 
   const awaiting = data != null && isPayinAwaitingPayment(data.status);
+  const showTransferDetails = awaiting;
+  const pageHint =
+    data == null
+      ? t("pay.hint")
+      : awaiting
+        ? t("pay.hint")
+        : data.status === "success"
+          ? t("pay.doneHint")
+          : null;
 
   return (
     <div className="pay-page flex min-h-screen flex-col bg-[linear-gradient(165deg,#eef2f6_0%,#f7f8fa_45%,#e8edf2_100%)]">
@@ -235,9 +257,11 @@ export function PayUrlPage({ token }: { token: string }) {
 
       <main className="flex flex-1 items-start justify-center px-4 py-8 sm:items-center">
         <div className="mx-auto w-full max-w-md">
-          <div className="mb-5 text-center">
-            <Paragraph className="!mb-0 text-neutral-500">{t("pay.hint")}</Paragraph>
-          </div>
+          {pageHint ? (
+            <div className="mb-5 text-center">
+              <Paragraph className="!mb-0 text-neutral-500">{pageHint}</Paragraph>
+            </div>
+          ) : null}
 
           <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.06)]">
             {loading && !data ? (
@@ -246,7 +270,7 @@ export function PayUrlPage({ token }: { token: string }) {
               </div>
             ) : error && !data ? (
               <div className="p-6">
-                <Alert type="error" showIcon message={error} />
+                <Alert type="error" showIcon title={error} />
                 <Button className="mt-4" block onClick={() => void load(false)}>
                   {t("pay.retry")}
                 </Button>
@@ -276,10 +300,10 @@ export function PayUrlPage({ token }: { token: string }) {
                     />
                   ) : (
                     <Alert
-                      className="mb-4"
+                      className={showTransferDetails ? "mb-4" : undefined}
                       type={statusTone(data.status)}
                       showIcon
-                      message={t(STATUS_KEY[data.status])}
+                      title={t(STATUS_KEY[data.status])}
                       description={
                         data.status === "success"
                           ? t("pay.statusSuccessHint")
@@ -290,24 +314,48 @@ export function PayUrlPage({ token }: { token: string }) {
                     />
                   )}
 
-                  <div>
-                    {row("bank", t("pay.bank"), data.bankName ?? data.bankCode)}
-                    {row("accountName", t("pay.accountName"), data.accountName)}
-                    {row("accountNumber", t("pay.accountNumber"), data.accountNumber)}
-                    {row("content", t("pay.transferContent"), transferContent)}
-                    {row(
-                      "amount",
-                      t("pay.amountLabel"),
-                      formatVnd(data.amount),
-                      amountCopy,
-                    )}
-                  </div>
+                  {showTransferDetails ? (
+                    <div>
+                      {row("bank", t("pay.bank"), data.bankName ?? data.bankCode)}
+                      {row("accountName", t("pay.accountName"), data.accountName)}
+                      {row("accountNumber", t("pay.accountNumber"), data.accountNumber)}
+                      {row("content", t("pay.transferContent"), transferContent)}
+                      {row(
+                        "amount",
+                        t("pay.amountLabel"),
+                        formatVnd(data.amount),
+                        amountCopy,
+                      )}
+                    </div>
+                  ) : null}
                 </div>
 
-                <div className="border-t border-neutral-100 px-6 py-3 text-center">
-                  <Text type="secondary" className="text-xs">
-                    {t("pay.refLabel")} {data.orderId}
-                  </Text>
+                <div className="border-t border-neutral-100 px-6 py-3">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Text type="secondary" className="text-xs">
+                      {transferContent
+                        ? `${t("pay.refLabel")} ${transferContent}`
+                        : `${t("pay.refFallback")} ${shortOrderRef(data.orderId)}`}
+                    </Text>
+                    <Button
+                      type="text"
+                      size="small"
+                      aria-label={t("pay.copy")}
+                      icon={
+                        copiedKey === "ref" ? (
+                          <CheckOutlined />
+                        ) : (
+                          <CopyOutlined />
+                        )
+                      }
+                      onClick={() =>
+                        void copy(
+                          "ref",
+                          transferContent || shortOrderRef(data.orderId),
+                        )
+                      }
+                    />
+                  </div>
                 </div>
               </>
             ) : null}
@@ -315,7 +363,12 @@ export function PayUrlPage({ token }: { token: string }) {
         </div>
       </main>
 
-      <AppFooter variant="public" className="border-neutral-200/70 bg-white/70" />
+      <AppFooter
+        variant="public"
+        brandKey="name"
+        hideBrand
+        className="border-neutral-200/70 bg-white/70"
+      />
     </div>
   );
 }

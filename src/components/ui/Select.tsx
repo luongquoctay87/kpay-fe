@@ -16,6 +16,8 @@ import { cn } from "@/lib/cn";
 export type SelectOption<T extends string = string> = {
   value: T;
   label: ReactNode;
+  /** Extra text used when `searchable` filters options (defaults to string label + value). */
+  keywords?: string;
   disabled?: boolean;
 };
 
@@ -29,6 +31,9 @@ export type SelectProps<T extends string = string> = {
   invalid?: boolean;
   disabled?: boolean;
   clearable?: boolean;
+  /** Show a filter input in the dropdown (type to narrow options). */
+  searchable?: boolean;
+  searchPlaceholder?: string;
   fullWidth?: boolean;
   /** Open list above the trigger (useful for bottom pagination). */
   placement?: "bottom" | "top";
@@ -76,6 +81,14 @@ function ClearIcon() {
   );
 }
 
+function optionSearchBlob<T extends string>(opt: SelectOption<T>): string {
+  const parts = [opt.value, opt.keywords];
+  if (typeof opt.label === "string" || typeof opt.label === "number") {
+    parts.push(String(opt.label));
+  }
+  return parts.filter(Boolean).join(" ").toLowerCase();
+}
+
 export function Select<T extends string = string>({
   options,
   value: valueProp,
@@ -86,6 +99,8 @@ export function Select<T extends string = string>({
   invalid,
   disabled,
   clearable,
+  searchable = false,
+  searchPlaceholder,
   fullWidth = true,
   placement = "bottom",
   className,
@@ -101,21 +116,29 @@ export function Select<T extends string = string>({
   const [uncontrolled, setUncontrolled] = useState<T | null>(defaultValue);
   const value = isControlled ? (valueProp ?? null) : uncontrolled;
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const selected = useMemo(
     () => options.find((o) => o.value === value) ?? null,
     [options, value],
   );
 
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !query.trim()) return options;
+    const q = query.trim().toLowerCase();
+    return options.filter((o) => optionSearchBlob(o).includes(q));
+  }, [options, searchable, query]);
+
   const enabledIndexes = useMemo(
     () =>
-      options
+      filteredOptions
         .map((o, i) => (o.disabled ? -1 : i))
         .filter((i) => i >= 0),
-    [options],
+    [filteredOptions],
   );
 
   useEffect(() => {
@@ -128,15 +151,28 @@ export function Select<T extends string = string>({
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
-    const idx = options.findIndex((o) => o.value === value && !o.disabled);
+    if (!open) {
+      setQuery("");
+      return;
+    }
+    const idx = filteredOptions.findIndex((o) => o.value === value && !o.disabled);
     setActiveIndex(idx >= 0 ? idx : (enabledIndexes[0] ?? -1));
-  }, [open, options, value, enabledIndexes]);
+    if (searchable) {
+      requestAnimationFrame(() => searchRef.current?.focus());
+    }
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps -- only on open toggle
+
+  useEffect(() => {
+    if (!open) return;
+    const idx = filteredOptions.findIndex((o) => o.value === value && !o.disabled);
+    setActiveIndex(idx >= 0 ? idx : (enabledIndexes[0] ?? -1));
+  }, [query, filteredOptions, value, enabledIndexes, open]);
 
   function commit(next: T | null) {
     if (!isControlled) setUncontrolled(next);
     onChange?.(next);
     setOpen(false);
+    setQuery("");
     buttonRef.current?.focus();
   }
 
@@ -152,7 +188,7 @@ export function Select<T extends string = string>({
     setActiveIndex(enabledIndexes[nextPos]!);
   }
 
-  function onKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
+  function onTriggerKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
     if (disabled) return;
     switch (e.key) {
       case "ArrowDown":
@@ -170,7 +206,7 @@ export function Select<T extends string = string>({
         e.preventDefault();
         if (!open) setOpen(true);
         else if (activeIndex >= 0) {
-          const opt = options[activeIndex];
+          const opt = filteredOptions[activeIndex];
           if (opt && !opt.disabled) commit(opt.value);
         }
         break;
@@ -182,6 +218,33 @@ export function Select<T extends string = string>({
         break;
       case "Tab":
         setOpen(false);
+        break;
+      default:
+        break;
+    }
+  }
+
+  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        moveActive(1);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        moveActive(-1);
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (activeIndex >= 0) {
+          const opt = filteredOptions[activeIndex];
+          if (opt && !opt.disabled) commit(opt.value);
+        }
+        break;
+      case "Escape":
+        e.preventDefault();
+        setOpen(false);
+        buttonRef.current?.focus();
         break;
       default:
         break;
@@ -218,7 +281,7 @@ export function Select<T extends string = string>({
           ),
         })}
         onClick={() => !disabled && setOpen((v) => !v)}
-        onKeyDown={onKeyDown}
+        onKeyDown={onTriggerKeyDown}
       >
         <span className="min-w-0 flex-1 truncate">
           {selected ? selected.label : (placeholder ?? t("common.selectPlaceholder"))}
@@ -244,49 +307,70 @@ export function Select<T extends string = string>({
       </button>
 
       {open ? (
-        <ul
-          id={listboxId}
-          role="listbox"
-          aria-activedescendant={
-            activeIndex >= 0 ? `${listboxId}-opt-${activeIndex}` : undefined
-          }
+        <div
           className={cn(
-            "absolute z-30 max-h-60 w-full overflow-auto rounded-md border border-edge bg-elevated py-1 shadow-lg",
+            "absolute z-30 w-full overflow-hidden rounded-md border border-edge bg-elevated shadow-lg",
             placement === "top" ? "bottom-full mb-1" : "mt-1",
           )}
         >
-          {options.length === 0 ? (
-            <li className="px-3 py-2 text-label text-muted">{t("common.selectNoOptions")}</li>
-          ) : (
-            options.map((opt, i) => {
-              const isSelected = opt.value === value;
-              const isActive = i === activeIndex;
-              return (
-                <li
-                  key={opt.value}
-                  id={`${listboxId}-opt-${i}`}
-                  role="option"
-                  aria-selected={isSelected}
-                  aria-disabled={opt.disabled || undefined}
-                  className={cn(
-                    "cursor-pointer px-3 py-1.5 text-label transition-colors",
-                    opt.disabled && "cursor-not-allowed opacity-40",
-                    isActive && !opt.disabled && "bg-panel",
-                    isSelected && "font-medium text-ink",
-                    !isSelected && "text-ink-secondary",
-                  )}
-                  onMouseEnter={() => !opt.disabled && setActiveIndex(i)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    if (!opt.disabled) commit(opt.value);
-                  }}
-                >
-                  {opt.label}
-                </li>
-              );
-            })
-          )}
-        </ul>
+          {searchable ? (
+            <div className="border-b border-edge p-1.5">
+              <input
+                ref={searchRef}
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={onSearchKeyDown}
+                onMouseDown={(e) => e.stopPropagation()}
+                placeholder={searchPlaceholder ?? t("common.selectSearchPlaceholder")}
+                className="w-full rounded-md border border-edge bg-surface px-2.5 py-1.5 text-label text-ink outline-none placeholder:text-subtle focus:border-accent"
+                autoComplete="off"
+                aria-autocomplete="list"
+                aria-controls={listboxId}
+              />
+            </div>
+          ) : null}
+          <ul
+            id={listboxId}
+            role="listbox"
+            aria-activedescendant={
+              activeIndex >= 0 ? `${listboxId}-opt-${activeIndex}` : undefined
+            }
+            className="max-h-60 overflow-auto py-1"
+          >
+            {filteredOptions.length === 0 ? (
+              <li className="px-3 py-2 text-label text-muted">{t("common.selectNoOptions")}</li>
+            ) : (
+              filteredOptions.map((opt, i) => {
+                const isSelected = opt.value === value;
+                const isActive = i === activeIndex;
+                return (
+                  <li
+                    key={opt.value}
+                    id={`${listboxId}-opt-${i}`}
+                    role="option"
+                    aria-selected={isSelected}
+                    aria-disabled={opt.disabled || undefined}
+                    className={cn(
+                      "cursor-pointer px-3 py-1.5 text-label transition-colors",
+                      opt.disabled && "cursor-not-allowed opacity-40",
+                      isActive && !opt.disabled && "bg-panel",
+                      isSelected && "font-medium text-ink",
+                      !isSelected && "text-ink-secondary",
+                    )}
+                    onMouseEnter={() => !opt.disabled && setActiveIndex(i)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      if (!opt.disabled) commit(opt.value);
+                    }}
+                  >
+                    {opt.label}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
       ) : null}
     </div>
   );

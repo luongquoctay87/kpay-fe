@@ -22,7 +22,6 @@ import {
   IconSearch,
   IconStore,
   IconUser,
-  IconWallet,
   IconWebhook,
 } from "@/components/icons/NavIcons";
 import {
@@ -906,24 +905,6 @@ export function PayinListPage() {
                         {t("payin.btnFinalize")}
                       </span>
                     </span>
-                  ) : row.status === "wrong_denomination" ? (
-                    <span className="group relative inline-flex">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        iconOnly
-                        aria-label={t("payin.outcomeCredit")}
-                        leftIcon={<IconWallet width={15} height={15} />}
-                        onClick={() => setFinalizeRow(row)}
-                      />
-                      <span
-                        role="tooltip"
-                        className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-                      >
-                        {t("payin.outcomeCredit")}
-                      </span>
-                    </span>
                   ) : (
                     <span className="text-label text-muted">—</span>
                   )}
@@ -986,7 +967,7 @@ export function PayinListPage() {
         <PayinDetailDrawer
           row={detailRow}
           onClose={() => setDetailRow(null)}
-          onCompensate={() => {
+          onFinalize={() => {
             setFinalizeRow(detailRow);
             setDetailRow(null);
           }}

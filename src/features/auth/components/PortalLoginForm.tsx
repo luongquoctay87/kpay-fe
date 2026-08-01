@@ -163,6 +163,7 @@ export function PortalLoginForm() {
     setUseBackup(false);
     setError(null);
     setCode("");
+    setPassword("");
     otp.hide();
   }
 
@@ -315,7 +316,14 @@ export function PortalLoginForm() {
               >
                 {useBackup ? t("auth.useAuthenticator") : t("auth.useBackup")}
               </Button>
-              <Button type="button" variant="link" onClick={backToPassword}>
+              <Button
+                type="button"
+                variant="link"
+                onClick={(e) => {
+                  e.preventDefault();
+                  backToPassword();
+                }}
+              >
                 {t("auth.backToSignIn")}
               </Button>
             </form>

@@ -23,6 +23,29 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
+/** 401 here is expected (wrong OTP / bad password) — do not refresh or bounce to login. */
+function isAuthChallengeUrl(url: string): boolean {
+  return (
+    url.includes("/admin/auth/login") ||
+    url.includes("/admin/auth/refresh-token") ||
+    url.includes("/admin/auth/totp/") ||
+    url.includes("/auth/login") ||
+    url.includes("/auth/refresh-token") ||
+    url.includes("/auth/totp/") ||
+    url.includes("/auth/password/")
+  );
+}
+
+function isAuthPagePath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/admin/login") ||
+    pathname.startsWith("/admin/totp") ||
+    pathname.startsWith("/login") ||
+    pathname === "/totp" ||
+    pathname.startsWith("/totp/")
+  );
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiResponse<unknown>>) => {
@@ -33,7 +56,7 @@ apiClient.interceptors.response.use(
 
     if (status === 401 && original && !original._retry) {
       const url = original.url ?? "";
-      if (url.includes("/admin/auth/login") || url.includes("/admin/auth/refresh-token") || url.includes("/auth/login")) {
+      if (isAuthChallengeUrl(url)) {
         return Promise.reject(toApiError(error));
       }
 
@@ -45,7 +68,7 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       }
 
-      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/admin/login") && !window.location.pathname.startsWith("/login")) {
+      if (typeof window !== "undefined" && !isAuthPagePath(window.location.pathname)) {
         window.location.href = adminLoginHref(window.location.pathname);
       }
     }

@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { CopyButton } from "@/components/common";
-import { IconWallet, IconX } from "@/components/icons/NavIcons";
+import { IconCheckCircle, IconX } from "@/components/icons/NavIcons";
 import { Button, StatusBadge } from "@/components/ui";
 import {
   CALLBACK_STATUS_LABEL_KEY,
@@ -40,16 +40,12 @@ function DetailRow({
 type PayinDetailDrawerProps = {
   row: PayinOrderListItem;
   onClose: () => void;
-  onCompensate: () => void;
+  onFinalize: () => void;
 };
 
-export function PayinDetailDrawer({ row, onClose, onCompensate }: PayinDetailDrawerProps) {
+export function PayinDetailDrawer({ row, onClose, onFinalize }: PayinDetailDrawerProps) {
   const { t } = useI18n();
-  const canCompensate =
-    row.status === "created" ||
-    row.status === "pending" ||
-    row.status === "expired" ||
-    row.status === "wrong_denomination";
+  const canFinalize = row.status === "created" || row.status === "pending";
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -195,18 +191,16 @@ export function PayinDetailDrawer({ row, onClose, onCompensate }: PayinDetailDra
         </dl>
 
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
-          {canCompensate ? (
+          {canFinalize ? (
             <Button
               type="button"
-              variant="danger-outline"
+              variant="primary"
               size="md"
               className="w-full sm:w-auto"
-              onClick={onCompensate}
-              leftIcon={<IconWallet width={15} height={15} />}
+              onClick={onFinalize}
+              leftIcon={<IconCheckCircle width={15} height={15} />}
             >
-              {row.status === "wrong_denomination"
-                ? t("payin.outcomeCredit")
-                : t("payin.btnCompensate")}
+              {t("payin.btnFinalize")}
             </Button>
           ) : null}
           <Button

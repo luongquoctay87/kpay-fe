@@ -1,11 +1,12 @@
 "use client";
 
-import { Alert, Card, Typography } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { CopyButton } from "@/components/common/CopyButton";
 import { DocumentTitle } from "@/components/layout/DocumentTitle";
+import { IconCheckCircle, IconChevronLeft } from "@/components/icons/NavIcons";
 import { Button, Field, Input, OtpInput } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { portalAuthApi } from "@/features/auth/api";
@@ -20,11 +21,18 @@ import { useRequiredFields } from "@/lib/forms/use-required-fields";
 import { ROUTES, safeInternalPath } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
 
-const { Title, Paragraph, Text } = Typography;
+function extractTotpSecret(otpauthUrl: string): string | null {
+  try {
+    const u = new URL(otpauthUrl);
+    return u.searchParams.get("secret");
+  } catch {
+    return null;
+  }
+}
 
 /**
  * TOTP enroll (QR) / verify (6-digit hoặc backup code).
- * OTP UI khớp LoginForm (OtpInput 6 ô).
+ * UI khớp LoginForm (card chrome + OtpInput + nút icon).
  * @param realm admin → /admin/auth + /admin/login; portal → /auth + /login
  */
 export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
@@ -65,6 +73,11 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
       }
     })();
   }, [enrollTotpAdmin, loginRoute, realm, router, step, t]);
+
+  function goBackToLogin() {
+    clearTwoFaToken();
+    router.replace(loginRoute);
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -120,22 +133,51 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
         router.replace(nextPath);
       }
     } catch (err) {
+      const apiErr = err instanceof ApiError ? err : null;
       setError(
-        err instanceof ApiError
-          ? err.message
-          : step === "enroll"
-            ? t("auth.totpConfirmFailed")
-            : t("auth.invalidCode"),
+        apiErr?.code === "INVALID_OTP"
+          ? t("auth.invalidCode")
+          : apiErr
+            ? apiErr.message
+            : step === "enroll"
+              ? t("auth.totpConfirmFailed")
+              : t("auth.invalidCode"),
       );
     } finally {
       setLoading(false);
     }
   }
 
+  const brandLabel = realm === "admin" ? t("brand.admin") : t("brand.name");
+  const pageHeading =
+    step === "enroll" ? t("auth.totpEnrollTitle") : t("auth.totpVerifyTitle");
+  const subtitle =
+    step === "enroll"
+      ? t("auth.totpEnrollHint")
+      : useBackup
+        ? t("auth.totpBackupHint")
+        : t("auth.totpCodeHint");
+
+  const shell = (title: string, body: ReactNode) => (
+    <div className="w-full max-w-md motion-safe:animate-[kpay-auth-in_0.4s_ease-out]">
+      <DocumentTitle title={`${title} · ${brandLabel}`} />
+      <div className="overflow-hidden rounded-lg border border-edge bg-elevated shadow-[0_20px_48px_-20px_rgba(15,23,42,0.28)]">
+        {realm === "admin" ? (
+          <div className="flex items-center gap-2 border-b border-edge bg-surface/80 px-5 py-3">
+            <span className="inline-flex items-center rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-ink ring-1 ring-ink/20">
+              {t("auth.adminBadge")}
+            </span>
+          </div>
+        ) : null}
+        <div className="px-5 pb-6 pt-5 sm:px-6">{body}</div>
+      </div>
+    </div>
+  );
+
   if (backupCodes) {
     const codes = backupCodes;
     function downloadBackupCodes() {
-      const brand = realm === "admin" ? t("brand.admin") : t("brand.name");
+      const brand = brandLabel;
       const body = [
         `${brand} — TOTP backup codes`,
         `Generated: ${new Date().toISOString()}`,
@@ -154,23 +196,24 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
       URL.revokeObjectURL(url);
     }
 
-    return (
-      <Card className="w-full max-w-md shadow-md">
-        <DocumentTitle
-          title={`${t("auth.backupTitle")} · ${realm === "admin" ? t("brand.admin") : t("brand.name")}`}
-        />
-        <Title level={4}>{t("auth.backupTitle")}</Title>
-        <Paragraph type="secondary">{t("auth.backupHint")}</Paragraph>
-        <div className="mb-4 rounded border border-dashed border-neutral-300 bg-neutral-50 p-3 font-mono text-sm">
+    return shell(
+      t("auth.backupTitle"),
+      <>
+        <h1 className="text-[1.35rem] font-semibold tracking-tight text-ink">
+          {t("auth.backupTitle")}
+        </h1>
+        <p className="mt-1.5 text-body text-muted">{t("auth.backupHint")}</p>
+        <div className="mt-4 rounded-md border border-dashed border-edge bg-surface p-3 font-mono text-sm text-ink">
           {codes.map((c) => (
             <div key={c}>{c}</div>
           ))}
         </div>
-        <div className="flex w-full flex-col gap-3">
+        <div className="mt-5 flex w-full flex-col gap-3">
           <Button
             type="button"
             variant="secondary"
             fullWidth
+            className="!rounded-md"
             leftIcon={<DownloadOutlined />}
             onClick={downloadBackupCodes}
           >
@@ -179,51 +222,55 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
           <Button
             type="button"
             variant="primary"
+            shape="default"
+            size="lg"
             fullWidth
+            className="!rounded-md"
+            leftIcon={<IconCheckCircle width={16} height={16} />}
             onClick={() => {
-              // Session already issued on confirm — go home (no second OTP).
               router.replace(nextPath);
             }}
           >
             {t("auth.backupContinue")}
           </Button>
         </div>
-      </Card>
+      </>,
     );
   }
 
-  const pageHeading =
-    step === "enroll" ? t("auth.totpEnrollTitle") : t("auth.totpVerifyTitle");
-  const brandLabel = realm === "admin" ? t("brand.admin") : t("brand.name");
+  const secret = otpauthUrl ? extractTotpSecret(otpauthUrl) : null;
 
-  return (
-    <Card className="w-full max-w-md shadow-md">
-      <DocumentTitle title={`${pageHeading} · ${brandLabel}`} />
-      <Title level={3} className="!mb-1">
-        {pageHeading}
-      </Title>
-      <Paragraph type="secondary">
-        {step === "enroll"
-          ? t("auth.totpEnrollHint")
-          : useBackup
-            ? t("auth.totpBackupHint")
-            : t("auth.totpCodeHint")}
-      </Paragraph>
+  return shell(
+    pageHeading,
+    <>
+      <h1 className="text-[1.35rem] font-semibold tracking-tight text-ink">{pageHeading}</h1>
+      <p className="mt-1.5 text-body text-muted">{subtitle}</p>
 
       {error ? (
-        <Alert type="error" showIcon className="mb-4" message={error} />
-      ) : null}
-
-      {step === "enroll" && otpauthUrl ? (
-        <div className="mb-4 flex w-full flex-col items-center gap-2">
-          <QRCodeSVG value={otpauthUrl} size={180} />
-          <Text type="secondary" className="break-all text-center text-xs">
-            {otpauthUrl}
-          </Text>
+        <div
+          role="alert"
+          className="mt-4 rounded-md border border-danger-edge bg-danger-bg px-3 py-2 text-body text-danger"
+        >
+          {error}
         </div>
       ) : null}
 
-      <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
+      {step === "enroll" && otpauthUrl ? (
+        <div className="mt-4 flex w-full flex-col items-center gap-3">
+          <div className="rounded-md border border-edge bg-white p-3">
+            <QRCodeSVG value={otpauthUrl} size={180} />
+          </div>
+          {secret ? (
+            <div className="flex max-w-full items-center justify-center gap-1.5 text-caption text-muted">
+              <span className="shrink-0">{t("auth.totpManualSecret")}:</span>
+              <code className="break-all font-mono text-ink">{secret}</code>
+              <CopyButton value={secret} label={t("auth.totpCopySecret")} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <form className="mt-5 flex flex-col gap-4" onSubmit={onSubmit} noValidate>
         <Field
           label={useBackup ? t("auth.backupCode") : t("auth.otpCode")}
           htmlFor="totp-code"
@@ -262,11 +309,13 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
 
         <Button
           type="submit"
-          shape="pill"
+          shape="default"
           size="lg"
           fullWidth
           loading={loading}
+          className="mt-1 !rounded-md"
           disabled={!useBackup && code.replace(/\D/g, "").length < 6}
+          leftIcon={<IconCheckCircle width={16} height={16} />}
         >
           {loading
             ? t("auth.verifying")
@@ -291,10 +340,16 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
           </Button>
         ) : null}
 
-        <Button type="button" variant="link" fullWidth onClick={() => router.push(loginRoute)}>
+        <Button
+          type="button"
+          variant="link"
+          fullWidth
+          leftIcon={<IconChevronLeft width={15} height={15} />}
+          onClick={goBackToLogin}
+        >
           {t("auth.backToSignIn")}
         </Button>
       </form>
-    </Card>
+    </>,
   );
 }

@@ -17,7 +17,8 @@ import { useRequiredFields } from "@/lib/forms/use-required-fields";
 import { generateLoginPassword } from "@/lib/password/generate-login-password";
 import { ApiError } from "@/lib/types/api";
 
-/* ─── Fee table structure ─────────────────────────────────────────────────── */
+/** Phase 1: only QR Bank fee is editable; other channels stay visible but locked. */
+const FEE_EDITABLE_CHANNEL_ID = "qr_bank";
 
 type FeeGroup = {
   key: "payinFees" | "payoutFees" | "cardFeesMerchant" | "cardFeesMember" | "cryptoFees";
@@ -154,6 +155,8 @@ export function MerchantCreatePage() {
   }, []);
 
   function handleFeeChange(groupKey: FeeGroup["key"], idx: number, value: string) {
+    const channelId = FEE_GROUPS.find((g) => g.key === groupKey)?.channels[idx]?.key;
+    if (channelId !== FEE_EDITABLE_CHANNEL_ID) return;
     setFees((prev) => {
       const next = { ...prev, [groupKey]: [...prev[groupKey]] };
       next[groupKey][idx] = { ...next[groupKey][idx], rate: value };
@@ -346,6 +349,7 @@ export function MerchantCreatePage() {
         <section className="min-w-0 rounded-lg border border-edge bg-elevated">
           <div className="border-b border-edge px-4 py-3 sm:px-5">
             <p className="kpay-text-title font-semibold">{t("merchantNew.sectionFees")}</p>
+            <p className="mt-1 text-caption text-muted">{t("merchantNew.feeEditHint")}</p>
           </div>
           <div className="grid gap-5 p-4 sm:grid-cols-2 sm:p-5">
             {FEE_GROUPS.map((group) => (
@@ -364,9 +368,19 @@ export function MerchantCreatePage() {
                     <tbody>
                       {fees[group.key].map((fee, idx) => {
                         const ch = group.channels[idx];
+                        const editable = fee.channel === FEE_EDITABLE_CHANNEL_ID;
                         return (
-                          <tr key={fee.channel} className="border-b border-edge last:border-0">
-                            <td className="px-3 py-2 text-label text-ink">
+                          <tr
+                            key={fee.channel}
+                            className={`border-b border-edge last:border-0 ${
+                              editable ? "" : "bg-surface/60"
+                            }`}
+                          >
+                            <td
+                              className={`px-3 py-2 text-label ${
+                                editable ? "text-ink" : "text-muted"
+                              }`}
+                            >
                               {t(ch.labelKey)}
                             </td>
                             <td className="px-3 py-2">
@@ -377,8 +391,10 @@ export function MerchantCreatePage() {
                                   min="0"
                                   max="100"
                                   value={fee.rate}
+                                  disabled={!editable || submitting}
+                                  readOnly={!editable}
                                   onChange={(e) => handleFeeChange(group.key, idx, e.target.value)}
-                                  className="w-full rounded-md border border-edge-strong bg-canvas px-2.5 py-1.5 text-right font-mono text-label text-ink outline-none transition focus:border-ink focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
+                                  className="w-full rounded-md border border-edge-strong bg-canvas px-2.5 py-1.5 text-right font-mono text-label text-ink outline-none transition focus:border-ink focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] disabled:cursor-not-allowed disabled:bg-surface disabled:text-muted disabled:opacity-70"
                                 />
                                 <span className="shrink-0 text-label text-muted">%</span>
                               </div>

@@ -75,7 +75,10 @@ export function SectionFees({
   return (
     <section className="min-w-0 rounded-lg border border-edge bg-elevated">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-4 py-3 sm:px-5">
-        <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionFees")}</p>
+        <div className="min-w-0">
+          <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionFees")}</p>
+          <p className="mt-1 text-caption text-muted">{t("merchantDetail.feeEditHint")}</p>
+        </div>
         {editing ? (
           <div className="flex gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(false)} disabled={saving}>
@@ -124,14 +127,20 @@ export function SectionFees({
                           {fee.channelName}
                         </td>
                         <td className="px-3 py-2.5 sm:px-4">
-                          {editing && editable ? (
+                          {editing ? (
                             <input
                               type="number"
                               step="0.01"
                               min="0"
-                              value={draftIdx >= 0 ? (draft[draftIdx].feeRateBps / 100).toFixed(2) : "0.00"}
+                              value={
+                                draftIdx >= 0
+                                  ? (draft[draftIdx].feeRateBps / 100).toFixed(2)
+                                  : "0.00"
+                              }
+                              disabled={!editable || saving}
+                              readOnly={!editable}
                               onChange={(e) => {
-                                if (draftIdx < 0) return;
+                                if (!editable || draftIdx < 0) return;
                                 const next = [...draft];
                                 next[draftIdx] = {
                                   ...next[draftIdx],
@@ -139,7 +148,7 @@ export function SectionFees({
                                 };
                                 setDraft(next);
                               }}
-                              className="w-full rounded-md border border-edge-strong bg-canvas px-3 py-1 text-right font-mono text-label text-ink outline-none transition focus:border-ink"
+                              className="w-full rounded-md border border-edge-strong bg-canvas px-3 py-1 text-right font-mono text-label text-ink outline-none transition focus:border-ink disabled:cursor-not-allowed disabled:bg-surface disabled:text-muted disabled:opacity-70"
                             />
                           ) : (
                             <span

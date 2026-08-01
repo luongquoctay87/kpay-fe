@@ -81,9 +81,11 @@ export function safeInternalPath(
 
 /**
  * Admin login URL, optionally with `?next=` for deep-link return after sign-in.
- * Omits `next` when the target is already home (`/`) — the post-login default.
+ * Omits `next` when the target is home, auth screens (login/totp), or unsafe —
+ * those are not post-login destinations (e.g. `/admin/login?next=/admin/totp`).
  */
 export function adminLoginHref(nextPath?: string | null): string {
-  if (!nextPath || nextPath === ROUTES.home) return ROUTES.login;
-  return `${ROUTES.login}?next=${encodeURIComponent(nextPath)}`;
+  const safe = safeInternalPath(nextPath, ROUTES.home);
+  if (safe === ROUTES.home) return ROUTES.login;
+  return `${ROUTES.login}?next=${encodeURIComponent(safe)}`;
 }

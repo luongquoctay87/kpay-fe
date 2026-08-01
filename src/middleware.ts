@@ -26,7 +26,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (pathname === ROUTES.portalLogin && hasSession) {
-    return NextResponse.redirect(new URL(ROUTES.home, request.url));
+    return NextResponse.redirect(new URL(ROUTES.portalHome, request.url));
   }
 
   return NextResponse.next();

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/i18n/use-i18n";
+import { writeClipboard } from "@/lib/clipboard";
 import { cn } from "@/lib/cn";
 
 type CopyButtonProps = {
@@ -65,7 +66,7 @@ export function CopyButton({ value, label, className }: CopyButtonProps) {
 
   async function onCopy() {
     try {
-      await navigator.clipboard.writeText(value);
+      await writeClipboard(value);
       setCopied(true);
       if (timerRef.current != null) window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => setCopied(false), 1800);

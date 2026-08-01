@@ -76,6 +76,7 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
       banks.map((b) => ({
         value: b.code,
         label: `${b.code} — ${b.name}`,
+        keywords: `${b.code} ${b.name}`,
       })),
     [banks],
   );
@@ -188,6 +189,8 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
                 options={bankOptions}
                 value={bankCode}
                 onChange={setBankCode}
+                searchable
+                searchPlaceholder={t("bankAccounts.placeholderBankSearch")}
                 invalid={Boolean(required.errorOf("bankCode"))}
                 placeholder={
                   banksLoading
