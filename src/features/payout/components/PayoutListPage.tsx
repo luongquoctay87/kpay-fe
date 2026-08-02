@@ -302,10 +302,10 @@ export function PayoutListPage() {
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-4 px-6 py-5 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader title={t("payout.listTitle")} />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label={t("payout.statSuccessCount")}
           value={formatMoney(stats.successCount)}
@@ -517,8 +517,8 @@ export function PayoutListPage() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2.5">
-            <div className="min-w-[200px] flex-1 basis-[220px]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2.5">
+            <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px]">
               <Input
                 id="payout-trans-id-compact"
                 size="md"
@@ -529,7 +529,7 @@ export function PayoutListPage() {
                 className={filterControlClass}
               />
             </div>
-            <div className="min-w-[200px] flex-1 basis-[220px]">
+            <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px]">
               <Input
                 id="payout-content-compact"
                 size="md"
@@ -540,7 +540,7 @@ export function PayoutListPage() {
                 className={filterControlClass}
               />
             </div>
-            <div className="min-w-[200px] flex-1 basis-[220px] xl:max-w-[280px]">
+            <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px] xl:max-w-[280px]">
               <Select
                 id="payout-merchant-compact"
                 size="md"
@@ -553,30 +553,33 @@ export function PayoutListPage() {
                 triggerClassName={filterControlClass}
               />
             </div>
-            <div className="ml-auto flex h-9 flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={onReset}
-                disabled={!canReset}
-                leftIcon={<IconRefresh width={15} height={15} />}
-              >
-                {t("payout.reset")}
-              </Button>
-              <Button
-                type="submit"
-                variant="soft"
-                size="md"
-                className="min-h-9 gap-2 px-4 sm:min-w-[8.75rem]"
-                leftIcon={<IconSearch width={16} height={16} />}
-              >
-                {t("payout.search")}
-              </Button>
+            <div className="flex w-full flex-col gap-2 sm:ml-auto sm:h-9 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="flex w-full gap-2 sm:w-auto">
+                <Button
+                  type="submit"
+                  variant="soft"
+                  size="md"
+                  className="min-h-9 flex-1 gap-2 px-4 sm:min-w-[8.75rem] sm:flex-none"
+                  leftIcon={<IconSearch width={16} height={16} />}
+                >
+                  {t("payout.search")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  className="flex-1 sm:flex-none"
+                  onClick={onReset}
+                  disabled={!canReset}
+                  leftIcon={<IconRefresh width={15} height={15} />}
+                >
+                  {t("payout.reset")}
+                </Button>
+              </div>
               <button
                 type="button"
                 onClick={() => setExpanded(true)}
-                className="inline-flex h-9 items-center gap-1 px-1.5 text-label font-medium text-ink transition hover:opacity-70"
+                className="inline-flex h-9 items-center justify-center gap-1 px-1.5 text-label font-medium text-ink transition hover:opacity-70 sm:justify-start"
               >
                 {t("payout.expand")}
                 <IconChevron width={14} height={14} />

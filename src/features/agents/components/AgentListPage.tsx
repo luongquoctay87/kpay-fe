@@ -137,7 +137,7 @@ export function AgentListPage() {
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-5 px-4 py-5 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader
         title={t("agents.listTitle")}
         breadcrumbs={[
@@ -146,47 +146,50 @@ export function AgentListPage() {
         ]}
       />
 
-      <FilterBar
-        onSearch={onSearch}
-        onReset={onReset}
-        canReset={canReset}
-        searchLabel={t("agents.search")}
-        resetLabel={t("agents.reset")}
-      >
-        <div className="w-full min-w-0 max-w-md sm:min-w-[280px] sm:w-[320px]">
-          <SearchInput
-            id="agent-name"
-            value={nameDraft}
-            onChange={setNameDraft}
-            placeholder={t("agents.filterNamePlaceholder")}
-            label={t("agents.filterName")}
-          />
-        </div>
-        <div className="w-full min-w-0 sm:w-[200px]">
-          <Select
-            id="agent-active"
-            size="md"
-            options={activeOptions}
-            value={activeDraft}
-            onChange={(v) => {
-              setActiveDraft(v);
-              applyFilters(v);
-            }}
-            placeholder={t("agents.filterActive")}
-            clearable
-            aria-label={t("agents.filterActive")}
-            triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-          />
-        </div>
-      </FilterBar>
+      <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
+        <FilterBar
+          onSearch={onSearch}
+          onReset={onReset}
+          canReset={canReset}
+          searchLabel={t("agents.search")}
+          resetLabel={t("agents.reset")}
+        >
+          <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px] sm:max-w-md">
+            <SearchInput
+              id="agent-name"
+              value={nameDraft}
+              onChange={setNameDraft}
+              placeholder={t("agents.filterNamePlaceholder")}
+              label={t("agents.filterName")}
+            />
+          </div>
+          <div className="w-full min-w-0 sm:min-w-[160px] sm:w-[200px] sm:flex-none">
+            <Select
+              id="agent-active"
+              size="md"
+              options={activeOptions}
+              value={activeDraft}
+              onChange={(v) => {
+                setActiveDraft(v);
+                applyFilters(v);
+              }}
+              placeholder={t("agents.filterActive")}
+              clearable
+              aria-label={t("agents.filterActive")}
+              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
+            />
+          </div>
+        </FilterBar>
+      </div>
 
       <TableCard
         toolbar={
-          <>
+          <div className="flex w-full flex-col gap-2 min-[400px]:w-auto min-[400px]:flex-row min-[400px]:flex-wrap">
             <Button
               href={ROUTES.agentNew}
               variant="primary"
               size="md"
+              className="w-full min-[400px]:w-auto"
               leftIcon={<IconPlus width={16} height={16} />}
             >
               {t("agents.add")}
@@ -195,13 +198,14 @@ export function AgentListPage() {
               type="button"
               variant="secondary"
               size="md"
+              className="w-full min-[400px]:w-auto"
               loading={exporting}
               onClick={() => void onExport()}
               leftIcon={<IconDownload width={16} height={16} />}
             >
               {t("agents.export")}
             </Button>
-          </>
+          </div>
         }
         error={error}
         onRetry={refresh}

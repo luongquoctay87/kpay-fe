@@ -131,13 +131,13 @@ export function MerchantDetailPage({ id }: { id: string }) {
   const willSuspend = merchant.status === "active";
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:gap-6 sm:px-8 lg:px-10">
       {/* Header row */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
         <PageHeader
           title={
             <span className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-              <span className="break-words">{merchant.name}</span>
+              <span className="min-w-0 break-words">{merchant.name}</span>
               <StatusBadge tone={MERCHANT_STATUS_TONE[merchant.status]}>
                 {t(MERCHANT_STATUS_LABEL_KEY[merchant.status])}
               </StatusBadge>
@@ -152,12 +152,12 @@ export function MerchantDetailPage({ id }: { id: string }) {
             { label: merchant.name, icon: <IconStore /> },
           ]}
         />
-        <div className="flex w-full flex-col gap-2 min-[400px]:flex-row sm:w-auto">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
           <Button
             type="button"
             variant={willSuspend ? "danger-outline" : "secondary"}
             size="md"
-            className="w-full min-[400px]:flex-1 sm:w-auto sm:flex-none"
+            className="w-full sm:w-auto"
             loading={actionSaving}
             disabled={merchant.status === "disabled"}
             onClick={() => setConfirmStatus(true)}
@@ -175,7 +175,7 @@ export function MerchantDetailPage({ id }: { id: string }) {
             type="button"
             variant="secondary"
             size="md"
-            className="w-full min-[400px]:flex-1 sm:w-auto sm:flex-none"
+            className="w-full sm:w-auto"
             onClick={() => setShowConfig(true)}
             leftIcon={<IconSettings width={15} height={15} />}
           >
@@ -185,7 +185,7 @@ export function MerchantDetailPage({ id }: { id: string }) {
             type="button"
             variant="secondary"
             size="md"
-            className="w-full min-[400px]:flex-1 sm:w-auto sm:flex-none"
+            className="w-full sm:w-auto"
             onClick={() => setShowResetPw(true)}
             leftIcon={<IconKey width={15} height={15} />}
           >
@@ -201,7 +201,7 @@ export function MerchantDetailPage({ id }: { id: string }) {
       ) : null}
 
       {/* Top two-column: Basic info + Wallet */}
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[1fr_360px]">
+      <div className="grid min-w-0 gap-4 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]">
         <SectionBasic m={merchant} merchantId={id} onUpdated={setMerchant} />
         <SectionWallet
           wallet={merchant.wallet}

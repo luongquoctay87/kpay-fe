@@ -85,12 +85,12 @@ export function AgentDetailPage({ id }: { id: string }) {
   const balance = agent.wallet?.availableBalance ?? 0;
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-8 lg:px-10">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+    <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:gap-6 sm:px-8 lg:px-10">
+      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
         <PageHeader
           title={
             <span className="flex flex-wrap items-center gap-2">
-              <span className="break-words">{agent.name}</span>
+              <span className="min-w-0 break-words">{agent.name}</span>
               <StatusBadge tone={agent.active ? "active" : "disabled"}>
                 {agent.active ? t("agents.statusActive") : t("agents.statusInactive")}
               </StatusBadge>
@@ -102,12 +102,12 @@ export function AgentDetailPage({ id }: { id: string }) {
             { label: agent.name, icon: <IconHeadset /> },
           ]}
         />
-        <div className="flex w-full shrink-0 flex-col gap-2 min-[400px]:flex-row min-[400px]:flex-wrap sm:w-auto sm:justify-end">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
           <Button
             type="button"
             variant="primary"
             size="md"
-            className="w-full whitespace-nowrap min-[400px]:flex-1 sm:w-auto sm:flex-none"
+            className="w-full sm:w-auto"
             onClick={() => setShowEdit(true)}
             leftIcon={<IconPencil width={15} height={15} className="shrink-0" />}
           >
@@ -117,7 +117,7 @@ export function AgentDetailPage({ id }: { id: string }) {
             type="button"
             variant={agent.active ? "danger-outline" : "secondary"}
             size="md"
-            className="w-full whitespace-nowrap min-[400px]:flex-1 sm:w-auto sm:flex-none"
+            className="w-full sm:w-auto"
             loading={actionSaving}
             onClick={() => setConfirmStatus(true)}
             leftIcon={
@@ -134,7 +134,7 @@ export function AgentDetailPage({ id }: { id: string }) {
             type="button"
             variant="secondary"
             size="md"
-            className="w-full whitespace-nowrap min-[400px]:flex-1 sm:w-auto sm:flex-none"
+            className="w-full sm:w-auto"
             onClick={() => {
               setResetError(null);
               setShowResetPw(true);
@@ -155,7 +155,7 @@ export function AgentDetailPage({ id }: { id: string }) {
         </p>
       ) : null}
 
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[1fr_360px]">
+      <div className="grid min-w-0 gap-4 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]">
         <SectionBasic agent={agent} onEdit={() => setShowEdit(true)} />
         <SectionWallet
           balance={balance}

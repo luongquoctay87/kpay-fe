@@ -35,7 +35,7 @@ function DetailRow({
   children: ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[9.5rem_minmax(0,1fr)] items-start gap-3 border-b border-edge py-2.5 last:border-b-0">
+    <div className="grid grid-cols-1 items-start gap-1 border-b border-edge py-2.5 last:border-b-0 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:gap-3">
       <dt className="text-label text-muted">{label}</dt>
       <dd className="min-w-0 break-words text-label text-ink">{children}</dd>
     </div>

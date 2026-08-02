@@ -22,7 +22,7 @@ export function SectionWallet({
           {t("merchantDetail.btnEditBalance")}
         </Button>
       </div>
-      <div className="grid grid-cols-1 divide-y divide-edge p-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:p-5">
+      <div className="grid grid-cols-1 divide-y divide-edge p-4 sm:p-5">
         {[
           [t("merchantDetail.walletAvailable"), wallet.availableBalance],
           [t("merchantDetail.walletReserved"), wallet.reservedBalance],
@@ -30,7 +30,7 @@ export function SectionWallet({
         ].map(([label, val]) => (
           <div
             key={String(label)}
-            className="flex flex-col items-start gap-1 py-3 first:pt-0 last:pb-0 sm:items-center sm:px-4 sm:py-0 sm:first:pl-0 sm:first:pt-0 sm:last:pr-0 sm:last:pb-0"
+            className="flex flex-col items-start gap-1 py-3 first:pt-0 last:pb-0"
           >
             <span className="text-label text-muted">{label}</span>
             <MoneyAmount

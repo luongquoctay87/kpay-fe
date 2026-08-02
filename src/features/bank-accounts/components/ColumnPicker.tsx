@@ -22,7 +22,7 @@ export function ColumnPicker({ visibility, onChange }: ColumnPickerProps) {
       onChange={onChange}
       buttonLabelKey="bankAccounts.columns"
       hintLabelKey="bankAccounts.columnsHint"
-      reservedColumnCount={1}
+      reservedColumnCount={0}
       visibleCount={visibleColumnCount}
     />
   );

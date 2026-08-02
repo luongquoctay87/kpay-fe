@@ -10,6 +10,7 @@ import {
   IconHash,
   IconLayers,
   IconLink,
+  IconRefresh,
   IconRepeat,
   IconUsers,
   IconWebhook,
@@ -23,7 +24,7 @@ import {
   SearchInput,
   TableCard,
 } from "@/components/common";
-import { Button, Select, StatusBadge } from "@/components/ui";
+import { Button, Select, StatusBadge, toast } from "@/components/ui";
 import { callbackLogApi } from "@/features/callback-logs/api";
 import { ColumnPicker } from "@/features/callback-logs/components/ColumnPicker";
 import { JsonViewModal } from "@/features/callback-logs/components/JsonViewModal";
@@ -55,6 +56,14 @@ import {
   CALLBACK_STATUS_OPTIONS,
   CALLBACK_TYPE_OPTIONS,
 } from "@/features/callback-logs/types";
+import { FinalizePayinModal } from "@/features/payin/components/FinalizePayinModal";
+import { PayinDetailDrawer } from "@/features/payin/components/PayinDetailDrawer";
+import { payinApi } from "@/features/payin/api";
+import type { PayinOrderListItem } from "@/features/payin/types";
+import { FinalizePayoutModal } from "@/features/payout/components/FinalizePayoutModal";
+import { PayoutDetailDrawer } from "@/features/payout/components/PayoutDetailDrawer";
+import { payoutApi } from "@/features/payout/api";
+import type { PayoutOrderListItem } from "@/features/payout/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { ApiError } from "@/lib/types/api";
@@ -107,13 +116,70 @@ function truncateUrl(url: string, max = 36): string {
   return `${url.slice(0, max)}…`;
 }
 
+/** Compact UUID / long id for table cells; full value stays in title + copy. */
+function shortId(id: string, head = 8, tail = 4): string {
+  if (id.length <= head + tail + 1) return id;
+  return `${id.slice(0, head)}…${id.slice(-tail)}`;
+}
+
+function IdCell({
+  value,
+  copyLabel,
+  mono = false,
+  compact = false,
+  onOpen,
+  openLabel,
+}: {
+  value: string;
+  copyLabel: string;
+  mono?: boolean;
+  compact?: boolean;
+  onOpen?: () => void;
+  openLabel?: string;
+}) {
+  const display = compact ? shortId(value) : value;
+  const textClass = mono
+    ? "truncate font-mono text-label text-ink-secondary"
+    : "truncate text-label font-medium text-ink";
+
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      {onOpen ? (
+        <button
+          type="button"
+          className={`${textClass} text-left transition hover:text-link-hover hover:underline`}
+          title={openLabel ? `${openLabel}: ${value}` : value}
+          onClick={onOpen}
+        >
+          {display}
+        </button>
+      ) : (
+        <span className={textClass} title={value}>
+          {display}
+        </span>
+      )}
+      <CopyButton value={value} label={copyLabel} />
+    </div>
+  );
+}
+
+function normalizeOrderType(type: string): CallbackType | null {
+  const v = type.trim().toLowerCase();
+  if (v === "payin" || v === "payout") return v;
+  return null;
+}
+
 export function CallbackLogsPage() {
   const { t } = useI18n();
   const permissions = useAuthStore((s) => s.user?.permissions);
   // Fail-closed: missing permissions means no privileged actions.
   const canResend = Boolean(permissions?.includes("callbacks:resend"));
-  const [notice, setNotice] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [openingOrderId, setOpeningOrderId] = useState<string | null>(null);
+  const [payinDetail, setPayinDetail] = useState<PayinOrderListItem | null>(null);
+  const [payoutDetail, setPayoutDetail] = useState<PayoutOrderListItem | null>(null);
+  const [finalizePayin, setFinalizePayin] = useState<PayinOrderListItem | null>(null);
+  const [finalizePayout, setFinalizePayout] = useState<PayoutOrderListItem | null>(null);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
 
@@ -261,21 +327,73 @@ export function CallbackLogsPage() {
   async function onResend(row: CallbackLogListItem) {
     if (row.direction !== "outbound" || resendingId) return;
     setResendingId(row.id);
-    setNotice(null);
     setError(null);
     try {
       await callbackLogApi.resend(row.id);
-      setNotice(t("callbackLogs.resendOk"));
+      toast.success(t("callbackLogs.resendOk"));
       await refresh();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("callbackLogs.resendError"));
+      const msg = e instanceof ApiError ? e.message : t("callbackLogs.resendError");
+      setError(msg);
+      toast.error(t("callbackLogs.resendError"), msg);
     } finally {
       setResendingId(null);
     }
   }
 
+  async function openOrderDetail(row: CallbackLogListItem) {
+    const orderType = normalizeOrderType(row.type);
+    if (!orderType || openingOrderId) return;
+
+    setOpeningOrderId(row.id);
+    try {
+      if (orderType === "payin") {
+        const data = await payinApi.list({
+          transId: row.externalRequestId,
+          page: 0,
+          size: 20,
+        });
+        const match =
+          data.items.find((o) => o.id === row.refId) ??
+          data.items.find((o) => o.requestId === row.externalRequestId) ??
+          data.items[0];
+        if (!match) {
+          toast.error(t("callbackLogs.orderNotFound"));
+          return;
+        }
+        setPayoutDetail(null);
+        setPayinDetail(match);
+        return;
+      }
+
+      const data = await payoutApi.list({
+        transId: row.externalRequestId,
+        page: 0,
+        size: 20,
+      });
+      const match =
+        data.items.find((o) => o.id === row.refId) ??
+        data.items.find((o) => o.requestId === row.externalRequestId) ??
+        data.items[0];
+      if (!match) {
+        toast.error(t("callbackLogs.orderNotFound"));
+        return;
+      }
+      setPayinDetail(null);
+      setPayoutDetail(match);
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : t("callbackLogs.orderLoadError");
+      toast.error(t("callbackLogs.orderLoadError"), msg);
+    } finally {
+      setOpeningOrderId(null);
+    }
+  }
+
+  const thClass = (col: keyof typeof CALLBACK_LOG_COLUMN_WIDTH) =>
+    `${CALLBACK_LOG_COLUMN_WIDTH[col]} ${CALLBACK_LOG_COLUMN_ALIGN[col]} px-3 py-2.5 font-medium`;
+
   return (
-    <div className="flex w-full min-w-0 flex-col gap-5 px-4 py-5 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader
         title={t("callbackLogs.listTitle")}
         breadcrumbs={[
@@ -284,77 +402,71 @@ export function CallbackLogsPage() {
         ]}
       />
 
-      {notice ? (
-        <p className="rounded-md bg-success/10 px-3 py-2 text-label text-success" role="status">
-          {notice}
-        </p>
-      ) : null}
-
-      <FilterBar
-        onSearch={onSearch}
-        onReset={onReset}
-        canReset={canReset}
-        searchLabel={t("callbackLogs.search")}
-        resetLabel={t("callbackLogs.reset")}
-      >
-        <div className="w-full min-w-0 max-w-md sm:min-w-[280px] sm:w-[320px]">
-          <SearchInput
-            id="cb-external-id"
-            value={externalIdDraft}
-            onChange={setExternalIdDraft}
-            placeholder={t("callbackLogs.filterExternalIdPlaceholder")}
-            label={t("callbackLogs.filterExternalId")}
-          />
-        </div>
-        <div className="w-full min-w-0 sm:w-[180px]">
-          <Select
-            id="cb-type"
-            size="md"
-            options={typeOptions}
-            value={typeDraft}
-            onChange={(v) => {
-              setTypeDraft(v);
-              applyFilters({ type: v });
-            }}
-            placeholder={t("callbackLogs.filterType")}
-            clearable
-            aria-label={t("callbackLogs.filterType")}
-            triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-          />
-        </div>
-        <div className="w-full min-w-0 sm:w-[180px]">
-          <Select
-            id="cb-direction"
-            size="md"
-            options={directionOptions}
-            value={directionDraft}
-            onChange={(v) => {
-              setDirectionDraft(v);
-              applyFilters({ direction: v });
-            }}
-            placeholder={t("callbackLogs.filterDirection")}
-            clearable
-            aria-label={t("callbackLogs.filterDirection")}
-            triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-          />
-        </div>
-        <div className="w-full min-w-0 sm:w-[180px]">
-          <Select
-            id="cb-status"
-            size="md"
-            options={statusOptions}
-            value={statusDraft}
-            onChange={(v) => {
-              setStatusDraft(v);
-              applyFilters({ status: v });
-            }}
-            placeholder={t("callbackLogs.filterStatus")}
-            clearable
-            aria-label={t("callbackLogs.filterStatus")}
-            triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-          />
-        </div>
-      </FilterBar>
+      <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
+        <FilterBar
+          onSearch={onSearch}
+          onReset={onReset}
+          canReset={canReset}
+          loading={loading}
+          searchLabel={t("callbackLogs.search")}
+          resetLabel={t("callbackLogs.reset")}
+        >
+          <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px] sm:max-w-md">
+            <SearchInput
+              id="cb-external-id"
+              value={externalIdDraft}
+              onChange={setExternalIdDraft}
+              placeholder={t("callbackLogs.filterExternalIdPlaceholder")}
+              label={t("callbackLogs.filterExternalId")}
+            />
+          </div>
+          <div className="w-full min-w-0 sm:min-w-[140px] sm:w-[160px] sm:flex-none">
+            <Select
+              id="cb-type"
+              size="md"
+              options={typeOptions}
+              value={typeDraft}
+              onChange={(v) => {
+                setTypeDraft(v);
+                applyFilters({ type: v });
+              }}
+              placeholder={t("callbackLogs.filterType")}
+              clearable
+              aria-label={t("callbackLogs.filterType")}
+            />
+          </div>
+          <div className="w-full min-w-0 sm:min-w-[140px] sm:w-[160px] sm:flex-none">
+            <Select
+              id="cb-direction"
+              size="md"
+              options={directionOptions}
+              value={directionDraft}
+              onChange={(v) => {
+                setDirectionDraft(v);
+                applyFilters({ direction: v });
+              }}
+              placeholder={t("callbackLogs.filterDirection")}
+              clearable
+              aria-label={t("callbackLogs.filterDirection")}
+            />
+          </div>
+          <div className="w-full min-w-0 sm:min-w-[140px] sm:w-[160px] sm:flex-none">
+            <Select
+              id="cb-status"
+              size="md"
+              options={statusOptions}
+              value={statusDraft}
+              onChange={(v) => {
+                setStatusDraft(v);
+                applyFilters({ status: v });
+              }}
+              placeholder={t("callbackLogs.filterStatus")}
+              clearable
+              aria-label={t("callbackLogs.filterStatus")}
+            />
+          </div>
+        </FilterBar>
+      </div>
 
       <TableCard
         toolbar={
@@ -391,92 +503,92 @@ export function CallbackLogsPage() {
           <thead>
             <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
               {show.externalId ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.externalId} ${CALLBACK_LOG_COLUMN_ALIGN.externalId} px-4 py-2.5 font-medium`}>
+                <th className={thClass("externalId")}>
                   <ColumnHeader icon={<IconHash width={14} height={14} />}>
                     {t("callbackLogs.colExternalId")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.refId ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.refId} ${CALLBACK_LOG_COLUMN_ALIGN.refId} px-4 py-2.5 font-medium`}>
+                <th className={thClass("refId")}>
                   <ColumnHeader icon={<IconWebhook width={14} height={14} />}>
                     {t("callbackLogs.colRefId")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.type ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.type} ${CALLBACK_LOG_COLUMN_ALIGN.type} px-4 py-2.5 font-medium`}>
+                <th className={thClass("type")}>
                   <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
                     {t("callbackLogs.colType")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.direction ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.direction} ${CALLBACK_LOG_COLUMN_ALIGN.direction} px-4 py-2.5 font-medium`}>
+                <th className={thClass("direction")}>
                   <ColumnHeader align="center" icon={<IconArrowOut width={14} height={14} />}>
                     {t("callbackLogs.colDirection")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.url ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.url} ${CALLBACK_LOG_COLUMN_ALIGN.url} px-4 py-2.5 font-medium`}>
+                <th className={thClass("url")}>
                   <ColumnHeader icon={<IconLink width={14} height={14} />}>
                     {t("callbackLogs.colUrl")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.request ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.request} ${CALLBACK_LOG_COLUMN_ALIGN.request} px-4 py-2.5 font-medium`}>
+                <th className={thClass("request")}>
                   <ColumnHeader align="center" icon={<IconArrowOut width={14} height={14} />}>
                     {t("callbackLogs.colRequest")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.http ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.http} ${CALLBACK_LOG_COLUMN_ALIGN.http} px-4 py-2.5 font-medium`}>
+                <th className={thClass("http")}>
                   <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
                     {t("callbackLogs.colHttp")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.response ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.response} ${CALLBACK_LOG_COLUMN_ALIGN.response} px-4 py-2.5 font-medium`}>
+                <th className={thClass("response")}>
                   <ColumnHeader align="center" icon={<IconArrowIn width={14} height={14} />}>
                     {t("callbackLogs.colResponse")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.status ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.status} ${CALLBACK_LOG_COLUMN_ALIGN.status} px-4 py-2.5 font-medium`}>
+                <th className={thClass("status")}>
                   <ColumnHeader align="center" icon={<IconCheckCircle width={14} height={14} />}>
                     {t("callbackLogs.colStatus")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.attempt ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.attempt} ${CALLBACK_LOG_COLUMN_ALIGN.attempt} px-4 py-2.5 font-medium`}>
+                <th className={thClass("attempt")}>
                   <ColumnHeader align="center" icon={<IconRepeat width={14} height={14} />}>
                     {t("callbackLogs.colAttempt")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.duration ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.duration} ${CALLBACK_LOG_COLUMN_ALIGN.duration} px-4 py-2.5 font-medium`}>
+                <th className={thClass("duration")}>
                   <ColumnHeader align="right" icon={<IconClock width={14} height={14} />}>
                     {t("callbackLogs.colDuration")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.time ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.time} ${CALLBACK_LOG_COLUMN_ALIGN.time} px-4 py-2.5 font-medium`}>
+                <th className={thClass("time")}>
                   <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                     {t("callbackLogs.colTime")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.actions ? (
-                <th className={`${CALLBACK_LOG_COLUMN_WIDTH.actions} ${CALLBACK_LOG_COLUMN_ALIGN.actions} px-4 py-2.5 font-medium`}>
-                  <ColumnHeader align="center" icon={<IconRepeat width={14} height={14} />}>
+                <th className={thClass("actions")}>
+                  <ColumnHeader align="center" icon={<IconRefresh width={14} height={14} />}>
                     {t("callbackLogs.colActions")}
                   </ColumnHeader>
                 </th>
@@ -486,7 +598,7 @@ export function CallbackLogsPage() {
           <tbody>
             {loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-4 py-16 text-center text-label text-muted">
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
                   {t("callbackLogs.loading")}
                 </td>
               </tr>
@@ -494,7 +606,7 @@ export function CallbackLogsPage() {
 
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-4 py-16 text-center text-label text-muted">
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
                   {error
                     ? t("callbackLogs.loadError")
                     : hasFilters
@@ -507,118 +619,147 @@ export function CallbackLogsPage() {
             {rows.map((row) => (
               <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
                 {show.externalId ? (
-                  <td className="px-4 py-2.5">
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="truncate text-label font-medium text-ink" title={row.externalRequestId}>
-                        {row.externalRequestId}
-                      </span>
-                      <CopyButton
-                        showCheck
-                        className="inline-flex items-center gap-1 text-caption text-accent transition hover:text-ink"
-                        value={row.externalRequestId}
-                        label={t("callbackLogs.copyExternalId")}
-                      />
-                    </div>
+                  <td className="px-3 py-2.5">
+                    <IdCell
+                      value={row.externalRequestId}
+                      copyLabel={t("callbackLogs.copyExternalId")}
+                      openLabel={t("callbackLogs.openOrder")}
+                      onOpen={
+                        normalizeOrderType(row.type)
+                          ? () => void openOrderDetail(row)
+                          : undefined
+                      }
+                    />
                   </td>
                 ) : null}
                 {show.refId ? (
-                  <td className="px-4 py-2.5">
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="truncate font-mono text-label text-ink-secondary" title={row.refId}>
-                        {row.refId}
-                      </span>
-                      <CopyButton showCheck className="inline-flex items-center gap-1 text-caption text-accent transition hover:text-ink" value={row.refId} label={t("callbackLogs.copyRefId")} />
-                    </div>
+                  <td className="px-3 py-2.5">
+                    <IdCell
+                      value={row.refId}
+                      copyLabel={t("callbackLogs.copyRefId")}
+                      mono
+                      compact
+                    />
                   </td>
                 ) : null}
                 {show.type ? (
-                  <td className="px-4 py-2.5 text-center">
-                    <StatusBadge tone="neutral">{row.type}</StatusBadge>
+                  <td className="px-3 py-2.5 text-center">
+                    <StatusBadge tone="neutral">
+                      {t(CALLBACK_TYPE_LABEL_KEY[row.type])}
+                    </StatusBadge>
                   </td>
                 ) : null}
                 {show.direction ? (
-                  <td className="px-4 py-2.5 text-center">
-                    <StatusBadge tone="neutral" className="bg-accent/10 text-accent ring-accent/20">
+                  <td className="px-3 py-2.5 text-center">
+                    <StatusBadge tone="neutral">
                       {t(CALLBACK_DIRECTION_LABEL_KEY[row.direction])}
                     </StatusBadge>
                   </td>
                 ) : null}
                 {show.url ? (
-                  <td className="truncate px-4 py-2.5 text-label text-ink-secondary" title={row.url}>
+                  <td className="truncate px-3 py-2.5 text-label text-ink-secondary" title={row.url}>
                     {truncateUrl(row.url)}
                   </td>
                 ) : null}
                 {show.request ? (
-                  <td className="px-4 py-2.5 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     {row.requestBody != null ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openRequest(row)}
-                      >
-                        {t("callbackLogs.view")}
-                      </Button>
+                      <span className="group relative inline-flex">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          iconOnly
+                          aria-label={t("callbackLogs.modalRequestTitle")}
+                          leftIcon={<IconArrowOut width={15} height={15} />}
+                          onClick={() => openRequest(row)}
+                        />
+                        <span
+                          role="tooltip"
+                          className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                        >
+                          {t("callbackLogs.modalRequestTitle")}
+                        </span>
+                      </span>
                     ) : (
                       <span className="text-label text-muted">—</span>
                     )}
                   </td>
                 ) : null}
                 {show.http ? (
-                  <td className="px-4 py-2.5 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <HttpStatusCell status={row.httpStatus} />
                   </td>
                 ) : null}
                 {show.response ? (
-                  <td className="px-4 py-2.5 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     {row.responseBody != null ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openResponse(row)}
-                      >
-                        {t("callbackLogs.view")}
-                      </Button>
+                      <span className="group relative inline-flex">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          iconOnly
+                          aria-label={t("callbackLogs.modalResponseTitle")}
+                          leftIcon={<IconArrowIn width={15} height={15} />}
+                          onClick={() => openResponse(row)}
+                        />
+                        <span
+                          role="tooltip"
+                          className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                        >
+                          {t("callbackLogs.modalResponseTitle")}
+                        </span>
+                      </span>
                     ) : (
                       <span className="text-label text-muted">—</span>
                     )}
                   </td>
                 ) : null}
                 {show.status ? (
-                  <td className="px-4 py-2.5 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <StatusBadge tone={CALLBACK_STATUS_TONE[row.status]}>
                       {t(CALLBACK_STATUS_LABEL_KEY[row.status])}
                     </StatusBadge>
                   </td>
                 ) : null}
                 {show.attempt ? (
-                  <td className="px-4 py-2.5 text-center font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-center font-mono text-label tabular-nums text-ink">
                     {row.attempt}
                   </td>
                 ) : null}
                 {show.duration ? (
-                  <td className="px-4 py-2.5 text-right font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
                     {row.durationMs != null ? `${row.durationMs}ms` : "—"}
                   </td>
                 ) : null}
                 {show.time ? (
-                  <td className="whitespace-nowrap px-4 py-2.5 text-center text-label text-muted">
+                  <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
                     {formatCallbackTime(row.createdAt)}
                   </td>
                 ) : null}
                 {show.actions ? (
-                  <td className="px-4 py-2.5 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     {canResend && row.direction === "outbound" ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={resendingId === row.id || loading}
-                        onClick={() => void onResend(row)}
-                      >
-                        {t("callbackLogs.resend")}
-                      </Button>
+                      <span className="group relative inline-flex">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          iconOnly
+                          loading={resendingId === row.id}
+                          disabled={resendingId != null || loading}
+                          aria-label={t("callbackLogs.resend")}
+                          leftIcon={<IconRefresh width={15} height={15} />}
+                          onClick={() => void onResend(row)}
+                        />
+                        <span
+                          role="tooltip"
+                          className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                        >
+                          {t("callbackLogs.resend")}
+                        </span>
+                      </span>
                     ) : (
                       <span className="text-label text-muted">—</span>
                     )}
@@ -635,6 +776,52 @@ export function CallbackLogsPage() {
           title={jsonModal.title}
           data={jsonModal.data}
           onClose={() => setJsonModal(null)}
+        />
+      ) : null}
+
+      {payinDetail ? (
+        <PayinDetailDrawer
+          row={payinDetail}
+          onClose={() => setPayinDetail(null)}
+          onFinalize={() => {
+            setFinalizePayin(payinDetail);
+            setPayinDetail(null);
+          }}
+        />
+      ) : null}
+
+      {payoutDetail ? (
+        <PayoutDetailDrawer
+          row={payoutDetail}
+          onClose={() => setPayoutDetail(null)}
+          onFinalize={
+            payoutDetail.status === "pending" || payoutDetail.status === "processing"
+              ? () => {
+                  setFinalizePayout(payoutDetail);
+                  setPayoutDetail(null);
+                }
+              : undefined
+          }
+        />
+      ) : null}
+
+      {finalizePayin ? (
+        <FinalizePayinModal
+          row={finalizePayin}
+          onClose={() => setFinalizePayin(null)}
+          onDone={() => {
+            void refresh();
+          }}
+        />
+      ) : null}
+
+      {finalizePayout ? (
+        <FinalizePayoutModal
+          row={finalizePayout}
+          onClose={() => setFinalizePayout(null)}
+          onDone={() => {
+            void refresh();
+          }}
         />
       ) : null}
     </div>

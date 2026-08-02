@@ -154,7 +154,7 @@ export function MerchantListPage() {
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-5 px-4 py-5 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader
         title={t("merchants.listTitle")}
         breadcrumbs={[
@@ -163,44 +163,47 @@ export function MerchantListPage() {
         ]}
       />
 
-      <FilterBar
-        onSearch={onSearch}
-        onReset={onReset}
-        canReset={canReset}
-        searchLabel={t("merchants.search")}
-        resetLabel={t("merchants.reset")}
-      >
-        <div className="w-full min-w-0 max-w-md sm:min-w-[280px] sm:w-[320px]">
-          <SearchInput
-            id="merchant-name"
-            value={nameDraft}
-            onChange={setNameDraft}
-            placeholder={t("merchants.filterNamePlaceholder")}
-            label={t("merchants.filterName")}
-          />
-        </div>
-        <div className="w-full min-w-0 sm:w-[200px]">
-          <Select
-            id="merchant-status"
-            size="md"
-            options={statusOptions}
-            value={statusDraft}
-            onChange={onStatusChange}
-            placeholder={t("merchants.filterStatus")}
-            clearable
-            aria-label={t("merchants.filterStatus")}
-            triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-          />
-        </div>
-      </FilterBar>
+      <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
+        <FilterBar
+          onSearch={onSearch}
+          onReset={onReset}
+          canReset={canReset}
+          searchLabel={t("merchants.search")}
+          resetLabel={t("merchants.reset")}
+        >
+          <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px] sm:max-w-md">
+            <SearchInput
+              id="merchant-name"
+              value={nameDraft}
+              onChange={setNameDraft}
+              placeholder={t("merchants.filterNamePlaceholder")}
+              label={t("merchants.filterName")}
+            />
+          </div>
+          <div className="w-full min-w-0 sm:min-w-[160px] sm:w-[200px] sm:flex-none">
+            <Select
+              id="merchant-status"
+              size="md"
+              options={statusOptions}
+              value={statusDraft}
+              onChange={onStatusChange}
+              placeholder={t("merchants.filterStatus")}
+              clearable
+              aria-label={t("merchants.filterStatus")}
+              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
+            />
+          </div>
+        </FilterBar>
+      </div>
 
       <TableCard
         toolbar={
-          <>
+          <div className="flex w-full flex-col gap-2 min-[400px]:w-auto min-[400px]:flex-row min-[400px]:flex-wrap">
             <Button
               href={ROUTES.merchantNew}
               variant="primary"
               size="md"
+              className="w-full min-[400px]:w-auto"
               leftIcon={<IconPlus width={16} height={16} />}
             >
               {t("merchants.add")}
@@ -209,13 +212,14 @@ export function MerchantListPage() {
               type="button"
               variant="secondary"
               size="md"
+              className="w-full min-[400px]:w-auto"
               loading={exporting}
               onClick={() => void onExport()}
               leftIcon={<IconDownload width={16} height={16} />}
             >
               {t("merchants.export")}
             </Button>
-          </>
+          </div>
         }
         error={error}
         onRetry={refresh}

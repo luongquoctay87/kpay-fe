@@ -50,6 +50,21 @@ export const BANK_ACCOUNT_COLUMN_WIDTH: Record<BankAccountColumn, string> = {
   notif: "w-[7%]",
 };
 
+/** Pixel mins — drives horizontal scroll when the table is wider than the viewport. */
+export const BANK_ACCOUNT_COLUMN_MIN_PX: Record<BankAccountColumn, number> = {
+  account: 168,
+  holder: 160,
+  bank: 88,
+  status: 112,
+  collect: 96,
+  rotation: 88,
+  disburse: 96,
+  coverage: 80,
+  web: 64,
+  app: 64,
+  notif: 72,
+};
+
 export const BANK_ACCOUNT_COLUMN_ALIGN: Record<BankAccountColumn, string> = {
   account: "text-left",
   holder: "text-left",
@@ -77,6 +92,15 @@ export const DEFAULT_VISIBLE_COLUMNS: readonly BankAccountColumn[] = [
 export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.bank-accounts.columns";
 
 export type ColumnVisibility = Record<BankAccountColumn, boolean>;
+
+/** Sum of visible column mins — drives horizontal scroll when wider than viewport. */
+export function bankAccountsTableMinWidth(visibility: ColumnVisibility): number {
+  let total = 0;
+  for (const col of BANK_ACCOUNT_COLUMNS) {
+    if (visibility[col]) total += BANK_ACCOUNT_COLUMN_MIN_PX[col];
+  }
+  return Math.max(total, 640);
+}
 
 export function defaultColumnVisibility(): ColumnVisibility {
   const defaults = new Set(DEFAULT_VISIBLE_COLUMNS);

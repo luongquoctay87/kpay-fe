@@ -26,6 +26,7 @@ import { EditBankAccountModal } from "@/features/bank-accounts/components/EditBa
 import {
   BANK_ACCOUNT_COLUMN_ALIGN,
   BANK_ACCOUNT_COLUMN_WIDTH,
+  bankAccountsTableMinWidth,
   defaultColumnVisibility,
   loadColumnVisibility,
   saveColumnVisibility,
@@ -240,7 +241,7 @@ export function BankAccountsPage() {
   }
 
   return (
-    <div className="flex w-full flex-col gap-4 px-6 py-5 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader
         title={t("bankAccounts.listTitle")}
         breadcrumbs={[
@@ -253,6 +254,7 @@ export function BankAccountsPage() {
             type="button"
             variant="primary"
             size="md"
+            className="w-full sm:w-auto"
             leftIcon={<IconPlus width={16} height={16} />}
             onClick={() => setShowCreate(true)}
           >
@@ -261,7 +263,7 @@ export function BankAccountsPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-5">
         <StatCard label={t("bankAccounts.statTotal")} value={String(stats.total)} />
         <StatCard label={t("bankAccounts.stat3")} value={String(stats.with3Sources)} tone="success" />
         <StatCard label={t("bankAccounts.stat2")} value={String(stats.with2Sources)} tone="info" />
@@ -269,85 +271,87 @@ export function BankAccountsPage() {
         <StatCard label={t("bankAccounts.stat0")} value={String(stats.with0Sources)} tone="danger" />
       </div>
 
-      <FilterBar
-        onSearch={onSearch}
-        onReset={onReset}
-        canReset={canReset}
-        searchLabel={t("bankAccounts.search")}
-        resetLabel={t("bankAccounts.reset")}
-      >
-        <div className="min-w-[200px] flex-1 basis-[220px] max-w-[280px]">
-          <Input
-            id="ba-filter-account"
-            size="md"
-            value={accountDraft}
-            onChange={(e) => setAccountDraft(e.target.value)}
-            placeholder={t("bankAccounts.filterAccountPlaceholder")}
-            aria-label={t("bankAccounts.filterAccount")}
-            className="!border-edge bg-surface/80 hover:!border-edge-strong"
-            leftAddon={<IconSearch width={15} height={15} />}
-          />
-        </div>
-        <div className="min-w-[180px] flex-1 basis-[200px] max-w-[260px]">
-          <Input
-            id="ba-filter-bank"
-            size="md"
-            value={bankDraft}
-            onChange={(e) => setBankDraft(e.target.value)}
-            placeholder={t("bankAccounts.filterBankPlaceholder")}
-            aria-label={t("bankAccounts.filterBank")}
-            className="!border-edge bg-surface/80 hover:!border-edge-strong"
-          />
-        </div>
-        <div className="w-[148px] shrink-0">
-          <Select
-            id="ba-filter-status"
-            size="md"
-            options={statusOptions}
-            value={statusDraft}
-            onChange={(v) => {
-              setStatusDraft(v);
-              applyFilters({ status: v });
-            }}
-            placeholder={t("bankAccounts.filterStatus")}
-            clearable
-            aria-label={t("bankAccounts.filterStatus")}
-            triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-          />
-        </div>
-        <div className="w-[128px] shrink-0">
-          <Select
-            id="ba-filter-collect"
-            size="md"
-            options={boolOptions}
-            value={collectDraft}
-            onChange={(v) => {
-              setCollectDraft(v);
-              applyFilters({ collect: v });
-            }}
-            placeholder={t("bankAccounts.filterPayinPlaceholder")}
-            clearable
-            aria-label={t("bankAccounts.filterPayin")}
-            triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-          />
-        </div>
-        <div className="w-[128px] shrink-0">
-          <Select
-            id="ba-filter-disburse"
-            size="md"
-            options={boolOptions}
-            value={disburseDraft}
-            onChange={(v) => {
-              setDisburseDraft(v);
-              applyFilters({ disburse: v });
-            }}
-            placeholder={t("bankAccounts.filterPayoutPlaceholder")}
-            clearable
-            aria-label={t("bankAccounts.filterPayout")}
-            triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-          />
-        </div>
-      </FilterBar>
+      <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
+        <FilterBar
+          onSearch={onSearch}
+          onReset={onReset}
+          canReset={canReset}
+          searchLabel={t("bankAccounts.search")}
+          resetLabel={t("bankAccounts.reset")}
+        >
+          <div className="w-full min-w-0 sm:min-w-[180px] sm:flex-1 sm:basis-[200px] sm:max-w-[280px]">
+            <Input
+              id="ba-filter-account"
+              size="md"
+              value={accountDraft}
+              onChange={(e) => setAccountDraft(e.target.value)}
+              placeholder={t("bankAccounts.filterAccountPlaceholder")}
+              aria-label={t("bankAccounts.filterAccount")}
+              className="!border-edge bg-surface/80 hover:!border-edge-strong"
+              leftAddon={<IconSearch width={15} height={15} />}
+            />
+          </div>
+          <div className="w-full min-w-0 sm:min-w-[160px] sm:flex-1 sm:basis-[180px] sm:max-w-[260px]">
+            <Input
+              id="ba-filter-bank"
+              size="md"
+              value={bankDraft}
+              onChange={(e) => setBankDraft(e.target.value)}
+              placeholder={t("bankAccounts.filterBankPlaceholder")}
+              aria-label={t("bankAccounts.filterBank")}
+              className="!border-edge bg-surface/80 hover:!border-edge-strong"
+            />
+          </div>
+          <div className="w-full min-w-0 sm:w-[148px] sm:flex-none">
+            <Select
+              id="ba-filter-status"
+              size="md"
+              options={statusOptions}
+              value={statusDraft}
+              onChange={(v) => {
+                setStatusDraft(v);
+                applyFilters({ status: v });
+              }}
+              placeholder={t("bankAccounts.filterStatus")}
+              clearable
+              aria-label={t("bankAccounts.filterStatus")}
+              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
+            />
+          </div>
+          <div className="w-full min-w-0 sm:w-[128px] sm:flex-none">
+            <Select
+              id="ba-filter-collect"
+              size="md"
+              options={boolOptions}
+              value={collectDraft}
+              onChange={(v) => {
+                setCollectDraft(v);
+                applyFilters({ collect: v });
+              }}
+              placeholder={t("bankAccounts.filterPayinPlaceholder")}
+              clearable
+              aria-label={t("bankAccounts.filterPayin")}
+              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
+            />
+          </div>
+          <div className="w-full min-w-0 sm:w-[128px] sm:flex-none">
+            <Select
+              id="ba-filter-disburse"
+              size="md"
+              options={boolOptions}
+              value={disburseDraft}
+              onChange={(v) => {
+                setDisburseDraft(v);
+                applyFilters({ disburse: v });
+              }}
+              placeholder={t("bankAccounts.filterPayoutPlaceholder")}
+              clearable
+              aria-label={t("bankAccounts.filterPayout")}
+              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
+            />
+          </div>
+        </FilterBar>
+      </div>
 
       <TableCard
         toolbar={
@@ -377,14 +381,15 @@ export function BankAccountsPage() {
         }
       >
         <table
-          className={`w-full table-fixed border-collapse text-left ${
-            colSpan > 8 ? "min-w-[1100px]" : ""
-          }`}
+          className="w-full table-fixed border-collapse text-left"
+          style={{ minWidth: bankAccountsTableMinWidth(columnVisibility) }}
         >
           <thead>
             <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
               {show.account ? (
-                <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.account} ${BANK_ACCOUNT_COLUMN_ALIGN.account} px-3 py-3`}>
+                <th
+                  className={`sticky left-0 z-[2] bg-surface ${BANK_ACCOUNT_COLUMN_WIDTH.account} ${BANK_ACCOUNT_COLUMN_ALIGN.account} px-3 py-3`}
+                >
                   <ColumnHeader icon={<IconHash width={13} height={13} />}>
                     {t("bankAccounts.colAccount")}
                   </ColumnHeader>
@@ -507,9 +512,9 @@ export function BankAccountsPage() {
             ) : null}
 
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
+              <tr key={row.id} className="group border-b border-edge last:border-b-0 hover:bg-surface/70">
                 {show.account ? (
-                  <td className="px-3 py-3">
+                  <td className="sticky left-0 z-[1] bg-elevated px-3 py-3 group-hover:bg-surface/70">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <span className="truncate font-mono text-label font-medium text-ink" title={row.accountNumber}>
                         {row.accountNumber}

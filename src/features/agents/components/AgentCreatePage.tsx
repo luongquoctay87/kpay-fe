@@ -73,7 +73,7 @@ export function AgentCreatePage() {
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-8 lg:px-10">
+    <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:gap-6 sm:px-8 lg:px-10">
       <PageHeader
         title={t("agentNew.title")}
         breadcrumbs={[

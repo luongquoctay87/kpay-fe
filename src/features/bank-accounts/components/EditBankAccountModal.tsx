@@ -154,7 +154,7 @@ export function EditBankAccountModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !submitting) onClose();
       }}
@@ -163,9 +163,9 @@ export function EditBankAccountModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="ba-edit-title"
-        className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-xl border border-edge bg-elevated shadow-xl"
+        className="flex max-h-[min(100dvh-1.5rem,90vh)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
       >
-        <div className="flex items-center justify-between border-b border-edge px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-edge px-4 py-4 sm:px-5">
           <p id="ba-edit-title" className="kpay-text-title font-semibold">
             {t("bankAccounts.modalEditTitle")}
           </p>
@@ -184,7 +184,7 @@ export function EditBankAccountModal({
         </div>
 
         <form onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col">
-          <div className="flex-1 space-y-4 overflow-y-auto p-5">
+          <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
             <div className="grid gap-3 rounded-lg border border-edge bg-surface px-3.5 py-3 sm:grid-cols-2">
               <div>
                 <p className="text-label text-muted">{t("bankAccounts.labelBank")}</p>
@@ -362,11 +362,12 @@ export function EditBankAccountModal({
             ) : null}
           </div>
 
-          <div className="flex items-center justify-end gap-2 border-t border-edge px-5 py-3">
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
             <Button
               type="button"
               variant="secondary"
               size="md"
+              className="w-full sm:w-auto"
               onClick={onClose}
               disabled={submitting}
               leftIcon={<IconX width={15} height={15} />}
@@ -377,6 +378,7 @@ export function EditBankAccountModal({
               type="submit"
               variant="primary"
               size="md"
+              className="w-full sm:w-auto"
               loading={submitting}
               leftIcon={<IconSave width={15} height={15} />}
             >

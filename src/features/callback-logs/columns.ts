@@ -40,36 +40,36 @@ export const CALLBACK_LOG_COLUMN_LABEL_KEY: Record<CallbackLogColumn, MessageKey
 
 /** Pixel mins — drives horizontal scroll when the table is wider than the viewport. */
 export const CALLBACK_LOG_COLUMN_MIN_PX: Record<CallbackLogColumn, number> = {
-  externalId: 180,
-  refId: 180,
-  type: 90,
+  externalId: 168,
+  refId: 148,
+  type: 88,
   direction: 100,
   url: 160,
   request: 80,
   http: 72,
   response: 80,
-  status: 110,
-  attempt: 80,
-  duration: 90,
-  time: 150,
-  actions: 96,
+  status: 104,
+  attempt: 72,
+  duration: 88,
+  time: 132,
+  actions: 72,
 };
 
-/** Header width classes — tuned so the default 7 columns fill the row evenly. */
+/** Header width classes — tuned so the default columns fill the row evenly. */
 export const CALLBACK_LOG_COLUMN_WIDTH: Record<CallbackLogColumn, string> = {
-  externalId: "w-[22%]",
-  refId: "w-[24%]",
-  type: "w-[8%]",
+  externalId: "w-[18%]",
+  refId: "w-[16%]",
+  type: "w-[9%]",
   direction: "w-[10%]",
-  url: "w-[16%]",
+  url: "w-[14%]",
   request: "w-[8%]",
   http: "w-[7%]",
   response: "w-[8%]",
-  status: "w-[10%]",
+  status: "w-[11%]",
   attempt: "w-[8%]",
-  duration: "w-[10%]",
-  time: "w-[18%]",
-  actions: "w-[10%]",
+  duration: "w-[9%]",
+  time: "w-[14%]",
+  actions: "w-[72px]",
 };
 
 /** Header alignment (body cells follow the same). */
