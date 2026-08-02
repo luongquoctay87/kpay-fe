@@ -207,6 +207,7 @@ export const en = {
     invalidResponse: "Invalid login response.",
     loginFailed: "Sign in failed",
     invalidCode: "Invalid verification code",
+    twoFaExpired: "Verification session expired. Please sign in again.",
     totpEnrollTitle: "Set up Authenticator",
     totpVerifyTitle: "Two-factor authentication",
     totpEnrollHint: "Scan the QR with Google / Microsoft Authenticator, then enter the 6-digit code.",

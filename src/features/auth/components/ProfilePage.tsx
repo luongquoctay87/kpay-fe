@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { IconUser } from "@/components/icons/NavIcons";
+import { IconKey, IconUser } from "@/components/icons/NavIcons";
 import { PageHeader } from "@/components/common";
 import { Button, Field, Input, PasswordVisibilityToggle, StatusBadge } from "@/components/ui";
 import { authApi } from "@/features/auth/api";
@@ -254,7 +254,12 @@ export function ProfilePage() {
           </Field>
 
           <div className="pt-1">
-            <Button type="submit" loading={pwSubmitting} disabled={pwSubmitting}>
+            <Button
+              type="submit"
+              loading={pwSubmitting}
+              disabled={pwSubmitting}
+              leftIcon={<IconKey width={16} height={16} />}
+            >
               {t("profile.changePasswordSubmit")}
             </Button>
           </div>

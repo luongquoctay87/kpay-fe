@@ -1,12 +1,14 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DocumentTitle } from "@/components/layout/DocumentTitle";
 import { Button, Field, Input, OtpInput } from "@/components/ui";
 import { portalAuthApi } from "@/features/auth/api";
 import {
+  clearAccessToken,
   clearTwoFaToken,
+  getAccessToken,
   setAccessToken,
   setStoredUserJson,
   setTwoFaToken,
@@ -65,6 +67,7 @@ export function PortalLoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("password");
   const [useBackup, setUseBackup] = useState(false);
+  const otpSubmitLock = useRef(false);
   const [username, setUsername] = useState(() => searchParams.get("username")?.trim() ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -95,6 +98,8 @@ export function PortalLoginForm() {
       });
 
       if (result.twoFaToken) {
+        // Ensure verify uses TEMP_2FA, not a leftover access JWT from a prior session.
+        clearAccessToken();
         setTwoFaToken(result.twoFaToken);
         if (result.totpEnrolled) {
           setStep("otp");
@@ -132,15 +137,20 @@ export function PortalLoginForm() {
 
   async function onOtpSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (otpSubmitLock.current || loading) return;
     if (otp.hasMissing) {
       otp.reveal();
       return;
     }
 
+    otpSubmitLock.current = true;
     setLoading(true);
     setError(null);
     try {
-      const result = await portalAuthApi.verifyTotp({ code: code.trim() });
+      const submitCode = useBackup
+        ? code.replace(/[^A-Za-z0-9]/g, "").toUpperCase()
+        : code.trim();
+      const result = await portalAuthApi.verifyTotp({ code: submitCode });
 
       if (result.accessToken) {
         clearTwoFaToken();
@@ -151,8 +161,18 @@ export function PortalLoginForm() {
       }
       setError(t("auth.invalidResponse"));
     } catch (err) {
+      if (getAccessToken()) {
+        router.replace(nextPath);
+        return;
+      }
+      if (err instanceof ApiError && err.code === "INVALID_TOKEN") {
+        backToPassword();
+        setError(t("auth.twoFaExpired"));
+        return;
+      }
       setError(err instanceof ApiError ? err.message : t("auth.invalidCode"));
     } finally {
+      otpSubmitLock.current = false;
       setLoading(false);
     }
   }

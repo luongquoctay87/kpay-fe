@@ -99,10 +99,11 @@ export function TotpSetupRequiredModal() {
   }
 
   function downloadBackupCodes() {
-    const username = user?.username?.trim() || "kpay";
+    const account = user?.username?.trim() || "account";
+    const slug = account.replace(/[^A-Za-z0-9._-]+/g, "_");
     const body = [
       "Kpay Admin — TOTP backup codes",
-      `User: ${username}`,
+      `Account: ${account}`,
       `Generated: ${new Date().toISOString()}`,
       "",
       "Each code can be used once. Store this file somewhere safe.",
@@ -114,7 +115,7 @@ export function TotpSetupRequiredModal() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kpay-backup-codes-${username}.txt`;
+    a.download = `kpay-${slug}-backup-codes.txt`;
     a.click();
     URL.revokeObjectURL(url);
   }

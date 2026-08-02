@@ -2,7 +2,7 @@
 
 import { DownloadOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { CopyButton } from "@/components/common/CopyButton";
 import { DocumentTitle } from "@/components/layout/DocumentTitle";
@@ -12,6 +12,8 @@ import { useAuthStore } from "@/features/auth/store";
 import { portalAuthApi } from "@/features/auth/api";
 import {
   clearTwoFaToken,
+  getAccessToken,
+  getStoredUserJson,
   getTwoFaToken,
   setAccessToken,
   setStoredUserJson,
@@ -25,6 +27,22 @@ function extractTotpSecret(otpauthUrl: string): string | null {
   try {
     const u = new URL(otpauthUrl);
     return u.searchParams.get("secret");
+  } catch {
+    return null;
+  }
+}
+
+function backupCodesDownloadName(account: string | null | undefined): string {
+  const slug = (account?.trim() || "account").replace(/[^A-Za-z0-9._-]+/g, "_");
+  return `kpay-${slug}-backup-codes.txt`;
+}
+
+function storedUsername(): string | null {
+  const raw = getStoredUserJson();
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { username?: string };
+    return parsed.username?.trim() || null;
   } catch {
     return null;
   }
@@ -48,13 +66,16 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
   const enrollTotpAdmin = useAuthStore((s) => s.enrollTotp);
   const confirmTotpAdmin = useAuthStore((s) => s.confirmTotp);
   const verifyTotpAdmin = useAuthStore((s) => s.verifyTotp);
+  const sessionUsername = useAuthStore((s) => s.user?.username);
 
   const [otpauthUrl, setOtpauthUrl] = useState<string | null>(null);
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+  const [accountName, setAccountName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [useBackup, setUseBackup] = useState(false);
   const [code, setCode] = useState("");
+  const submitLock = useRef(false);
   const required = useRequiredFields({ code });
 
   useEffect(() => {
@@ -81,6 +102,7 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (submitLock.current || loading) return;
     setError(null);
 
     if (useBackup) {
@@ -93,6 +115,7 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
       return;
     }
 
+    submitLock.current = true;
     setLoading(true);
     try {
       if (step === "enroll") {
@@ -106,13 +129,17 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
           clearTwoFaToken();
         }
         setBackupCodes(result.backupCodes ?? []);
+        setAccountName(result.user?.username?.trim() || null);
         setCode("");
         required.hide();
-      } else if (useBackup) {
+      } else {
+        const submitCode = useBackup
+          ? code.replace(/[^A-Za-z0-9]/g, "").toUpperCase()
+          : code.trim();
         if (realm === "admin") {
-          await verifyTotpAdmin("", code.trim());
+          await verifyTotpAdmin(submitCode);
         } else {
-          const result = await portalAuthApi.verifyTotp({ code: code.trim() });
+          const result = await portalAuthApi.verifyTotp({ code: submitCode });
           if (result.accessToken) {
             setAccessToken(result.accessToken, result.expiresIn);
             if (result.user) setStoredUserJson(JSON.stringify(result.user));
@@ -120,20 +147,18 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
           }
         }
         router.replace(nextPath);
-      } else if (realm === "admin") {
-        await verifyTotpAdmin(code.trim());
-        router.replace(nextPath);
-      } else {
-        const result = await portalAuthApi.verifyTotp({ code: code.trim() });
-        if (result.accessToken) {
-          setAccessToken(result.accessToken, result.expiresIn);
-          if (result.user) setStoredUserJson(JSON.stringify(result.user));
-          clearTwoFaToken();
-        }
-        router.replace(nextPath);
       }
     } catch (err) {
+      if (step !== "enroll" && getAccessToken()) {
+        router.replace(nextPath);
+        return;
+      }
       const apiErr = err instanceof ApiError ? err : null;
+      if (step !== "enroll" && apiErr?.code === "INVALID_TOKEN") {
+        clearTwoFaToken();
+        router.replace(loginRoute);
+        return;
+      }
       setError(
         apiErr?.code === "INVALID_OTP"
           ? t("auth.invalidCode")
@@ -144,6 +169,7 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
               : t("auth.invalidCode"),
       );
     } finally {
+      submitLock.current = false;
       setLoading(false);
     }
   }
@@ -178,20 +204,24 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
     const codes = backupCodes;
     function downloadBackupCodes() {
       const brand = brandLabel;
+      const account = accountName || sessionUsername || storedUsername();
       const body = [
         `${brand} — TOTP backup codes`,
+        account ? `Account: ${account}` : null,
         `Generated: ${new Date().toISOString()}`,
         "",
         t("auth.backupHint"),
         "",
         ...codes,
         "",
-      ].join("\n");
+      ]
+        .filter((line): line is string => line != null)
+        .join("\n");
       const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "kpay-backup-codes.txt";
+      a.download = backupCodesDownloadName(account);
       a.click();
       URL.revokeObjectURL(url);
     }

@@ -15,6 +15,7 @@ import {
   clearTwoFaToken,
   getRememberMePreference,
   getStoredUserJson,
+  isAccessTokenFresh,
   setRememberMe,
   setRememberMePreference,
   setStoredUserJson,
@@ -31,7 +32,8 @@ interface AuthState {
   login: (
     body: SignInRequest,
   ) => Promise<AuthResult>;
-  verifyTotp: (code: string, backupCode?: string, rememberMe?: boolean) => Promise<AuthResult>;
+  /** Authenticator (6 digits) or one-time backup code — same `code` field on the API. */
+  verifyTotp: (code: string, rememberMe?: boolean) => Promise<AuthResult>;
   confirmTotp: (code: string) => Promise<AuthResult>;
   enrollTotp: () => Promise<AuthResult>;
   completeSession: (result: AuthResult, rememberMe?: boolean) => void;
@@ -59,6 +61,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   hydrate: async () => {
+    // Just finished TOTP verify/confirm in this tab — keep the fresh access JWT.
+    // Forcing refresh here races Set-Cookie and can bounce the user back to login.
+    if (isAccessTokenFresh()) {
+      scheduleProactiveRefresh();
+      set({
+        hydrated: true,
+        user: get().user ?? parseStoredUser(),
+      });
+      return;
+    }
+
     // Drop any pre-fix bearer tokens left in Web Storage.
     clearAccessToken();
     clearTwoFaToken();
@@ -88,6 +101,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       rememberMe,
     });
     if (result.twoFaToken) {
+      // Ensure verify uses TEMP_2FA, not a leftover access JWT from a prior session.
+      clearAccessToken();
       setTwoFaToken(result.twoFaToken);
     }
     return result;
@@ -105,10 +120,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return result;
   },
 
-  verifyTotp: async (code, backupCode, rememberMe) => {
+  verifyTotp: async (code, rememberMe) => {
     const remember = rememberMe ?? getRememberMePreference();
     const result = await authApi.verifyTotp({
-      code: (backupCode ?? code).trim(),
+      code: code.trim(),
       rememberMe: remember,
     });
     get().completeSession(result, remember);

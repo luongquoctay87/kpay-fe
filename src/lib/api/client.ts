@@ -16,7 +16,18 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const access = getAccessToken();
   const twoFa = getTwoFaToken();
-  const token = access ?? twoFa;
+  const url = config.url ?? "";
+  // /totp/verify must use TEMP_2FA only — falling back to access after a successful
+  // verify (twoFa cleared) produces INVALID_TOKEN and masks an already-valid session.
+  const isTotpVerify = url.includes("/totp/verify");
+  const isTotpOther =
+    !isTotpVerify &&
+    (url.includes("/admin/auth/totp/") || url.includes("/auth/totp/"));
+  const token = isTotpVerify
+    ? twoFa
+    : isTotpOther
+      ? (twoFa ?? access)
+      : (access ?? twoFa);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

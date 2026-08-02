@@ -1,12 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DocumentTitle } from "@/components/layout/DocumentTitle";
 import { IconCheckCircle, IconChevronLeft, IconKey, IconLogin, IconSmartphone } from "@/components/icons/NavIcons";
 import { Button, Field, Input, OtpInput } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
-import { clearTwoFaToken, getRememberMePreference } from "@/features/auth/token";
+import { clearTwoFaToken, getAccessToken, getRememberMePreference } from "@/features/auth/token";
 import { useI18n } from "@/i18n/use-i18n";
 import { ROUTES, safeInternalPath } from "@/lib/constants/routes";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
@@ -63,6 +63,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("password");
   const [useBackup, setUseBackup] = useState(false);
+  const otpSubmitLock = useRef(false);
   const [username, setUsername] = useState(() => searchParams.get("username")?.trim() ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -128,21 +129,34 @@ export function LoginForm() {
 
   async function onOtpSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (otpSubmitLock.current || loading) return;
     if (otp.hasMissing) {
       otp.reveal();
       return;
     }
 
+    otpSubmitLock.current = true;
     setLoading(true);
     setError(null);
     try {
-      if (useBackup) {
-        await verifyTotp("", code.trim(), rememberMe);
-      } else {
-        await verifyTotp(code.trim(), undefined, rememberMe);
-      }
+      // Backup codes: strip spaces/hyphens; OTP is already digits-only from OtpInput.
+      const submitCode = useBackup
+        ? code.replace(/[^A-Za-z0-9]/g, "").toUpperCase()
+        : code.trim();
+      await verifyTotp(submitCode, rememberMe);
       router.replace(nextPath);
     } catch (err) {
+      // First verify may have already minted access+refresh; a duplicate in-flight
+      // call then fails with INVALID_TOKEN after twoFa was cleared — treat as success.
+      if (getAccessToken()) {
+        router.replace(nextPath);
+        return;
+      }
+      if (err instanceof ApiError && err.code === "INVALID_TOKEN") {
+        backToPassword();
+        setError(t("auth.twoFaExpired"));
+        return;
+      }
       setError(
         err instanceof ApiError && err.code === "INVALID_OTP"
           ? t("auth.invalidCode")
@@ -151,6 +165,7 @@ export function LoginForm() {
             : t("auth.invalidCode"),
       );
     } finally {
+      otpSubmitLock.current = false;
       setLoading(false);
     }
   }

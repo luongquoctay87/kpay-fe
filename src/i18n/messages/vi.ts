@@ -204,6 +204,7 @@ export const vi = {
     invalidResponse: "Phản hồi đăng nhập không hợp lệ.",
     loginFailed: "Đăng nhập thất bại",
     invalidCode: "Mã xác thực không hợp lệ",
+    twoFaExpired: "Phiên xác thực đã hết hạn. Vui lòng đăng nhập lại.",
     totpEnrollTitle: "Thiết lập Authenticator",
     totpVerifyTitle: "Xác thực 2 bước",
     totpEnrollHint: "Quét QR bằng Google / Microsoft Authenticator, rồi nhập mã 6 số.",

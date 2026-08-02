@@ -35,8 +35,8 @@ export interface TotpCodeRequest {
 }
 
 export interface TotpVerifyRequest {
-  code?: string;
-  backupCode?: string;
+  /** Authenticator 6-digit code or one-time backup code. */
+  code: string;
   rememberMe?: boolean;
 }
 
