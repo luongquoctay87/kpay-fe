@@ -1,12 +1,11 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Skeleton, Typography } from "antd";
-import { CheckOutlined, CopyOutlined } from "@ant-design/icons";
+import { Alert, Button, Skeleton } from "antd";
 import { QRCodeSVG } from "qrcode.react";
 import { AppFooter } from "@/components/layout/AppFooter";
 import { DocumentTitle } from "@/components/layout/DocumentTitle";
-import { toast } from "@/components/ui";
+import { CopyButton } from "@/components/common/CopyButton";
 import { useI18n } from "@/i18n/use-i18n";
 import { fetchPublicPayin } from "@/features/pay/api";
 import {
@@ -15,13 +14,12 @@ import {
   type PublicPayinStatus,
 } from "@/features/pay/types";
 import { buildVietQrPayload, sanitizeTransferContent } from "@/features/pay/vietqr";
-import { writeClipboard } from "@/lib/clipboard";
+import { cn } from "@/lib/cn";
 import { ApiError } from "@/lib/types/api";
 import type { MessageKey } from "@/i18n/types";
 
-const { Title, Text, Paragraph } = Typography;
-
 const POLL_MS = 5000;
+const URGENT_SECONDS = 120;
 
 const STATUS_KEY: Record<PublicPayinStatus, MessageKey> = {
   created: "pay.status.created",
@@ -42,12 +40,15 @@ function shortOrderRef(orderId: string): string {
   return hex.length >= 8 ? hex.slice(-8) : orderId;
 }
 
-function formatCountdown(expiredAt: string, nowMs: number): string | null {
+function secondsLeft(expiredAt: string, nowMs: number): number | null {
   const end = new Date(expiredAt).getTime();
   if (Number.isNaN(end)) return null;
-  const diff = Math.max(0, Math.floor((end - nowMs) / 1000));
-  const m = Math.floor(diff / 60);
-  const s = diff % 60;
+  return Math.max(0, Math.floor((end - nowMs) / 1000));
+}
+
+function formatCountdown(secs: number): string {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
@@ -75,18 +76,31 @@ function useClockMs(): number {
 }
 
 const MemoQr = memo(function MemoQr({ value }: { value: string }) {
-  return <QRCodeSVG value={value} size={200} level="M" includeMargin={false} />;
+  return <QRCodeSVG value={value} size={208} level="M" includeMargin={false} />;
 });
 
 /** Isolated 1 Hz countdown — keeps the parent tree from re-rendering every tick. */
 function ExpiresCountdown({ expiredAt, label }: { expiredAt: string; label: string }) {
   const nowMs = useClockMs();
-  const countdown = formatCountdown(expiredAt, nowMs);
-  if (new Date(expiredAt).getTime() <= nowMs || !countdown) return null;
+  const secs = secondsLeft(expiredAt, nowMs);
+  if (secs == null || secs <= 0) return null;
+  const urgent = secs <= URGENT_SECONDS;
   return (
-    <Text type="secondary" className="text-sm">
-      {label} {countdown}
-    </Text>
+    <span
+      className={cn(
+        "mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-caption font-medium tabular-nums",
+        urgent ? "bg-warning-bg text-warning" : "bg-panel text-muted",
+      )}
+    >
+      <span
+        className={cn(
+          "inline-block h-1.5 w-1.5 rounded-full",
+          urgent ? "bg-warning animate-pulse" : "bg-subtle",
+        )}
+        aria-hidden
+      />
+      {label} {formatCountdown(secs)}
+    </span>
   );
 }
 
@@ -106,23 +120,60 @@ function AwaitingQrSection({
 }) {
   const nowMs = useClockMs();
   if (new Date(expiredAt).getTime() <= nowMs) {
-    return <Alert className="mb-4" type="error" showIcon title={expiredMessage} />;
+    return <Alert className="mb-5" type="error" showIcon title={expiredMessage} />;
   }
 
   return (
-    <div className="mb-5 flex flex-col items-center">
-      <div className="rounded-xl border border-neutral-100 bg-white p-3">
+    <div className="mb-6 flex flex-col items-center">
+      <div className="rounded-2xl border border-edge bg-canvas p-4 shadow-[0_0_0_4px_rgba(64,136,240,0.08)]">
         {qrValue ? (
           <MemoQr value={qrValue} />
         ) : (
-          <div className="flex h-[200px] w-[200px] items-center justify-center text-center text-sm text-neutral-400">
+          <div className="flex h-[208px] w-[208px] items-center justify-center text-center text-label text-subtle">
             {qrUnavailable}
           </div>
         )}
       </div>
-      <Text type="secondary" className="mt-3 text-center text-xs">
-        {scanHint}
-      </Text>
+      <p className="mt-3 text-center text-caption text-muted">{scanHint}</p>
+    </div>
+  );
+}
+
+function DetailRow({
+  label,
+  display,
+  copyValue,
+  copyLabel,
+  emphasize,
+}: {
+  label: string;
+  display: string;
+  copyValue?: string;
+  copyLabel: string;
+  emphasize?: boolean;
+}) {
+  const clipboard = copyValue ?? display;
+  return (
+    <div
+      className={cn(
+        "flex items-start justify-between gap-3 px-3.5 py-3",
+        emphasize && "rounded-xl bg-nav-active/80 ring-1 ring-accent/15",
+      )}
+    >
+      <div className="min-w-0 text-left">
+        <div className="text-caption font-medium uppercase tracking-wide text-muted">
+          {label}
+        </div>
+        <div
+          className={cn(
+            "mt-0.5 break-all text-body font-semibold text-ink",
+            emphasize && "font-mono tracking-tight",
+          )}
+        >
+          {display}
+        </div>
+      </div>
+      <CopyButton value={clipboard} label={copyLabel} className="mt-0.5" />
     </div>
   );
 }
@@ -133,7 +184,6 @@ export function PayUrlPage({ token }: { token: string }) {
   const [data, setData] = useState<PublicPayin | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const requestSeq = useRef(0);
 
   const load = useCallback(
@@ -190,51 +240,6 @@ export function PayUrlPage({ token }: { token: string }) {
     });
   }, [data, transferContent]);
 
-  async function copy(key: string, value: string) {
-    const text = value.trim();
-    if (!text) {
-      toast.error(t("pay.copyFailed"));
-      return;
-    }
-    try {
-      await writeClipboard(text);
-      setCopiedKey(key);
-      toast.success(t("pay.copied"));
-      window.setTimeout(() => setCopiedKey(null), 1500);
-    } catch {
-      toast.error(t("pay.copyFailed"));
-    }
-  }
-
-  function row(
-    key: string,
-    label: string,
-    display: string | null | undefined,
-    copyValue?: string,
-  ) {
-    if (!display) return null;
-    const clipboard = copyValue ?? display;
-    const isCopied = copiedKey === key;
-    return (
-      <div
-        key={key}
-        className="flex items-start justify-between gap-3 border-b border-neutral-100 py-3 last:border-0"
-      >
-        <div className="min-w-0 text-left">
-          <div className="text-xs text-neutral-500">{label}</div>
-          <div className="break-all font-medium text-neutral-900">{display}</div>
-        </div>
-        <Button
-          type="text"
-          size="small"
-          aria-label={t("pay.copy")}
-          icon={isCopied ? <CheckOutlined /> : <CopyOutlined />}
-          onClick={() => void copy(key, clipboard)}
-        />
-      </div>
-    );
-  }
-
   const awaiting = data != null && isPayinAwaitingPayment(data.status);
   const showTransferDetails = awaiting;
   const pageHint =
@@ -246,24 +251,47 @@ export function PayUrlPage({ token }: { token: string }) {
           ? t("pay.doneHint")
           : null;
 
+  const bankDisplay = data?.bankName ?? data?.bankCode ?? null;
+  const showRefFooter = data != null && !transferContent;
+
   return (
-    <div className="pay-page flex min-h-screen flex-col bg-[linear-gradient(165deg,#eef2f6_0%,#f7f8fa_45%,#e8edf2_100%)]">
+    <div className="pay-page relative flex min-h-screen flex-col bg-canvas font-sans text-ink">
       <DocumentTitle title={`${t("pay.title")} · ${t("brand.name")}`} />
-      <header className="flex h-14 shrink-0 items-center justify-center border-b border-neutral-200/70 bg-white/80 px-4 backdrop-blur-sm">
-        <span className="text-lg font-semibold tracking-tight text-neutral-900">
-          {t("brand.name")}
-        </span>
+
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-50"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, rgba(15,23,42,0.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,23,42,0.045) 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
+        />
+        <div className="absolute -left-24 top-0 h-[28rem] w-[28rem] rounded-full bg-[#4088f0]/14 blur-3xl" />
+        <div className="absolute -right-16 bottom-0 h-[22rem] w-[22rem] rounded-full bg-sky-300/25 blur-3xl" />
+      </div>
+
+      <header className="relative z-30 flex h-14 shrink-0 items-center justify-center border-b border-edge bg-canvas/90 px-4 backdrop-blur-md">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-caption font-bold tracking-tight text-on-accent"
+            aria-hidden
+          >
+            K
+          </span>
+          <span className="text-label font-semibold tracking-tight text-ink">
+            {t("brand.name")}
+          </span>
+        </div>
       </header>
 
-      <main className="flex flex-1 items-start justify-center px-4 py-8 sm:items-center">
-        <div className="mx-auto w-full max-w-md">
+      <main className="relative z-10 flex flex-1 items-start justify-center px-4 py-8 sm:items-center sm:py-10">
+        <div className="mx-auto w-full max-w-md motion-safe:animate-[kpay-auth-in_0.4s_ease-out]">
           {pageHint ? (
-            <div className="mb-5 text-center">
-              <Paragraph className="!mb-0 text-neutral-500">{pageHint}</Paragraph>
-            </div>
+            <p className="mb-5 text-center text-body text-muted">{pageHint}</p>
           ) : null}
 
-          <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.06)]">
+          <div className="overflow-hidden rounded-2xl border border-edge bg-elevated shadow-[0_12px_40px_rgba(15,23,42,0.06)]">
             {loading && !data ? (
               <div className="space-y-4 p-6">
                 <Skeleton active paragraph={{ rows: 6 }} />
@@ -277,19 +305,24 @@ export function PayUrlPage({ token }: { token: string }) {
               </div>
             ) : data ? (
               <>
-                <div className="border-b border-neutral-100 px-6 pb-5 pt-6 text-center">
-                  <Text type="secondary" className="text-xs uppercase tracking-wide">
+                <div className="border-b border-edge-soft px-6 pb-5 pt-7 text-center">
+                  <p className="text-caption font-medium uppercase tracking-[0.08em] text-accent">
                     {t("pay.amountLabel")}
-                  </Text>
-                  <Title level={2} className="!mb-1 !mt-1 !text-neutral-900">
-                    {formatVnd(data.amount)}
-                  </Title>
+                  </p>
+                  <div className="mt-1.5 flex items-center justify-center gap-2">
+                    <p className="text-display font-semibold tracking-tight text-ink">
+                      {formatVnd(data.amount)}
+                    </p>
+                    {awaiting && amountCopy ? (
+                      <CopyButton value={amountCopy} label={t("pay.copy")} />
+                    ) : null}
+                  </div>
                   {awaiting ? (
                     <ExpiresCountdown expiredAt={data.expiredAt} label={t("pay.expiresIn")} />
                   ) : null}
                 </div>
 
-                <div className="px-6 py-5">
+                <div className="px-5 py-5 sm:px-6">
                   {awaiting ? (
                     <AwaitingQrSection
                       expiredAt={data.expiredAt}
@@ -300,7 +333,7 @@ export function PayUrlPage({ token }: { token: string }) {
                     />
                   ) : (
                     <Alert
-                      className={showTransferDetails ? "mb-4" : undefined}
+                      className={showTransferDetails ? "mb-5" : undefined}
                       type={statusTone(data.status)}
                       showIcon
                       title={t(STATUS_KEY[data.status])}
@@ -315,48 +348,54 @@ export function PayUrlPage({ token }: { token: string }) {
                   )}
 
                   {showTransferDetails ? (
-                    <div>
-                      {row("bank", t("pay.bank"), data.bankName ?? data.bankCode)}
-                      {row("accountName", t("pay.accountName"), data.accountName)}
-                      {row("accountNumber", t("pay.accountNumber"), data.accountNumber)}
-                      {row("content", t("pay.transferContent"), transferContent)}
-                      {row(
-                        "amount",
-                        t("pay.amountLabel"),
-                        formatVnd(data.amount),
-                        amountCopy,
-                      )}
+                    <div className="space-y-1">
+                      {bankDisplay ? (
+                        <DetailRow
+                          label={t("pay.bank")}
+                          display={bankDisplay}
+                          copyLabel={t("pay.copy")}
+                        />
+                      ) : null}
+                      {data.accountName ? (
+                        <DetailRow
+                          label={t("pay.accountName")}
+                          display={data.accountName}
+                          copyLabel={t("pay.copy")}
+                        />
+                      ) : null}
+                      {data.accountNumber ? (
+                        <DetailRow
+                          label={t("pay.accountNumber")}
+                          display={data.accountNumber}
+                          copyLabel={t("pay.copy")}
+                          emphasize
+                        />
+                      ) : null}
+                      {transferContent ? (
+                        <DetailRow
+                          label={t("pay.transferContent")}
+                          display={transferContent}
+                          copyLabel={t("pay.copy")}
+                          emphasize
+                        />
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
 
-                <div className="border-t border-neutral-100 px-6 py-3">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <Text type="secondary" className="text-xs">
-                      {transferContent
-                        ? `${t("pay.refLabel")} ${transferContent}`
-                        : `${t("pay.refFallback")} ${shortOrderRef(data.orderId)}`}
-                    </Text>
-                    <Button
-                      type="text"
-                      size="small"
-                      aria-label={t("pay.copy")}
-                      icon={
-                        copiedKey === "ref" ? (
-                          <CheckOutlined />
-                        ) : (
-                          <CopyOutlined />
-                        )
-                      }
-                      onClick={() =>
-                        void copy(
-                          "ref",
-                          transferContent || shortOrderRef(data.orderId),
-                        )
-                      }
-                    />
+                {showRefFooter ? (
+                  <div className="border-t border-edge-soft px-6 py-3">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span className="text-caption text-muted">
+                        {t("pay.refFallback")} {shortOrderRef(data.orderId)}
+                      </span>
+                      <CopyButton
+                        value={shortOrderRef(data.orderId)}
+                        label={t("pay.copy")}
+                      />
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </>
             ) : null}
           </div>
@@ -367,7 +406,7 @@ export function PayUrlPage({ token }: { token: string }) {
         variant="public"
         brandKey="name"
         hideBrand
-        className="border-neutral-200/70 bg-white/70"
+        className="relative z-10 !border-edge !bg-transparent"
       />
     </div>
   );
