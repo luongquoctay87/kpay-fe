@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { IconWallet, IconX } from "@/components/icons/NavIcons";
 import { MoneyAmount } from "@/components/common";
-import { Button, Field, Input, MoneyInput, OtpInput, Select, Textarea } from "@/components/ui";
+import { Button, Field, Input, MoneyInput, OtpInput, PasswordVisibilityToggle, Select, Textarea } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { parseMoneyNumber } from "@/lib/format/money";
 
@@ -21,6 +21,8 @@ export type AdjustBalanceLabels = {
   placeholderAmount: string;
   placeholderNote: string;
   currentBalance?: string;
+  showPassword: string;
+  hidePassword: string;
 };
 
 export type AdjustBalanceConfirmBody = {
@@ -55,6 +57,7 @@ export function AdjustBalanceModal({
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [totpCode, setTotpCode] = useState("");
 
   const amountNum = parseMoneyNumber(amount);
@@ -161,11 +164,19 @@ export function AdjustBalanceModal({
           <Field label={labels.password} htmlFor="adj-admin-pw" required>
             <Input
               id="adj-admin-pw"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
               disabled={saving}
+              rightAddon={
+                <PasswordVisibilityToggle
+                  visible={showPassword}
+                  onToggle={() => setShowPassword((v) => !v)}
+                  showLabel={labels.showPassword}
+                  hideLabel={labels.hidePassword}
+                />
+              }
             />
           </Field>
 

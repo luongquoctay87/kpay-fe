@@ -252,6 +252,8 @@ export function MerchantDetailPage({ id }: { id: string }) {
             confirm: t("merchantDetail.modalAdjustConfirm"),
             placeholderAmount: t("merchantDetail.placeholderAmount"),
             placeholderNote: t("merchantDetail.placeholderReason"),
+            showPassword: t("common.showPassword"),
+            hidePassword: t("common.hidePassword"),
           }}
           onClose={() => {
             setShowAdjust(false);

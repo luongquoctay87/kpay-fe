@@ -199,6 +199,8 @@ export function AgentDetailPage({ id }: { id: string }) {
             placeholderAmount: t("agentDetail.placeholderAmount"),
             placeholderNote: t("agentDetail.placeholderNote"),
             currentBalance: t("agentDetail.modalAdjustCurrent"),
+            showPassword: t("common.showPassword"),
+            hidePassword: t("common.hidePassword"),
           }}
           currentBalance={balance}
           noteMultiline
