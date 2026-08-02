@@ -169,6 +169,14 @@ function normalizeOrderType(type: string): CallbackType | null {
   return null;
 }
 
+function callbackTypeLabel(
+  type: string,
+  translate: (key: (typeof CALLBACK_TYPE_LABEL_KEY)[CallbackType]) => string,
+): string {
+  const orderType = normalizeOrderType(type);
+  return orderType ? translate(CALLBACK_TYPE_LABEL_KEY[orderType]) : type;
+}
+
 export function CallbackLogsPage() {
   const { t } = useI18n();
   const permissions = useAuthStore((s) => s.user?.permissions);
@@ -645,7 +653,7 @@ export function CallbackLogsPage() {
                 {show.type ? (
                   <td className="px-3 py-2.5 text-center">
                     <StatusBadge tone="neutral">
-                      {t(CALLBACK_TYPE_LABEL_KEY[row.type])}
+                      {callbackTypeLabel(row.type, t)}
                     </StatusBadge>
                   </td>
                 ) : null}
