@@ -16,8 +16,13 @@ export function middleware(request: NextRequest) {
 
   const hasSession = request.cookies.get(SESSION_COOKIE)?.value === "1";
   const publicPath = isPublicPath(pathname);
+  const isMerchantPortal =
+    pathname === ROUTES.portalHome || pathname.startsWith(`${ROUTES.portalHome}/`);
 
   if (!publicPath && !hasSession) {
+    if (isMerchantPortal) {
+      return NextResponse.redirect(new URL(ROUTES.portalLogin, request.url));
+    }
     return NextResponse.redirect(new URL(adminLoginHref(pathname), request.url));
   }
 

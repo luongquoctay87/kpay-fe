@@ -24,7 +24,7 @@ export function AuthShell({ children, variant = "admin" }: AuthShellProps) {
   const isAdmin = variant === "admin";
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-canvas font-sans text-ink">
+    <div className="relative flex min-h-dvh flex-col overflow-x-hidden bg-canvas font-sans text-ink">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -39,20 +39,20 @@ export function AuthShell({ children, variant = "admin" }: AuthShellProps) {
         />
         <div
           className={cn(
-            "absolute -left-24 top-0 h-[28rem] w-[28rem] rounded-full blur-3xl",
+            "absolute -left-24 top-0 h-[min(28rem,70vw)] w-[min(28rem,70vw)] rounded-full blur-3xl",
             isAdmin ? "bg-zinc-400/12" : "bg-[#4088f0]/16",
           )}
         />
         <div
           className={cn(
-            "absolute -right-16 bottom-0 h-[22rem] w-[22rem] rounded-full blur-3xl",
+            "absolute -right-16 bottom-0 h-[min(22rem,60vw)] w-[min(22rem,60vw)] rounded-full blur-3xl",
             isAdmin ? "bg-zinc-300/20" : "bg-sky-300/30",
           )}
         />
       </div>
 
-      <header className="relative z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-edge bg-canvas/90 px-4 backdrop-blur-md sm:px-5">
-        <div className="flex min-w-0 items-center gap-2.5">
+      <header className="relative z-30 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-edge bg-canvas/90 px-3 backdrop-blur-md sm:h-14 sm:gap-3 sm:px-5">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
           <span
             className={cn(
               "flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-caption font-bold tracking-tight",
@@ -68,7 +68,7 @@ export function AuthShell({ children, variant = "admin" }: AuthShellProps) {
             <span className="block truncate text-label font-semibold tracking-tight text-ink">
               {isAdmin ? t("brand.admin") : t("brand.name")}
             </span>
-            <span className="block truncate text-caption text-muted">
+            <span className="hidden truncate text-caption text-muted min-[400px]:block">
               {isAdmin ? t("auth.adminShellTag") : t("auth.portalShellTag")}
             </span>
           </div>
@@ -77,15 +77,15 @@ export function AuthShell({ children, variant = "admin" }: AuthShellProps) {
         <LocaleSwitcher tone="light" />
       </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-4 py-10">
-        {children}
+      <main className="relative z-10 flex min-h-0 w-full flex-1 justify-center overflow-y-auto overscroll-contain px-3 py-5 sm:items-center sm:px-4 sm:py-10">
+        <div className="my-auto w-full min-w-0 max-w-md">{children}</div>
       </main>
 
       <AppFooter
         variant="public"
         brandKey={isAdmin ? "admin" : "name"}
         hideBrand={!isAdmin}
-        className="relative z-10 !border-edge !bg-transparent"
+        className="relative z-10 !border-edge !bg-transparent pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       />
     </div>
   );

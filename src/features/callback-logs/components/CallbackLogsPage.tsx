@@ -357,7 +357,7 @@ export function CallbackLogsPage() {
     try {
       if (orderType === "payin") {
         const data = await payinApi.list({
-          transId: row.externalRequestId,
+          q: row.externalRequestId,
           page: 0,
           size: 20,
         });
@@ -375,7 +375,7 @@ export function CallbackLogsPage() {
       }
 
       const data = await payoutApi.list({
-        transId: row.externalRequestId,
+        q: row.externalRequestId,
         page: 0,
         size: 20,
       });
@@ -418,8 +418,9 @@ export function CallbackLogsPage() {
           loading={loading}
           searchLabel={t("callbackLogs.search")}
           resetLabel={t("callbackLogs.reset")}
+          fieldsClassName="lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_repeat(3,minmax(9rem,10rem))]"
         >
-          <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px] sm:max-w-md">
+          <div className="min-w-0 sm:col-span-2 xl:col-span-1">
             <SearchInput
               id="cb-external-id"
               value={externalIdDraft}
@@ -428,7 +429,7 @@ export function CallbackLogsPage() {
               label={t("callbackLogs.filterExternalId")}
             />
           </div>
-          <div className="w-full min-w-0 sm:min-w-[140px] sm:w-[160px] sm:flex-none">
+          <div className="min-w-0">
             <Select
               id="cb-type"
               size="md"
@@ -443,7 +444,7 @@ export function CallbackLogsPage() {
               aria-label={t("callbackLogs.filterType")}
             />
           </div>
-          <div className="w-full min-w-0 sm:min-w-[140px] sm:w-[160px] sm:flex-none">
+          <div className="min-w-0">
             <Select
               id="cb-direction"
               size="md"
@@ -458,7 +459,7 @@ export function CallbackLogsPage() {
               aria-label={t("callbackLogs.filterDirection")}
             />
           </div>
-          <div className="w-full min-w-0 sm:min-w-[140px] sm:w-[160px] sm:flex-none">
+          <div className="min-w-0">
             <Select
               id="cb-status"
               size="md"

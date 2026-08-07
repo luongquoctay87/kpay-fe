@@ -4,6 +4,8 @@ const ACCESS_TOKEN_KEY = "kpay_access_token";
 const ACCESS_EXPIRES_AT_KEY = "kpay_access_expires_at";
 const TWO_FA_TOKEN_KEY = "kpay_two_fa_token";
 const USER_KEY = "kpay_user";
+/** Soft realm marker: `admin` | `portal` — steers 401 redirect + hydrate. */
+const AUTH_REALM_KEY = "kpay_auth_realm";
 /** Active session mode: "1" = persist across browser restarts (refresh cookie TTL). */
 const REMEMBER_ME_KEY = "kpay_remember_me";
 /** Last checkbox preference on the login form (survives logout). */
@@ -17,9 +19,12 @@ export const REMEMBER_SESSION_MAX_AGE_SEC = 14 * 24 * 60 * 60;
 
 export { SESSION_COOKIE };
 
+export type AuthRealm = "admin" | "portal";
+
 /**
  * Access JWT lives only in page memory — never localStorage/sessionStorage.
- * XSS cannot exfiltrate a persisted bearer; reload restores via HttpOnly refresh cookie.
+ * XSS cannot exfiltrate a persisted bearer; reload restores via HttpOnly refresh cookie
+ * ({@code X-Refresh-Cookie} admin, {@code X-Portal-Refresh-Cookie} merchant/agent).
  */
 let memoryAccessToken: string | null = null;
 let memoryAccessExpiresAt: number | null = null;
@@ -141,6 +146,25 @@ export function clearStoredUser(): void {
   sessionStorage.removeItem(USER_KEY);
 }
 
+export function setAuthRealm(realm: AuthRealm): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(AUTH_REALM_KEY, realm);
+  sessionStorage.setItem(AUTH_REALM_KEY, realm);
+}
+
+export function getAuthRealm(): AuthRealm | null {
+  if (typeof window === "undefined") return null;
+  const raw =
+    sessionStorage.getItem(AUTH_REALM_KEY) ?? localStorage.getItem(AUTH_REALM_KEY);
+  return raw === "admin" || raw === "portal" ? raw : null;
+}
+
+export function clearAuthRealm(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(AUTH_REALM_KEY);
+  sessionStorage.removeItem(AUTH_REALM_KEY);
+}
+
 export function hasSessionMarker(): boolean {
   if (typeof document === "undefined") return false;
   return document.cookie.split(";").some((part) => part.trim().startsWith(`${SESSION_COOKIE}=1`));
@@ -181,6 +205,7 @@ export function clearAuthStorage(): void {
   clearStoredUser();
   clearSessionCookie();
   clearRememberMe();
+  clearAuthRealm();
 }
 
 /** Decode JWT `exp` (seconds) → ms; no verify — client hint only. */

@@ -2,7 +2,9 @@ import { apiClient, unwrap } from "@/lib/api/client";
 import { refreshSession } from "@/features/auth/refresh";
 import type {
   AuthResult,
+  ChangeDisplayNameRequest,
   ChangePasswordRequest,
+  ChangeUsernameRequest,
   SignInRequest,
   TotpCodeRequest,
   TotpVerifyRequest,
@@ -72,10 +74,40 @@ export const portalAuthApi = {
   },
 
   confirmTotp(body: TotpCodeRequest): Promise<AuthResult> {
-    return unwrap(apiClient.post("/auth/totp/confirm", body));
+    return unwrap(
+      apiClient.post("/auth/totp/confirm", {
+        code: body.code,
+        rememberMe: body.rememberMe ?? true,
+      }),
+    );
   },
 
   verifyTotp(body: TotpVerifyRequest): Promise<AuthResult> {
-    return unwrap(apiClient.post("/auth/totp/verify", body));
+    return unwrap(
+      apiClient.post("/auth/totp/verify", {
+        code: body.code,
+        rememberMe: body.rememberMe ?? true,
+      }),
+    );
+  },
+
+  me(): Promise<User> {
+    return unwrap(apiClient.get("/auth/me"));
+  },
+
+  changePassword(body: ChangePasswordRequest): Promise<null> {
+    return unwrap(apiClient.post("/auth/change-password", body));
+  },
+
+  changeUsername(body: ChangeUsernameRequest): Promise<AuthResult> {
+    return unwrap(apiClient.post("/auth/change-username", body));
+  },
+
+  changeDisplayName(body: ChangeDisplayNameRequest): Promise<User> {
+    return unwrap(apiClient.post("/auth/change-display-name", body));
+  },
+
+  logout(): Promise<null> {
+    return unwrap(apiClient.post("/auth/logout"));
   },
 };

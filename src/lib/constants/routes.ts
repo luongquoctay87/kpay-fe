@@ -7,6 +7,11 @@ export const ROUTES = {
   portalLogin: "/login",
   portalTotp: "/totp",
   portalHome: "/portal",
+  portalPayin: "/portal/payin",
+  portalPayout: "/portal/payout",
+  portalBalance: "/portal/balance",
+  portalCommissions: "/portal/commissions",
+  portalProfile: "/portal/profile",
   merchants: "/merchants",
   merchantNew: "/merchants/new",
   merchantDetail: (id: string) => `/merchants/${id}`,
@@ -27,7 +32,6 @@ export const PUBLIC_PATH_PREFIXES = [
   "/admin/totp",
   "/login",
   "/totp",
-  "/portal",
   "/pay",
 ] as const;
 
@@ -88,4 +92,11 @@ export function adminLoginHref(nextPath?: string | null): string {
   const safe = safeInternalPath(nextPath, ROUTES.home);
   if (safe === ROUTES.home) return ROUTES.login;
   return `${ROUTES.login}?next=${encodeURIComponent(safe)}`;
+}
+
+/** Merchant / Agent portal login URL with safe `?next=` (defaults to `/portal`). */
+export function portalLoginHref(nextPath?: string | null): string {
+  const safe = safeInternalPath(nextPath, ROUTES.portalHome);
+  if (safe === ROUTES.portalHome) return ROUTES.portalLogin;
+  return `${ROUTES.portalLogin}?next=${encodeURIComponent(safe)}`;
 }

@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppFooter } from "@/components/layout/AppFooter";
 import { AppHeader } from "@/components/layout/AppHeader";
-import { AppSidebar, readSidebarCollapsed } from "@/components/layout/AppSidebar";
+import { AppSidebar, isSidebarNarrowViewport, readSidebarCollapsed } from "@/components/layout/AppSidebar";
 import { authApi } from "@/features/auth/api";
 import { TotpSetupRequiredModal } from "@/features/auth/components/TotpSetupRequiredModal";
 import { useAuthStore } from "@/features/auth/store";
@@ -44,6 +44,9 @@ export function PortalShell({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener("change", apply);
   }, []);
 
+  function collapseIfNarrow() {
+    if (isSidebarNarrowViewport()) setCollapsed(true);
+  }
   useEffect(() => {
     if (!hydrated) return;
     if (!getAccessToken()) {
@@ -82,7 +85,11 @@ export function PortalShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="kpay-shell flex min-h-screen bg-canvas font-sans text-ink">
-      <AppSidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
+      <AppSidebar
+        collapsed={collapsed}
+        onToggle={() => setCollapsed((v) => !v)}
+        onNavigate={collapseIfNarrow}
+      />
       <div className="flex min-w-0 flex-1 flex-col bg-canvas">
         <AppHeader />
         <main className="min-h-0 flex-1 overflow-auto bg-canvas">{children}</main>

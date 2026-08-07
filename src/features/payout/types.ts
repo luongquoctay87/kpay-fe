@@ -58,15 +58,11 @@ export interface PayoutOrderListResp {
 }
 
 export interface PayoutOrderListParams {
-  transId?: string;
-  transferContent?: string;
+  q?: string;
   merchantId?: string;
-  accountNumber?: string;
   sourceBankAccountId?: string;
   status?: PayoutStatus;
   callbackStatus?: OrderCallbackStatus;
-  realStatus?: string;
-  reason?: string;
   createdFrom?: string;
   createdTo?: string;
   updatedFrom?: string;

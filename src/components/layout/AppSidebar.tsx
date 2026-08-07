@@ -23,6 +23,23 @@ import { ROUTES } from "@/lib/constants/routes";
 
 export const SIDEBAR_COLLAPSE_KEY = "kpay_sidebar_collapsed";
 
+/** Match shells: force collapsed rail on phone / small tablet. */
+export const SIDEBAR_NARROW_MQ = "(max-width: 767px)";
+
+export function isSidebarNarrowViewport(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia(SIDEBAR_NARROW_MQ).matches;
+}
+
+export function readSidebarCollapsed(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 type NavLeaf = {
   href: string;
   labelKey: MessageKey;
@@ -86,21 +103,15 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function readSidebarCollapsed(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
 export function AppSidebar({
   collapsed,
   onToggle,
+  onNavigate,
 }: {
   collapsed: boolean;
   onToggle: () => void;
+  /** Called when a nav link is clicked (e.g. auto-collapse on narrow viewports). */
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const { t } = useI18n();
@@ -159,6 +170,7 @@ export function AppSidebar({
           data-kpay-chrome
           className="flex min-w-0 items-center gap-2.5 rounded-md !text-ink outline-none focus-visible:ring-2 focus-visible:ring-edge-strong"
           title={brandName}
+          onClick={() => onNavigate?.()}
         >
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-[10px] font-bold tracking-tight text-on-accent">
             KP
@@ -196,6 +208,7 @@ export function AppSidebar({
                     data-kpay-chrome
                     title={label}
                     aria-current={active ? "page" : undefined}
+                    onClick={() => onNavigate?.()}
                     className={cn(
                       ROW,
                       collapsed ? "justify-center px-2 py-2" : "px-2.5 py-2",
@@ -272,6 +285,7 @@ export function AppSidebar({
                             data-kpay-chrome
                             title={childLabel}
                             aria-current={active ? "page" : undefined}
+                            onClick={() => onNavigate?.()}
                             className={cn(
                               ROW,
                               "py-1.5 pl-[22px] pr-2.5",

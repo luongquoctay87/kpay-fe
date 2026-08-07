@@ -7,6 +7,8 @@ const tones = {
   suspended: "bg-warning-bg text-warning ring-warning/25",
   disabled: "bg-panel text-muted ring-edge",
   neutral: "bg-panel text-ink-secondary ring-edge",
+  danger: "bg-danger-bg text-danger ring-danger/20",
+  info: "bg-nav-active text-nav-active-fg ring-nav-active-bar/40",
 } as const;
 
 export type BadgeTone = keyof typeof tones;

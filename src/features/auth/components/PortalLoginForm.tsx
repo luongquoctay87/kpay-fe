@@ -3,14 +3,23 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DocumentTitle } from "@/components/layout/DocumentTitle";
+import {
+  IconCheckCircle,
+  IconChevronLeft,
+  IconKey,
+  IconLogin,
+  IconSmartphone,
+} from "@/components/icons/NavIcons";
 import { Button, Field, Input, OtpInput } from "@/components/ui";
 import { portalAuthApi } from "@/features/auth/api";
+import { applyAuthTokens } from "@/features/auth/refresh";
 import {
   clearAccessToken,
   clearTwoFaToken,
   getAccessToken,
-  setAccessToken,
-  setStoredUserJson,
+  getRememberMePreference,
+  setAuthRealm,
+  setRememberMe,
   setTwoFaToken,
 } from "@/features/auth/token";
 import { useI18n } from "@/i18n/use-i18n";
@@ -113,8 +122,9 @@ export function PortalLoginForm() {
       }
 
       if (result.accessToken) {
-        setAccessToken(result.accessToken, result.expiresIn);
-        if (result.user) setStoredUserJson(JSON.stringify(result.user));
+        setAuthRealm("portal");
+        setRememberMe(getRememberMePreference());
+        applyAuthTokens(result);
         router.replace(nextPath);
         return;
       }
@@ -150,12 +160,16 @@ export function PortalLoginForm() {
       const submitCode = useBackup
         ? code.replace(/[^A-Za-z0-9]/g, "").toUpperCase()
         : code.trim();
-      const result = await portalAuthApi.verifyTotp({ code: submitCode });
+      const result = await portalAuthApi.verifyTotp({
+        code: submitCode,
+        rememberMe: getRememberMePreference(),
+      });
 
       if (result.accessToken) {
         clearTwoFaToken();
-        setAccessToken(result.accessToken, result.expiresIn);
-        if (result.user) setStoredUserJson(JSON.stringify(result.user));
+        setAuthRealm("portal");
+        setRememberMe(getRememberMePreference());
+        applyAuthTokens(result);
         router.replace(nextPath);
         return;
       }
@@ -195,18 +209,18 @@ export function PortalLoginForm() {
         : t("auth.enterOtp");
 
   return (
-    <div className="w-full max-w-md motion-safe:animate-[kpay-auth-in_0.4s_ease-out]">
+    <div className="w-full min-w-0 motion-safe:animate-[kpay-auth-in_0.4s_ease-out]">
       <DocumentTitle title={`${t("auth.signIn")} · ${t("brand.name")}`} />
 
       <div className="overflow-hidden rounded-lg border border-edge bg-elevated shadow-[0_20px_48px_-20px_rgba(15,23,42,0.28)]">
-        <div className="flex items-center gap-2 border-b border-edge bg-surface/80 px-5 py-3">
-          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-accent ring-1 ring-accent/30">
+        <div className="flex items-center gap-2 border-b border-edge bg-surface/80 px-4 py-2.5 sm:px-5 sm:py-3">
+          <span className="inline-flex max-w-full items-center truncate rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-accent ring-1 ring-accent/30">
             {t("auth.portalBadge")}
           </span>
         </div>
 
-        <div className="px-5 pb-6 pt-5 sm:px-6">
-          <h1 className="text-[1.35rem] font-semibold tracking-tight text-ink">
+        <div className="px-4 pb-5 pt-4 sm:px-6 sm:pb-6 sm:pt-5">
+          <h1 className="text-[1.2rem] font-semibold tracking-tight text-ink sm:text-[1.35rem]">
             {t("brand.name")}
           </h1>
           {subtitle ? <p className="mt-1.5 text-body text-muted">{subtitle}</p> : null}
@@ -214,14 +228,14 @@ export function PortalLoginForm() {
           {error ? (
             <div
               role="alert"
-              className="mt-4 rounded-md border border-danger-edge bg-danger-bg px-3 py-2 text-body text-danger"
+              className="mt-4 break-words rounded-md border border-danger-edge bg-danger-bg px-3 py-2 text-body text-danger"
             >
               {error}
             </div>
           ) : null}
 
           {step === "password" ? (
-            <form className="mt-5 flex flex-col gap-4" onSubmit={onPasswordSubmit} noValidate>
+            <form className="mt-5 flex flex-col gap-3.5 sm:gap-4" onSubmit={onPasswordSubmit} noValidate>
               <Field
                 label={t("auth.username")}
                 htmlFor="portal-username"
@@ -274,12 +288,13 @@ export function PortalLoginForm() {
                 fullWidth
                 loading={loading}
                 className="mt-1 !rounded-md"
+                leftIcon={<IconLogin width={16} height={16} />}
               >
                 {loading ? t("auth.signingIn") : t("auth.signIn")}
               </Button>
             </form>
           ) : (
-            <form className="mt-5 flex flex-col gap-4" onSubmit={onOtpSubmit} noValidate>
+            <form className="mt-5 flex flex-col gap-3.5 sm:gap-4" onSubmit={onOtpSubmit} noValidate>
               <Field
                 label={useBackup ? t("auth.backupCode") : t("auth.otpCode")}
                 htmlFor="portal-code"
@@ -321,31 +336,44 @@ export function PortalLoginForm() {
                 loading={loading}
                 className="mt-1 !rounded-md"
                 disabled={!useBackup && code.replace(/\D/g, "").length < 6}
+                leftIcon={<IconCheckCircle width={16} height={16} />}
               >
                 {loading ? t("auth.verifying") : t("auth.verify")}
               </Button>
-              <Button
-                type="button"
-                variant="link"
-                onClick={() => {
-                  setUseBackup((v) => !v);
-                  setError(null);
-                  setCode("");
-                  otp.hide();
-                }}
-              >
-                {useBackup ? t("auth.useAuthenticator") : t("auth.useBackup")}
-              </Button>
-              <Button
-                type="button"
-                variant="link"
-                onClick={(e) => {
-                  e.preventDefault();
-                  backToPassword();
-                }}
-              >
-                {t("auth.backToSignIn")}
-              </Button>
+              <div className="flex flex-col items-center gap-1">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="max-w-full justify-center whitespace-normal text-center"
+                  leftIcon={
+                    useBackup ? (
+                      <IconSmartphone width={15} height={15} />
+                    ) : (
+                      <IconKey width={15} height={15} />
+                    )
+                  }
+                  onClick={() => {
+                    setUseBackup((v) => !v);
+                    setError(null);
+                    setCode("");
+                    otp.hide();
+                  }}
+                >
+                  {useBackup ? t("auth.useAuthenticator") : t("auth.useBackup")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="max-w-full justify-center whitespace-normal text-center"
+                  leftIcon={<IconChevronLeft width={15} height={15} />}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    backToPassword();
+                  }}
+                >
+                  {t("auth.backToSignIn")}
+                </Button>
+              </div>
             </form>
           )}
         </div>

@@ -188,18 +188,18 @@ export function LoginForm() {
         : t("auth.enterOtp");
 
   return (
-    <div className="w-full max-w-md motion-safe:animate-[kpay-auth-in_0.4s_ease-out]">
+    <div className="w-full min-w-0 motion-safe:animate-[kpay-auth-in_0.4s_ease-out]">
       <DocumentTitle title={`${t("auth.signIn")} · ${t("brand.admin")}`} />
 
       <div className="overflow-hidden rounded-lg border border-edge bg-elevated shadow-[0_20px_48px_-20px_rgba(15,23,42,0.28)]">
-        <div className="flex items-center gap-2 border-b border-edge bg-surface/80 px-5 py-3">
-          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-ink ring-1 ring-ink/20">
+        <div className="flex items-center gap-2 border-b border-edge bg-surface/80 px-4 py-2.5 sm:px-5 sm:py-3">
+          <span className="inline-flex max-w-full items-center truncate rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-ink ring-1 ring-ink/20">
             {t("auth.adminBadge")}
           </span>
         </div>
 
-        <div className="px-5 pb-6 pt-5 sm:px-6">
-          <h1 className="text-[1.35rem] font-semibold tracking-tight text-ink">
+        <div className="px-4 pb-5 pt-4 sm:px-6 sm:pb-6 sm:pt-5">
+          <h1 className="text-[1.2rem] font-semibold tracking-tight text-ink sm:text-[1.35rem]">
             {t("brand.admin")}
           </h1>
           <p className="mt-1.5 text-body text-muted">{subtitle}</p>
@@ -207,7 +207,7 @@ export function LoginForm() {
           {error ? (
             <div
               role="alert"
-              className="mt-4 rounded-md border border-danger-edge bg-danger-bg px-3 py-2 text-body text-danger"
+              className="mt-4 break-words rounded-md border border-danger-edge bg-danger-bg px-3 py-2 text-body text-danger"
             >
               {error}
             </div>
@@ -341,36 +341,40 @@ export function LoginForm() {
               >
                 {loading ? t("auth.verifying") : t("auth.verify")}
               </Button>
-              <Button
-                type="button"
-                variant="link"
-                leftIcon={
-                  useBackup ? (
-                    <IconSmartphone width={15} height={15} />
-                  ) : (
-                    <IconKey width={15} height={15} />
-                  )
-                }
-                onClick={() => {
-                  setUseBackup((v) => !v);
-                  setError(null);
-                  setCode("");
-                  otp.hide();
-                }}
-              >
-                {useBackup ? t("auth.useAuthenticator") : t("auth.useBackup")}
-              </Button>
-              <Button
-                type="button"
-                variant="link"
-                leftIcon={<IconChevronLeft width={15} height={15} />}
-                onClick={(e) => {
-                  e.preventDefault();
-                  backToPassword();
-                }}
-              >
-                {t("auth.backToSignIn")}
-              </Button>
+              <div className="flex flex-col items-center gap-1">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="max-w-full justify-center whitespace-normal text-center"
+                  leftIcon={
+                    useBackup ? (
+                      <IconSmartphone width={15} height={15} />
+                    ) : (
+                      <IconKey width={15} height={15} />
+                    )
+                  }
+                  onClick={() => {
+                    setUseBackup((v) => !v);
+                    setError(null);
+                    setCode("");
+                    otp.hide();
+                  }}
+                >
+                  {useBackup ? t("auth.useAuthenticator") : t("auth.useBackup")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="max-w-full justify-center whitespace-normal text-center"
+                  leftIcon={<IconChevronLeft width={15} height={15} />}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    backToPassword();
+                  }}
+                >
+                  {t("auth.backToSignIn")}
+                </Button>
+              </div>
             </form>
           )}
         </div>

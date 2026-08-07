@@ -1,7 +1,12 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { refreshSession } from "@/features/auth/refresh";
-import { getAccessToken, getTwoFaToken } from "@/features/auth/token";
-import { adminLoginHref } from "@/lib/constants/routes";
+import {
+  getAccessToken,
+  getAuthRealm,
+  getTwoFaToken,
+  setAuthRealm,
+} from "@/features/auth/token";
+import { adminLoginHref, portalLoginHref, ROUTES } from "@/lib/constants/routes";
 import { ApiError, type ApiResponse } from "@/lib/types/api";
 
 /** Same-origin proxy → Spring Boot (`next.config` rewrites). */
@@ -57,6 +62,20 @@ function isAuthPagePath(pathname: string): boolean {
   );
 }
 
+function isPortalSurface(pathname: string): boolean {
+  return (
+    pathname === ROUTES.portalHome ||
+    pathname.startsWith(`${ROUTES.portalHome}/`) ||
+    getAuthRealm() === "portal"
+  );
+}
+
+function loginHrefForCurrentSurface(pathname: string): string {
+  return isPortalSurface(pathname)
+    ? portalLoginHref(pathname)
+    : adminLoginHref(pathname);
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiResponse<unknown>>) => {
@@ -72,6 +91,16 @@ apiClient.interceptors.response.use(
       }
 
       original._retry = true;
+
+      const pathname =
+        typeof window !== "undefined" ? window.location.pathname : ROUTES.home;
+
+      // Portal / admin: silent refresh via realm-specific HttpOnly cookie.
+      // Ensure realm is set before refresh when landing on /portal/* after reload.
+      if (isPortalSurface(pathname)) {
+        setAuthRealm("portal");
+      }
+
       const result = await refreshSession();
       const token = result?.accessToken ?? null;
       if (token) {
@@ -79,8 +108,8 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       }
 
-      if (typeof window !== "undefined" && !isAuthPagePath(window.location.pathname)) {
-        window.location.href = adminLoginHref(window.location.pathname);
+      if (typeof window !== "undefined" && !isAuthPagePath(pathname)) {
+        window.location.href = loginHrefForCurrentSurface(pathname);
       }
     }
 

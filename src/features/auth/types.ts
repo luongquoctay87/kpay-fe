@@ -8,6 +8,11 @@ export interface User {
   totpEnabled?: boolean;
   roles?: string[];
   permissions?: string[];
+  merchantId?: string;
+  merchantName?: string;
+  merchantCode?: string;
+  /** Agent portal — display name from `agents.name`. */
+  agentName?: string;
 }
 
 export interface AuthResult {
@@ -44,4 +49,13 @@ export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
+}
+
+export interface ChangeUsernameRequest {
+  newUsername: string;
+  currentPassword: string;
+}
+
+export interface ChangeDisplayNameRequest {
+  newName: string;
 }

@@ -46,9 +46,16 @@ type PayoutDetailDrawerProps = {
   row: PayoutOrderListItem;
   onClose: () => void;
   onFinalize?: () => void;
+  /** When false, merchant name is plain text (portal — no Admin `/merchants` link). */
+  linkMerchant?: boolean;
 };
 
-export function PayoutDetailDrawer({ row, onClose, onFinalize }: PayoutDetailDrawerProps) {
+export function PayoutDetailDrawer({
+  row,
+  onClose,
+  onFinalize,
+  linkMerchant = true,
+}: PayoutDetailDrawerProps) {
   const { t } = useI18n();
 
   useEffect(() => {
@@ -127,7 +134,7 @@ export function PayoutDetailDrawer({ row, onClose, onFinalize }: PayoutDetailDra
             </span>
           </DetailRow>
           <DetailRow label={t("payout.colMerchant")}>
-            {row.merchantId ? (
+            {linkMerchant && row.merchantId ? (
               <Link href={ROUTES.merchantDetail(row.merchantId)} className="font-medium">
                 {merchantLabel || row.merchantId}
               </Link>

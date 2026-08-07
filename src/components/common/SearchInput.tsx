@@ -1,6 +1,7 @@
 "use client";
 
-import { IconSearch } from "@/components/icons/NavIcons";
+import type { KeyboardEvent } from "react";
+import { IconSearch, IconX } from "@/components/icons/NavIcons";
 import { Input } from "@/components/ui";
 import { useI18n } from "@/i18n/use-i18n";
 import { cn } from "@/lib/cn";
@@ -14,6 +15,7 @@ type SearchInputProps = {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
 };
 
 /**
@@ -28,6 +30,7 @@ export function SearchInput({
   placeholder,
   disabled,
   className,
+  onKeyDown,
 }: SearchInputProps) {
   const { t } = useI18n();
 
@@ -37,6 +40,7 @@ export function SearchInput({
       size="md"
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
       placeholder={placeholder}
       aria-label={label}
       disabled={disabled}
@@ -51,19 +55,7 @@ export function SearchInput({
             title={t("common.clear")}
             onClick={() => onChange("")}
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              aria-hidden
-            >
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
+            <IconX width={14} height={14} />
           </button>
         ) : null
       }

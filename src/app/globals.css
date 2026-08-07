@@ -224,6 +224,81 @@ a {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Date range: filter height + custom sep (Ant default ↔ was clipped) */
+.kpay-date-range.ant-picker {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  height: 36px;
+  padding: 0 11px;
+  overflow: hidden;
+  border-color: var(--kpay-edge);
+  background: color-mix(in srgb, var(--kpay-surface) 80%, white);
+  box-shadow: none;
+}
+
+.kpay-date-range.ant-picker:hover {
+  border-color: var(--kpay-edge-strong);
+}
+
+.kpay-date-range.ant-picker.ant-picker-focused {
+  border-color: var(--kpay-ink);
+  box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.12);
+}
+
+.kpay-date-range .ant-picker-input {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+}
+
+.kpay-date-range .ant-picker-input > input {
+  height: 22px;
+  font-size: 13px;
+  line-height: 22px;
+  text-align: left;
+}
+
+.kpay-date-range .ant-picker-range-separator {
+  display: inline-flex !important;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 16px 0 4px !important;
+  line-height: 0 !important;
+}
+
+.kpay-date-range__sep {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  color: var(--kpay-ink-subtle);
+  opacity: 0.55;
+  line-height: 0;
+}
+
+.kpay-date-range__sep svg {
+  display: block;
+}
+
+/* Gap between arrow and end-date text (Ant flex ignores inner sep margin) */
+.kpay-date-range .ant-picker-input:last-of-type > input {
+  padding-inline-start: 8px;
+}
+
+.kpay-date-range .ant-picker-suffix,
+.kpay-date-range .ant-picker-clear {
+  display: inline-flex;
+  align-items: center;
+}
+
 /* —— Toast motion —— */
 @keyframes kpay-toast-in {
   from {

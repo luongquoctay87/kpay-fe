@@ -1,0 +1,209 @@
+"use client";
+
+import { useCallback, useState, type FormEvent } from "react";
+import {
+  FilterField,
+  PageHeader,
+  Pagination,
+  TableCard,
+  dateTimeControlClass,
+} from "@/components/common";
+import { Button, Input } from "@/components/ui";
+import {
+  agentCommissionApi,
+  type AgentCommissionItem,
+} from "@/features/agent-commissions/api";
+import { AgentCommissionDetailDrawer } from "@/features/agent-commissions/components/AgentCommissionDetailDrawer";
+import { useI18n } from "@/i18n/use-i18n";
+import { usePagedList } from "@/lib/async/use-paged-list";
+import {
+  PORTAL_FILTER_ACTIONS_CLASS,
+  PORTAL_FILTER_CLASS,
+  PORTAL_PAGE_CLASS,
+} from "@/lib/constants/portal-layout";
+import { formatDateTime, formatMoney, localDateTimeInputToIso } from "@/lib/format/datetime";
+import { ApiError } from "@/lib/types/api";
+
+const EMPTY_LIST = {
+  rows: [] as AgentCommissionItem[],
+  total: 0,
+};
+
+export function AgentCommissionListPage() {
+  const { t } = useI18n();
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(20);
+  const [detailRow, setDetailRow] = useState<AgentCommissionItem | null>(null);
+
+  const [createdFromDraft, setCreatedFromDraft] = useState("");
+  const [createdToDraft, setCreatedToDraft] = useState("");
+  const [filters, setFilters] = useState<{
+    createdFrom?: string;
+    createdTo?: string;
+  }>({});
+
+  const loadList = useCallback(async () => {
+    const data = await agentCommissionApi.list({ ...filters, page, size });
+    return {
+      rows: data.items ?? [],
+      total: data.totalElements ?? 0,
+    };
+  }, [filters, page, size]);
+
+  const mapError = useCallback(
+    (e: unknown) => (e instanceof ApiError ? e.message : t("agentPortal.commissionsLoadError")),
+    [t],
+  );
+
+  const { loading, error, rows, total, refresh } = usePagedList({
+    load: loadList,
+    empty: EMPTY_LIST,
+    mapError,
+  });
+
+  const from = total === 0 ? 0 : page * size + 1;
+  const to = Math.min(total, (page + 1) * size);
+
+  function onSearch(e: FormEvent) {
+    e.preventDefault();
+    setPage(0);
+    setFilters({
+      createdFrom: localDateTimeInputToIso(createdFromDraft) || undefined,
+      createdTo: localDateTimeInputToIso(createdToDraft) || undefined,
+    });
+  }
+
+  function onReset() {
+    setCreatedFromDraft("");
+    setCreatedToDraft("");
+    setPage(0);
+    setFilters({});
+  }
+
+  return (
+    <div className={PORTAL_PAGE_CLASS}>
+      <PageHeader
+        title={t("pages.agentCommissions")}
+        actions={
+          <Button type="button" variant="secondary" size="sm" onClick={() => void refresh()}>
+            {t("common.refresh")}
+          </Button>
+        }
+      />
+
+      <form onSubmit={onSearch} className={PORTAL_FILTER_CLASS}>
+        <FilterField label={t("agentPortal.filterCreatedFrom")} htmlFor="agent-comm-from">
+          <Input
+            type="datetime-local"
+            className={dateTimeControlClass}
+            value={createdFromDraft}
+            onChange={(e) => setCreatedFromDraft(e.target.value)}
+          />
+        </FilterField>
+        <FilterField label={t("agentPortal.filterCreatedTo")} htmlFor="agent-comm-to">
+          <Input
+            type="datetime-local"
+            className={dateTimeControlClass}
+            value={createdToDraft}
+            onChange={(e) => setCreatedToDraft(e.target.value)}
+          />
+        </FilterField>
+        <div className={PORTAL_FILTER_ACTIONS_CLASS}>
+          <Button type="submit" variant="primary" size="sm">
+            {t("common.search")}
+          </Button>
+          <Button type="button" variant="secondary" size="sm" onClick={onReset}>
+            {t("common.reset")}
+          </Button>
+        </div>
+      </form>
+
+      {error ? <p className="text-body text-danger">{error}</p> : null}
+
+      <TableCard
+        pagination={
+          <Pagination
+            page={page}
+            pageSize={size}
+            total={total}
+            loading={loading}
+            onPageChange={setPage}
+            onPageSizeChange={(n) => {
+              setSize(n);
+              setPage(0);
+            }}
+            rangeLabel={`${from}–${to} / ${total}`}
+          />
+        }
+      >
+        <table className="w-full min-w-[640px] border-collapse text-left text-label">
+          <thead>
+            <tr className="border-b border-edge text-caption text-muted">
+              <th className="px-3 py-2 font-medium">{t("agentPortal.colCreatedAt")}</th>
+              <th className="px-3 py-2 font-medium">{t("agentPortal.colRequestId")}</th>
+              <th className="hidden px-3 py-2 font-medium md:table-cell">
+                {t("agentPortal.colMerchant")}
+              </th>
+              <th className="hidden px-3 py-2 font-medium lg:table-cell">
+                {t("agentPortal.colChannel")}
+              </th>
+              <th className="hidden px-3 py-2 font-medium sm:table-cell">
+                {t("agentPortal.colAcceptedAmount")}
+              </th>
+              <th className="px-3 py-2 font-medium">{t("agentPortal.colCommission")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="px-3 py-8 text-center text-muted">
+                  {t("common.loading")}
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-3 py-8 text-center text-muted">
+                  {t("common.noData")}
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => {
+                const merchantLabel = [row.merchantName, row.merchantCode]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <tr
+                    key={row.ledgerId}
+                    className="cursor-pointer border-b border-edge-soft hover:bg-hover"
+                    onClick={() => setDetailRow(row)}
+                  >
+                    <td className="whitespace-nowrap px-3 py-2 text-caption text-muted">
+                      {formatDateTime(row.createdAt)}
+                    </td>
+                    <td className="max-w-[9rem] truncate px-3 py-2 font-mono text-caption sm:max-w-none">
+                      {row.requestId ?? "—"}
+                    </td>
+                    <td className="hidden max-w-[10rem] truncate px-3 py-2 md:table-cell">
+                      {merchantLabel || "—"}
+                    </td>
+                    <td className="hidden px-3 py-2 lg:table-cell">{row.channelId ?? "—"}</td>
+                    <td className="hidden px-3 py-2 tabular-nums sm:table-cell">
+                      {formatMoney(row.acceptedAmount ?? 0)}
+                    </td>
+                    <td className="px-3 py-2 tabular-nums font-medium">
+                      {formatMoney(row.commissionAmount)}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </TableCard>
+
+      {detailRow ? (
+        <AgentCommissionDetailDrawer row={detailRow} onClose={() => setDetailRow(null)} />
+      ) : null}
+    </div>
+  );
+}

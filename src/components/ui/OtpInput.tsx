@@ -138,7 +138,7 @@ export function OtpInput({
     <div
       role="group"
       aria-label={ariaLabel}
-      className={cn("grid w-full grid-cols-6 gap-2 sm:gap-2.5", className)}
+      className={cn("grid w-full grid-cols-6 gap-1.5 sm:gap-2.5", className)}
     >
       {/* Hidden field keeps native form autofill / submit name if present */}
       {name ? (
@@ -168,7 +168,7 @@ export function OtpInput({
             onFocus={(e) => e.currentTarget.select()}
             className={cn(
               // Full-width row: 6 equal square cells, edges align with sibling inputs.
-              "aspect-square w-full min-w-0 rounded-md border bg-canvas text-center font-mono text-label tabular-nums text-ink outline-none transition",
+              "aspect-square w-full min-w-0 rounded-md border bg-canvas text-center font-mono text-[0.8125rem] tabular-nums text-ink outline-none transition sm:text-label",
               "focus:border-accent focus:shadow-[0_0_0_2px_rgba(37,99,235,0.18)]",
               invalid
                 ? "border-danger bg-danger-bg/40"

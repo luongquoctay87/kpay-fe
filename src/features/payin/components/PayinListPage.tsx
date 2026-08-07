@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
   type FormEvent,
+  type KeyboardEvent,
 } from "react";
 import Link from "next/link";
 import {
@@ -25,18 +26,22 @@ import {
   IconWebhook,
 } from "@/components/icons/NavIcons";
 import {
+  AutoRefreshControl,
   ColumnHeader,
   CopyButton,
+  DateRangeFilter,
+  dateRangeToIsoBounds,
   FilterField,
   PageHeader,
   Pagination,
+  SearchInput,
   StatCard,
   TableCard,
-  dateTimeControlClass,
   filterControlClass,
+  type DateRangeValue,
 } from "@/components/common";
 
-import { Button, Input, Select, StatusBadge, toast } from "@/components/ui";
+import { Button, Select, StatusBadge, toast } from "@/components/ui";
 import { getActiveMerchantOptions } from "@/features/merchants/options-cache";
 import { payinApi } from "@/features/payin/api";
 import { FinalizePayinModal } from "@/features/payin/components/FinalizePayinModal";
@@ -70,8 +75,12 @@ import {
   PAYIN_STATUS_OPTIONS,
 } from "@/features/payin/types";
 import { useI18n } from "@/i18n/use-i18n";
+import {
+  useAutoRefresh,
+  type AutoRefreshSeconds,
+} from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
-import { formatDateTime, formatMoney, localDateTimeInputToIso } from "@/lib/format/datetime";
+import { formatDateTime, formatMoney } from "@/lib/format/datetime";
 import { ROUTES } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
 
@@ -85,25 +94,23 @@ export function PayinListPage() {
   const { t } = useI18n();
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [finalizeRow, setFinalizeRow] = useState<PayinOrderListItem | null>(null);
   const [detailRow, setDetailRow] = useState<PayinOrderListItem | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
 
-  const [transIdDraft, setTransIdDraft] = useState("");
-  const [contentDraft, setContentDraft] = useState("");
+  const [qDraft, setQDraft] = useState("");
   const [merchantDraft, setMerchantDraft] = useState<string | null>(null);
   const [channelDraft, setChannelDraft] = useState<string | null>(null);
   const [statusDraft, setStatusDraft] = useState<PayinStatus | null>(null);
   const [callbackDraft, setCallbackDraft] = useState<OrderCallbackStatus | null>(null);
-  const [createdFromDraft, setCreatedFromDraft] = useState("");
-  const [createdToDraft, setCreatedToDraft] = useState("");
-  const [updatedFromDraft, setUpdatedFromDraft] = useState("");
-  const [updatedToDraft, setUpdatedToDraft] = useState("");
+  const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(null);
+  const [updatedRangeDraft, setUpdatedRangeDraft] = useState<DateRangeValue>(null);
 
   const [filters, setFilters] = useState<{
-    transId?: string;
-    content?: string;
+    q?: string;
     merchantId?: string;
     channelId?: string;
     status?: PayinStatus;
@@ -196,9 +203,10 @@ export function PayinListPage() {
   });
   const stats = data.stats;
 
+  useAutoRefresh(refresh, { enabled: autoRefresh, intervalSec: autoRefreshSec });
+
   const hasFilters = Boolean(
-    filters.transId ||
-      filters.content ||
+    filters.q ||
       filters.merchantId ||
       filters.channelId ||
       filters.status ||
@@ -210,16 +218,13 @@ export function PayinListPage() {
   );
   const canReset =
     hasFilters ||
-    Boolean(transIdDraft) ||
-    Boolean(contentDraft) ||
+    Boolean(qDraft) ||
     merchantDraft != null ||
     channelDraft != null ||
     statusDraft != null ||
     callbackDraft != null ||
-    Boolean(createdFromDraft) ||
-    Boolean(createdToDraft) ||
-    Boolean(updatedFromDraft) ||
-    Boolean(updatedToDraft);
+    Boolean(createdRangeDraft?.[0] || createdRangeDraft?.[1]) ||
+    Boolean(updatedRangeDraft?.[0] || updatedRangeDraft?.[1]);
 
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
@@ -241,17 +246,18 @@ export function PayinListPage() {
   }, [rows]);
 
   function buildFiltersFromDraft() {
+    const created = dateRangeToIsoBounds(createdRangeDraft);
+    const updated = dateRangeToIsoBounds(updatedRangeDraft);
     return {
-      transId: transIdDraft.trim() || undefined,
-      content: contentDraft.trim() || undefined,
+      q: qDraft.trim() || undefined,
       merchantId: merchantDraft ?? undefined,
       channelId: channelDraft ?? undefined,
       status: statusDraft ?? undefined,
       callbackStatus: callbackDraft ?? undefined,
-      createdFrom: localDateTimeInputToIso(createdFromDraft),
-      createdTo: localDateTimeInputToIso(createdToDraft),
-      updatedFrom: localDateTimeInputToIso(updatedFromDraft),
-      updatedTo: localDateTimeInputToIso(updatedToDraft),
+      createdFrom: created.from,
+      createdTo: created.to,
+      updatedFrom: updated.from,
+      updatedTo: updated.to,
     };
   }
 
@@ -265,17 +271,20 @@ export function PayinListPage() {
     applyFilters();
   }
 
+  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+    e.preventDefault();
+    applyFilters();
+  }
+
   function onReset() {
-    setTransIdDraft("");
-    setContentDraft("");
+    setQDraft("");
     setMerchantDraft(null);
     setChannelDraft(null);
     setStatusDraft(null);
     setCallbackDraft(null);
-    setCreatedFromDraft("");
-    setCreatedToDraft("");
-    setUpdatedFromDraft("");
-    setUpdatedToDraft("");
+    setCreatedRangeDraft(null);
+    setUpdatedRangeDraft(null);
     setFilters({});
     setPage(0);
   }
@@ -297,7 +306,18 @@ export function PayinListPage() {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
-      <PageHeader title={t("payin.listTitle")} />
+      <PageHeader
+        title={t("payin.listTitle")}
+        actions={
+          <AutoRefreshControl
+            enabled={autoRefresh}
+            intervalSec={autoRefreshSec}
+            onEnabledChange={setAutoRefresh}
+            onIntervalChange={setAutoRefreshSec}
+            size="sm"
+          />
+        }
+      />
 
       <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -326,28 +346,8 @@ export function PayinListPage() {
         className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5"
       >
         {expanded ? (
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">
-              <FilterField label={t("payin.filterTransId")} htmlFor="payin-trans-id">
-                <Input
-                  id="payin-trans-id"
-                  size="md"
-                  value={transIdDraft}
-                  onChange={(e) => setTransIdDraft(e.target.value)}
-                  placeholder={t("payin.filterTransIdPlaceholder")}
-                  className={filterControlClass}
-                />
-              </FilterField>
-              <FilterField label={t("payin.filterContent")} htmlFor="payin-content">
-                <Input
-                  id="payin-content"
-                  size="md"
-                  value={contentDraft}
-                  onChange={(e) => setContentDraft(e.target.value)}
-                  placeholder={t("payin.filterContentPlaceholder")}
-                  className={filterControlClass}
-                />
-              </FilterField>
+          <div className="flex flex-col gap-3.5">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
               <FilterField label={t("payin.filterMerchant")} htmlFor="payin-merchant">
                 <Select
                   id="payin-merchant"
@@ -372,7 +372,6 @@ export function PayinListPage() {
                   triggerClassName={filterControlClass}
                 />
               </FilterField>
-
               <FilterField label={t("payin.filterStatus")} htmlFor="payin-status">
                 <Select
                   id="payin-status"
@@ -397,72 +396,49 @@ export function PayinListPage() {
                   triggerClassName={filterControlClass}
                 />
               </FilterField>
-              <FilterField label={t("payin.filterCreatedFrom")} htmlFor="payin-created-from">
-                <Input
-                  id="payin-created-from"
-                  type="datetime-local"
-                  size="md"
-                  value={createdFromDraft}
-                  onChange={(e) => setCreatedFromDraft(e.target.value)}
-                  placeholder={t("payin.filterTimePlaceholder")}
-                  aria-label={t("payin.filterCreatedFrom")}
-                  className={dateTimeControlClass}
+              <FilterField label={t("payin.filterCreated")} htmlFor="payin-created-range">
+                <DateRangeFilter
+                  id="payin-created-range"
+                  value={createdRangeDraft}
+                  onChange={setCreatedRangeDraft}
+                  placeholder={[
+                    t("payin.filterCreatedFromPlaceholder"),
+                    t("payin.filterCreatedToPlaceholder"),
+                  ]}
+                  aria-label={t("payin.filterCreated")}
                 />
               </FilterField>
-              <FilterField label={t("payin.filterCreatedTo")} htmlFor="payin-created-to">
-                <Input
-                  id="payin-created-to"
-                  type="datetime-local"
-                  size="md"
-                  value={createdToDraft}
-                  onChange={(e) => setCreatedToDraft(e.target.value)}
-                  placeholder={t("payin.filterTimePlaceholder")}
-                  aria-label={t("payin.filterCreatedTo")}
-                  className={dateTimeControlClass}
-                />
-              </FilterField>
-
-              <FilterField label={t("payin.filterUpdatedFrom")} htmlFor="payin-updated-from">
-                <Input
-                  id="payin-updated-from"
-                  type="datetime-local"
-                  size="md"
-                  value={updatedFromDraft}
-                  onChange={(e) => setUpdatedFromDraft(e.target.value)}
-                  placeholder={t("payin.filterTimePlaceholder")}
-                  aria-label={t("payin.filterUpdatedFrom")}
-                  className={dateTimeControlClass}
-                />
-              </FilterField>
-              <FilterField label={t("payin.filterUpdatedTo")} htmlFor="payin-updated-to">
-                <Input
-                  id="payin-updated-to"
-                  type="datetime-local"
-                  size="md"
-                  value={updatedToDraft}
-                  onChange={(e) => setUpdatedToDraft(e.target.value)}
-                  placeholder={t("payin.filterTimePlaceholder")}
-                  aria-label={t("payin.filterUpdatedTo")}
-                  className={dateTimeControlClass}
+              <FilterField label={t("payin.filterUpdated")} htmlFor="payin-updated-range">
+                <DateRangeFilter
+                  id="payin-updated-range"
+                  value={updatedRangeDraft}
+                  onChange={setUpdatedRangeDraft}
+                  placeholder={[
+                    t("payin.filterUpdatedFromPlaceholder"),
+                    t("payin.filterUpdatedToPlaceholder"),
+                  ]}
+                  aria-label={t("payin.filterUpdated")}
                 />
               </FilterField>
             </div>
 
-            <div className="flex flex-col-reverse gap-2 border-t border-edge pt-3 sm:flex-row sm:items-center sm:justify-between">
-              <button
-                type="button"
-                onClick={() => setExpanded(false)}
-                className="inline-flex h-9 items-center justify-center gap-1 px-1.5 text-label font-medium text-ink transition hover:opacity-70 sm:justify-start"
-              >
-                {t("payin.collapse")}
-                <IconChevron className="rotate-180" width={14} height={14} />
-              </button>
-              <div className="flex w-full gap-2 sm:w-auto">
+            <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
+              <div className="min-w-0 w-full flex-1">
+                <SearchInput
+                  id="payin-search"
+                  value={qDraft}
+                  onChange={setQDraft}
+                  onKeyDown={onSearchKeyDown}
+                  placeholder={t("payin.filterSearchPlaceholder")}
+                  label={t("payin.filterSearch")}
+                />
+              </div>
+              <div className="flex w-full items-center gap-1.5 md:w-auto md:shrink-0">
                 <Button
                   type="button"
                   variant="secondary"
                   size="md"
-                  className="flex-1 sm:flex-none"
+                  className="min-w-0 flex-1 md:flex-none md:min-w-[6.5rem]"
                   onClick={onReset}
                   disabled={!canReset}
                   leftIcon={<IconRefresh width={15} height={15} />}
@@ -473,81 +449,64 @@ export function PayinListPage() {
                   type="submit"
                   variant="soft"
                   size="md"
-                  className="min-h-9 flex-1 gap-2 px-4 sm:min-w-[8.75rem] sm:flex-none"
+                  className="min-h-9 min-w-0 flex-1 gap-2 px-3 md:flex-none md:min-w-[8.75rem] md:px-4"
                   leftIcon={<IconSearch width={16} height={16} />}
                 >
                   {t("payin.search")}
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(false)}
+                  aria-label={t("payin.collapse")}
+                  title={t("payin.collapse")}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink"
+                >
+                  <IconChevron className="rotate-180" width={16} height={16} />
+                </button>
               </div>
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2.5">
-            <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px]">
-              <Input
-                id="payin-trans-id-compact"
-                size="md"
-                value={transIdDraft}
-                onChange={(e) => setTransIdDraft(e.target.value)}
-                placeholder={t("payin.filterTransIdPlaceholder")}
-                aria-label={t("payin.filterTransId")}
-                className={filterControlClass}
+          <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
+            <div className="min-w-0 w-full flex-1">
+              <SearchInput
+                id="payin-search-compact"
+                value={qDraft}
+                onChange={setQDraft}
+                onKeyDown={onSearchKeyDown}
+                placeholder={t("payin.filterSearchPlaceholder")}
+                label={t("payin.filterSearch")}
               />
             </div>
-            <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px]">
-              <Input
-                id="payin-content-compact"
+            <div className="flex w-full items-center gap-1.5 md:w-auto md:shrink-0">
+              <Button
+                type="button"
+                variant="secondary"
                 size="md"
-                value={contentDraft}
-                onChange={(e) => setContentDraft(e.target.value)}
-                placeholder={t("payin.filterContentPlaceholder")}
-                aria-label={t("payin.filterContent")}
-                className={filterControlClass}
-              />
-            </div>
-            <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px] xl:max-w-[280px]">
-              <Select
-                id="payin-merchant-compact"
+                className="min-w-0 flex-1 md:flex-none md:min-w-[6.5rem]"
+                onClick={onReset}
+                disabled={!canReset}
+                leftIcon={<IconRefresh width={15} height={15} />}
+              >
+                {t("payin.reset")}
+              </Button>
+              <Button
+                type="submit"
+                variant="soft"
                 size="md"
-                options={merchantOptions}
-                value={merchantDraft}
-                onChange={setMerchantDraft}
-                placeholder={t("payin.filterMerchantPlaceholder")}
-                clearable
-                aria-label={t("payin.filterMerchant")}
-                triggerClassName={filterControlClass}
-              />
-            </div>
-            <div className="flex w-full flex-col gap-2 sm:ml-auto sm:h-9 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-              <div className="flex w-full gap-2 sm:w-auto">
-                <Button
-                  type="submit"
-                  variant="soft"
-                  size="md"
-                  className="min-h-9 flex-1 gap-2 px-4 sm:min-w-[8.75rem] sm:flex-none"
-                  leftIcon={<IconSearch width={16} height={16} />}
-                >
-                  {t("payin.search")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="md"
-                  className="flex-1 sm:flex-none"
-                  onClick={onReset}
-                  disabled={!canReset}
-                  leftIcon={<IconRefresh width={15} height={15} />}
-                >
-                  {t("payin.reset")}
-                </Button>
-              </div>
+                className="min-h-9 min-w-0 flex-1 gap-2 px-3 md:flex-none md:min-w-[8.75rem] md:px-4"
+                leftIcon={<IconSearch width={16} height={16} />}
+              >
+                {t("payin.search")}
+              </Button>
               <button
                 type="button"
                 onClick={() => setExpanded(true)}
-                className="inline-flex h-9 items-center justify-center gap-1 px-1.5 text-label font-medium text-ink transition hover:opacity-70 sm:justify-start"
+                aria-label={t("payin.expand")}
+                title={t("payin.expand")}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink"
               >
-                {t("payin.expand")}
-                <IconChevron width={14} height={14} />
+                <IconChevron width={16} height={16} />
               </button>
             </div>
           </div>

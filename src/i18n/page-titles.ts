@@ -17,3 +17,14 @@ export function getPageTitleKey(pathname: string): MessageKey {
   if (pathname.startsWith(ROUTES.profile)) return "pages.profile";
   return "pages.fallback";
 }
+
+/** Merchant / Agent portal page titles. */
+export function getPortalPageTitleKey(pathname: string): MessageKey {
+  if (pathname === ROUTES.portalHome) return "pages.portalOverview";
+  if (pathname.startsWith(ROUTES.portalCommissions)) return "pages.agentCommissions";
+  if (pathname.startsWith(ROUTES.portalPayin)) return "pages.portalPayin";
+  if (pathname.startsWith(ROUTES.portalPayout)) return "pages.portalPayout";
+  if (pathname.startsWith(ROUTES.portalBalance)) return "pages.portalBalance";
+  if (pathname.startsWith(ROUTES.portalProfile)) return "pages.profile";
+  return "pages.portalOverview";
+}

@@ -19,8 +19,7 @@ export const payinApi = {
     return unwrap(
       apiClient.get("/payin-orders", {
         params: {
-          transId: params.transId || undefined,
-          content: params.content || undefined,
+          q: params.q || undefined,
           merchantId: params.merchantId || undefined,
           channelId: params.channelId || undefined,
           status: params.status || undefined,
@@ -39,8 +38,7 @@ export const payinApi = {
   async export(params: Omit<PayinOrderListParams, "page" | "size"> = {}): Promise<void> {
     const res = await apiClient.get("/payin-orders/export", {
       params: {
-        transId: params.transId || undefined,
-        content: params.content || undefined,
+        q: params.q || undefined,
         merchantId: params.merchantId || undefined,
         channelId: params.channelId || undefined,
         status: params.status || undefined,

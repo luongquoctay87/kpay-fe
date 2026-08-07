@@ -13,15 +13,11 @@ export const payoutApi = {
     return unwrap(
       apiClient.get("/payout-orders", {
         params: {
-          transId: params.transId || undefined,
-          transferContent: params.transferContent || undefined,
+          q: params.q || undefined,
           merchantId: params.merchantId || undefined,
-          accountNumber: params.accountNumber || undefined,
           sourceBankAccountId: params.sourceBankAccountId || undefined,
           status: params.status || undefined,
           callbackStatus: params.callbackStatus || undefined,
-          realStatus: params.realStatus || undefined,
-          reason: params.reason || undefined,
           createdFrom: params.createdFrom || undefined,
           createdTo: params.createdTo || undefined,
           updatedFrom: params.updatedFrom || undefined,
@@ -36,15 +32,11 @@ export const payoutApi = {
   async export(params: Omit<PayoutOrderListParams, "page" | "size"> = {}): Promise<void> {
     const res = await apiClient.get("/payout-orders/export", {
       params: {
-        transId: params.transId || undefined,
-        transferContent: params.transferContent || undefined,
+        q: params.q || undefined,
         merchantId: params.merchantId || undefined,
-        accountNumber: params.accountNumber || undefined,
         sourceBankAccountId: params.sourceBankAccountId || undefined,
         status: params.status || undefined,
         callbackStatus: params.callbackStatus || undefined,
-        realStatus: params.realStatus || undefined,
-        reason: params.reason || undefined,
         createdFrom: params.createdFrom || undefined,
         createdTo: params.createdTo || undefined,
         updatedFrom: params.updatedFrom || undefined,

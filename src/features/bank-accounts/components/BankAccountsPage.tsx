@@ -278,8 +278,9 @@ export function BankAccountsPage() {
           canReset={canReset}
           searchLabel={t("bankAccounts.search")}
           resetLabel={t("bankAccounts.reset")}
+          fieldsClassName="lg:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_repeat(3,minmax(7.5rem,8.5rem))]"
         >
-          <div className="w-full min-w-0 sm:min-w-[180px] sm:flex-1 sm:basis-[200px] sm:max-w-[280px]">
+          <div className="min-w-0 sm:col-span-2 lg:col-span-1">
             <Input
               id="ba-filter-account"
               size="md"
@@ -291,7 +292,7 @@ export function BankAccountsPage() {
               leftAddon={<IconSearch width={15} height={15} />}
             />
           </div>
-          <div className="w-full min-w-0 sm:min-w-[160px] sm:flex-1 sm:basis-[180px] sm:max-w-[260px]">
+          <div className="min-w-0 sm:col-span-2 lg:col-span-1">
             <Input
               id="ba-filter-bank"
               size="md"
@@ -302,7 +303,7 @@ export function BankAccountsPage() {
               className="!border-edge bg-surface/80 hover:!border-edge-strong"
             />
           </div>
-          <div className="w-full min-w-0 sm:w-[148px] sm:flex-none">
+          <div className="min-w-0">
             <Select
               id="ba-filter-status"
               size="md"
@@ -318,7 +319,7 @@ export function BankAccountsPage() {
               triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
             />
           </div>
-          <div className="w-full min-w-0 sm:w-[128px] sm:flex-none">
+          <div className="min-w-0">
             <Select
               id="ba-filter-collect"
               size="md"
@@ -334,7 +335,7 @@ export function BankAccountsPage() {
               triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
             />
           </div>
-          <div className="w-full min-w-0 sm:w-[128px] sm:flex-none">
+          <div className="min-w-0">
             <Select
               id="ba-filter-disburse"
               size="md"

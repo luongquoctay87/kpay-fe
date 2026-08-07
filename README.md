@@ -106,6 +106,9 @@ npm start   # http://localhost:3000
 | `/bank-accounts` | Collect / payout bank accounts |
 | `/callback-logs` | Outbound webhook logs + resend |
 | `/profile` | Operator profile |
+| `/portal`, `/portal/payin`, `/portal/payout`, `/portal/balance` | Merchant portal |
+| `/portal/profile` | Merchant / Agent account profile (username, password, 2FA reset) |
+| `/portal/commissions` | Agent commissions |
 | `/pay/[token]` | Public payment page |
 
 ---

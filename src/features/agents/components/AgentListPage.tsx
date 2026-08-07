@@ -153,8 +153,9 @@ export function AgentListPage() {
           canReset={canReset}
           searchLabel={t("agents.search")}
           resetLabel={t("agents.reset")}
+          fieldsClassName="lg:grid-cols-[minmax(0,1fr)_minmax(11rem,12.5rem)]"
         >
-          <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px] sm:max-w-md">
+          <div className="min-w-0">
             <SearchInput
               id="agent-name"
               value={nameDraft}
@@ -163,7 +164,7 @@ export function AgentListPage() {
               label={t("agents.filterName")}
             />
           </div>
-          <div className="w-full min-w-0 sm:min-w-[160px] sm:w-[200px] sm:flex-none">
+          <div className="min-w-0">
             <Select
               id="agent-active"
               size="md"

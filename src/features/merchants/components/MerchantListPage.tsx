@@ -170,8 +170,9 @@ export function MerchantListPage() {
           canReset={canReset}
           searchLabel={t("merchants.search")}
           resetLabel={t("merchants.reset")}
+          fieldsClassName="lg:grid-cols-[minmax(0,1fr)_minmax(11rem,12.5rem)]"
         >
-          <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px] sm:max-w-md">
+          <div className="min-w-0">
             <SearchInput
               id="merchant-name"
               value={nameDraft}
@@ -180,7 +181,7 @@ export function MerchantListPage() {
               label={t("merchants.filterName")}
             />
           </div>
-          <div className="w-full min-w-0 sm:min-w-[160px] sm:w-[200px] sm:flex-none">
+          <div className="min-w-0">
             <Select
               id="merchant-status"
               size="md"

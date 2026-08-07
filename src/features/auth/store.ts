@@ -16,6 +16,7 @@ import {
   getRememberMePreference,
   getStoredUserJson,
   isAccessTokenFresh,
+  setAuthRealm,
   setRememberMe,
   setRememberMePreference,
   setStoredUserJson,
@@ -134,6 +135,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!result.accessToken) {
       return;
     }
+    setAuthRealm("admin");
     setRememberMe(rememberMe ?? getRememberMePreference());
     applyAuthTokens(result);
     clearTwoFaToken();

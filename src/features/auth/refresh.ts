@@ -3,6 +3,7 @@ import {
   ACCESS_TOKEN_SKEW_MS,
   clearAuthStorage,
   getAccessExpiresAt,
+  getAuthRealm,
   setAccessToken,
   setStoredUserJson,
 } from "@/features/auth/token";
@@ -27,10 +28,16 @@ export async function refreshSession(): Promise<AuthResult | null> {
   return refreshPromise;
 }
 
+function refreshPath(): string {
+  return getAuthRealm() === "portal"
+    ? `${API_BASE}/auth/refresh-token`
+    : `${API_BASE}/admin/auth/refresh-token`;
+}
+
 async function doRefresh(): Promise<AuthResult | null> {
   try {
     const { data } = await axios.post<ApiResponse<AuthResult>>(
-      `${API_BASE}/admin/auth/refresh-token`,
+      refreshPath(),
       {},
       { withCredentials: true },
     );

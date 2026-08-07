@@ -57,8 +57,7 @@ export interface PayinOrderListResp {
 }
 
 export interface PayinOrderListParams {
-  transId?: string;
-  content?: string;
+  q?: string;
   merchantId?: string;
   channelId?: string;
   status?: PayinStatus;

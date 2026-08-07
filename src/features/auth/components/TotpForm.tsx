@@ -10,13 +10,15 @@ import { IconCheckCircle, IconChevronLeft } from "@/components/icons/NavIcons";
 import { Button, Field, Input, OtpInput } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { portalAuthApi } from "@/features/auth/api";
+import { applyAuthTokens } from "@/features/auth/refresh";
 import {
   clearTwoFaToken,
   getAccessToken,
+  getRememberMePreference,
   getStoredUserJson,
   getTwoFaToken,
-  setAccessToken,
-  setStoredUserJson,
+  setAuthRealm,
+  setRememberMe,
 } from "@/features/auth/token";
 import { useI18n } from "@/i18n/use-i18n";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
@@ -66,6 +68,7 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
   const enrollTotpAdmin = useAuthStore((s) => s.enrollTotp);
   const confirmTotpAdmin = useAuthStore((s) => s.confirmTotp);
   const verifyTotpAdmin = useAuthStore((s) => s.verifyTotp);
+  const setUser = useAuthStore((s) => s.setUser);
   const sessionUsername = useAuthStore((s) => s.user?.username);
 
   const [otpauthUrl, setOtpauthUrl] = useState<string | null>(null);
@@ -122,10 +125,17 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
         const result =
           realm === "admin"
             ? await confirmTotpAdmin(code.trim())
-            : await portalAuthApi.confirmTotp({ code: code.trim() });
+            : await portalAuthApi.confirmTotp({
+                code: code.trim(),
+                rememberMe: getRememberMePreference(),
+              });
         if (realm === "portal" && result.accessToken) {
-          setAccessToken(result.accessToken, result.expiresIn);
-          if (result.user) setStoredUserJson(JSON.stringify(result.user));
+          setAuthRealm("portal");
+          setRememberMe(getRememberMePreference());
+          applyAuthTokens(result);
+          if (result.user) {
+            setUser(result.user);
+          }
           clearTwoFaToken();
         }
         setBackupCodes(result.backupCodes ?? []);
@@ -139,10 +149,17 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
         if (realm === "admin") {
           await verifyTotpAdmin(submitCode);
         } else {
-          const result = await portalAuthApi.verifyTotp({ code: submitCode });
+          const result = await portalAuthApi.verifyTotp({
+            code: submitCode,
+            rememberMe: getRememberMePreference(),
+          });
           if (result.accessToken) {
-            setAccessToken(result.accessToken, result.expiresIn);
-            if (result.user) setStoredUserJson(JSON.stringify(result.user));
+            setAuthRealm("portal");
+            setRememberMe(getRememberMePreference());
+            applyAuthTokens(result);
+            if (result.user) {
+              setUser(result.user);
+            }
             clearTwoFaToken();
           }
         }
@@ -185,17 +202,17 @@ export function TotpForm({ realm = "admin" }: { realm?: "admin" | "portal" }) {
         : t("auth.totpCodeHint");
 
   const shell = (title: string, body: ReactNode) => (
-    <div className="w-full max-w-md motion-safe:animate-[kpay-auth-in_0.4s_ease-out]">
+    <div className="w-full min-w-0 motion-safe:animate-[kpay-auth-in_0.4s_ease-out]">
       <DocumentTitle title={`${title} · ${brandLabel}`} />
       <div className="overflow-hidden rounded-lg border border-edge bg-elevated shadow-[0_20px_48px_-20px_rgba(15,23,42,0.28)]">
         {realm === "admin" ? (
-          <div className="flex items-center gap-2 border-b border-edge bg-surface/80 px-5 py-3">
-            <span className="inline-flex items-center rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-ink ring-1 ring-ink/20">
+          <div className="flex items-center gap-2 border-b border-edge bg-surface/80 px-4 py-2.5 sm:px-5 sm:py-3">
+            <span className="inline-flex max-w-full items-center truncate rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-ink ring-1 ring-ink/20">
               {t("auth.adminBadge")}
             </span>
           </div>
         ) : null}
-        <div className="px-5 pb-6 pt-5 sm:px-6">{body}</div>
+        <div className="px-4 pb-5 pt-4 sm:px-6 sm:pb-6 sm:pt-5">{body}</div>
       </div>
     </div>
   );

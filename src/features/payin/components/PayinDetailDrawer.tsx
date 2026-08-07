@@ -30,7 +30,7 @@ function DetailRow({
   children: ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[9.5rem_minmax(0,1fr)] items-start gap-3 border-b border-edge py-2.5 last:border-b-0">
+    <div className="grid grid-cols-1 gap-1 border-b border-edge py-2.5 last:border-b-0 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:items-start sm:gap-3">
       <dt className="text-label text-muted">{label}</dt>
       <dd className="min-w-0 break-words text-label text-ink">{children}</dd>
     </div>
@@ -40,12 +40,21 @@ function DetailRow({
 type PayinDetailDrawerProps = {
   row: PayinOrderListItem;
   onClose: () => void;
-  onFinalize: () => void;
+  /** Omit to hide the finalize action (e.g. merchant portal). */
+  onFinalize?: () => void;
+  /** When false, merchant name is plain text (portal — no Admin `/merchants` link). */
+  linkMerchant?: boolean;
 };
 
-export function PayinDetailDrawer({ row, onClose, onFinalize }: PayinDetailDrawerProps) {
+export function PayinDetailDrawer({
+  row,
+  onClose,
+  onFinalize,
+  linkMerchant = true,
+}: PayinDetailDrawerProps) {
   const { t } = useI18n();
-  const canFinalize = row.status === "created" || row.status === "pending";
+  const canFinalize =
+    Boolean(onFinalize) && (row.status === "created" || row.status === "pending");
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -71,7 +80,7 @@ export function PayinDetailDrawer({ row, onClose, onFinalize }: PayinDetailDrawe
         role="dialog"
         aria-modal="true"
         aria-labelledby="payin-detail-title"
-        className="relative flex h-full w-full max-w-md flex-col border-l border-edge bg-elevated shadow-xl sm:max-w-lg"
+        className="relative flex h-full w-full max-w-full flex-col border-l border-edge bg-elevated shadow-xl sm:max-w-md md:max-w-lg"
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-edge px-4 py-4 sm:px-5">
           <div className="min-w-0">
@@ -117,7 +126,7 @@ export function PayinDetailDrawer({ row, onClose, onFinalize }: PayinDetailDrawe
             </span>
           </DetailRow>
           <DetailRow label={t("payin.colMerchant")}>
-            {row.merchantId ? (
+            {linkMerchant && row.merchantId ? (
               <Link href={ROUTES.merchantDetail(row.merchantId)} className="font-medium">
                 {merchantLabel || row.merchantId}
               </Link>

@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
   type FormEvent,
+  type KeyboardEvent,
 } from "react";
 import Link from "next/link";
 import {
@@ -27,16 +28,19 @@ import {
 import {
   ColumnHeader,
   CopyButton,
+  DateRangeFilter,
+  dateRangeToIsoBounds,
   FilterField,
   PageHeader,
   Pagination,
+  SearchInput,
   StatCard,
   TableCard,
-  dateTimeControlClass,
   filterControlClass,
+  type DateRangeValue,
 } from "@/components/common";
 
-import { Button, Input, Select, StatusBadge, toast } from "@/components/ui";
+import { Button, Select, StatusBadge, toast } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import { getActiveMerchantOptions } from "@/features/merchants/options-cache";
 import { payoutApi } from "@/features/payout/api";
@@ -72,7 +76,7 @@ import {
 } from "@/features/payout/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
-import { formatDateTime, formatMoney, localDateTimeInputToIso } from "@/lib/format/datetime";
+import { formatDateTime, formatMoney } from "@/lib/format/datetime";
 import { ROUTES } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
 
@@ -86,24 +90,18 @@ export function PayoutListPage() {
   const { t } = useI18n();
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [detailRow, setDetailRow] = useState<PayoutOrderListItem | null>(null);
   const [finalizeRow, setFinalizeRow] = useState<PayoutOrderListItem | null>(null);
 
-  const [transIdDraft, setTransIdDraft] = useState("");
-  const [transferContentDraft, setTransferContentDraft] = useState("");
+  const [qDraft, setQDraft] = useState("");
   const [merchantDraft, setMerchantDraft] = useState<string | null>(null);
-  const [accountDraft, setAccountDraft] = useState("");
   const [sourceAccountDraft, setSourceAccountDraft] = useState<string | null>(null);
   const [statusDraft, setStatusDraft] = useState<PayoutStatus | null>(null);
   const [callbackDraft, setCallbackDraft] = useState<OrderCallbackStatus | null>(null);
-  const [realStatusDraft, setRealStatusDraft] = useState("");
-  const [reasonDraft, setReasonDraft] = useState("");
-  const [createdFromDraft, setCreatedFromDraft] = useState("");
-  const [createdToDraft, setCreatedToDraft] = useState("");
-  const [updatedFromDraft, setUpdatedFromDraft] = useState("");
-  const [updatedToDraft, setUpdatedToDraft] = useState("");
+  const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(null);
+  const [updatedRangeDraft, setUpdatedRangeDraft] = useState<DateRangeValue>(null);
 
   const [filters, setFilters] = useState<Omit<PayoutOrderListParams, "page" | "size">>({});
 
@@ -197,15 +195,11 @@ export function PayoutListPage() {
   const stats = data.stats;
 
   const hasFilters = Boolean(
-    filters.transId ||
-      filters.transferContent ||
+    filters.q ||
       filters.merchantId ||
-      filters.accountNumber ||
       filters.sourceBankAccountId ||
       filters.status ||
       filters.callbackStatus ||
-      filters.realStatus ||
-      filters.reason ||
       filters.createdFrom ||
       filters.createdTo ||
       filters.updatedFrom ||
@@ -213,19 +207,13 @@ export function PayoutListPage() {
   );
   const canReset =
     hasFilters ||
-    Boolean(transIdDraft) ||
-    Boolean(transferContentDraft) ||
+    Boolean(qDraft) ||
     merchantDraft != null ||
-    Boolean(accountDraft) ||
     sourceAccountDraft != null ||
     statusDraft != null ||
     callbackDraft != null ||
-    Boolean(realStatusDraft) ||
-    Boolean(reasonDraft) ||
-    Boolean(createdFromDraft) ||
-    Boolean(createdToDraft) ||
-    Boolean(updatedFromDraft) ||
-    Boolean(updatedToDraft);
+    Boolean(createdRangeDraft?.[0] || createdRangeDraft?.[1]) ||
+    Boolean(updatedRangeDraft?.[0] || updatedRangeDraft?.[1]);
 
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
@@ -241,20 +229,18 @@ export function PayoutListPage() {
   }, [rows]);
 
   function buildFiltersFromDraft() {
+    const created = dateRangeToIsoBounds(createdRangeDraft);
+    const updated = dateRangeToIsoBounds(updatedRangeDraft);
     return {
-      transId: transIdDraft.trim() || undefined,
-      transferContent: transferContentDraft.trim() || undefined,
+      q: qDraft.trim() || undefined,
       merchantId: merchantDraft ?? undefined,
-      accountNumber: accountDraft.trim() || undefined,
       sourceBankAccountId: sourceAccountDraft ?? undefined,
       status: statusDraft ?? undefined,
       callbackStatus: callbackDraft ?? undefined,
-      realStatus: realStatusDraft.trim() || undefined,
-      reason: reasonDraft.trim() || undefined,
-      createdFrom: localDateTimeInputToIso(createdFromDraft),
-      createdTo: localDateTimeInputToIso(createdToDraft),
-      updatedFrom: localDateTimeInputToIso(updatedFromDraft),
-      updatedTo: localDateTimeInputToIso(updatedToDraft),
+      createdFrom: created.from,
+      createdTo: created.to,
+      updatedFrom: updated.from,
+      updatedTo: updated.to,
     };
   }
 
@@ -268,20 +254,20 @@ export function PayoutListPage() {
     applyFilters();
   }
 
+  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+    e.preventDefault();
+    applyFilters();
+  }
+
   function onReset() {
-    setTransIdDraft("");
-    setTransferContentDraft("");
+    setQDraft("");
     setMerchantDraft(null);
-    setAccountDraft("");
     setSourceAccountDraft(null);
     setStatusDraft(null);
     setCallbackDraft(null);
-    setRealStatusDraft("");
-    setReasonDraft("");
-    setCreatedFromDraft("");
-    setCreatedToDraft("");
-    setUpdatedFromDraft("");
-    setUpdatedToDraft("");
+    setCreatedRangeDraft(null);
+    setUpdatedRangeDraft(null);
     setFilters({});
     setPage(0);
   }
@@ -333,28 +319,8 @@ export function PayoutListPage() {
         className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5"
       >
         {expanded ? (
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">
-              <FilterField label={t("payout.filterTransId")} htmlFor="payout-trans-id">
-                <Input
-                  id="payout-trans-id"
-                  size="md"
-                  value={transIdDraft}
-                  onChange={(e) => setTransIdDraft(e.target.value)}
-                  placeholder={t("payout.filterTransIdPlaceholder")}
-                  className={filterControlClass}
-                />
-              </FilterField>
-              <FilterField label={t("payout.filterContent")} htmlFor="payout-content">
-                <Input
-                  id="payout-content"
-                  size="md"
-                  value={transferContentDraft}
-                  onChange={(e) => setTransferContentDraft(e.target.value)}
-                  placeholder={t("payout.filterContentPlaceholder")}
-                  className={filterControlClass}
-                />
-              </FilterField>
+          <div className="flex flex-col gap-3.5">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
               <FilterField label={t("payout.filterMerchant")} htmlFor="payout-merchant">
                 <Select
                   id="payout-merchant"
@@ -365,16 +331,6 @@ export function PayoutListPage() {
                   placeholder={t("payout.filterMerchantPlaceholder")}
                   clearable
                   triggerClassName={filterControlClass}
-                />
-              </FilterField>
-              <FilterField label={t("payout.filterAccount")} htmlFor="payout-account">
-                <Input
-                  id="payout-account"
-                  size="md"
-                  value={accountDraft}
-                  onChange={(e) => setAccountDraft(e.target.value)}
-                  placeholder={t("payout.filterAccountPlaceholder")}
-                  className={filterControlClass}
                 />
               </FilterField>
 
@@ -417,87 +373,49 @@ export function PayoutListPage() {
                   triggerClassName={filterControlClass}
                 />
               </FilterField>
-              <FilterField label={t("payout.filterCreatedFrom")} htmlFor="payout-created-from">
-                <Input
-                  id="payout-created-from"
-                  type="datetime-local"
-                  size="md"
-                  value={createdFromDraft}
-                  onChange={(e) => setCreatedFromDraft(e.target.value)}
-                  placeholder={t("payout.filterTimePlaceholder")}
-                  className={dateTimeControlClass}
+              <FilterField label={t("payout.filterCreated")} htmlFor="payout-created-range">
+                <DateRangeFilter
+                  id="payout-created-range"
+                  value={createdRangeDraft}
+                  onChange={setCreatedRangeDraft}
+                  placeholder={[
+                    t("payout.filterCreatedFromPlaceholder"),
+                    t("payout.filterCreatedToPlaceholder"),
+                  ]}
+                  aria-label={t("payout.filterCreated")}
                 />
               </FilterField>
-              <FilterField label={t("payout.filterCreatedTo")} htmlFor="payout-created-to">
-                <Input
-                  id="payout-created-to"
-                  type="datetime-local"
-                  size="md"
-                  value={createdToDraft}
-                  onChange={(e) => setCreatedToDraft(e.target.value)}
-                  placeholder={t("payout.filterTimePlaceholder")}
-                  className={dateTimeControlClass}
-                />
-              </FilterField>
-              <FilterField label={t("payout.filterUpdatedFrom")} htmlFor="payout-updated-from">
-                <Input
-                  id="payout-updated-from"
-                  type="datetime-local"
-                  size="md"
-                  value={updatedFromDraft}
-                  onChange={(e) => setUpdatedFromDraft(e.target.value)}
-                  placeholder={t("payout.filterTimePlaceholder")}
-                  className={dateTimeControlClass}
-                />
-              </FilterField>
-              <FilterField label={t("payout.filterUpdatedTo")} htmlFor="payout-updated-to">
-                <Input
-                  id="payout-updated-to"
-                  type="datetime-local"
-                  size="md"
-                  value={updatedToDraft}
-                  onChange={(e) => setUpdatedToDraft(e.target.value)}
-                  placeholder={t("payout.filterTimePlaceholder")}
-                  className={dateTimeControlClass}
-                />
-              </FilterField>
-              <FilterField label={t("payout.filterRealStatus")} htmlFor="payout-real-status">
-                <Input
-                  id="payout-real-status"
-                  size="md"
-                  value={realStatusDraft}
-                  onChange={(e) => setRealStatusDraft(e.target.value)}
-                  placeholder={t("payout.filterRealStatusPlaceholder")}
-                  className={filterControlClass}
-                />
-              </FilterField>
-              <FilterField label={t("payout.filterReason")} htmlFor="payout-reason">
-                <Input
-                  id="payout-reason"
-                  size="md"
-                  value={reasonDraft}
-                  onChange={(e) => setReasonDraft(e.target.value)}
-                  placeholder={t("payout.filterReasonPlaceholder")}
-                  className={filterControlClass}
+              <FilterField label={t("payout.filterUpdated")} htmlFor="payout-updated-range">
+                <DateRangeFilter
+                  id="payout-updated-range"
+                  value={updatedRangeDraft}
+                  onChange={setUpdatedRangeDraft}
+                  placeholder={[
+                    t("payout.filterUpdatedFromPlaceholder"),
+                    t("payout.filterUpdatedToPlaceholder"),
+                  ]}
+                  aria-label={t("payout.filterUpdated")}
                 />
               </FilterField>
             </div>
 
-            <div className="flex flex-col-reverse gap-2 border-t border-edge pt-3 sm:flex-row sm:items-center sm:justify-between">
-              <button
-                type="button"
-                onClick={() => setExpanded(false)}
-                className="inline-flex h-9 items-center justify-center gap-1 px-1.5 text-label font-medium text-ink transition hover:opacity-70 sm:justify-start"
-              >
-                {t("payout.collapse")}
-                <IconChevron className="rotate-180" width={14} height={14} />
-              </button>
-              <div className="flex w-full gap-2 sm:w-auto">
+            <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
+              <div className="min-w-0 w-full flex-1">
+                <SearchInput
+                  id="payout-search"
+                  value={qDraft}
+                  onChange={setQDraft}
+                  onKeyDown={onSearchKeyDown}
+                  placeholder={t("payout.filterSearchPlaceholder")}
+                  label={t("payout.filterSearch")}
+                />
+              </div>
+              <div className="flex w-full items-center gap-1.5 md:w-auto md:shrink-0">
                 <Button
                   type="button"
                   variant="secondary"
                   size="md"
-                  className="flex-1 sm:flex-none"
+                  className="min-w-0 flex-1 md:flex-none md:min-w-[6.5rem]"
                   onClick={onReset}
                   disabled={!canReset}
                   leftIcon={<IconRefresh width={15} height={15} />}
@@ -508,81 +426,64 @@ export function PayoutListPage() {
                   type="submit"
                   variant="soft"
                   size="md"
-                  className="min-h-9 flex-1 gap-2 px-4 sm:min-w-[8.75rem] sm:flex-none"
+                  className="min-h-9 min-w-0 flex-1 gap-2 px-3 md:flex-none md:min-w-[8.75rem] md:px-4"
                   leftIcon={<IconSearch width={16} height={16} />}
                 >
                   {t("payout.search")}
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(false)}
+                  aria-label={t("payout.collapse")}
+                  title={t("payout.collapse")}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink"
+                >
+                  <IconChevron className="rotate-180" width={16} height={16} />
+                </button>
               </div>
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2.5">
-            <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px]">
-              <Input
-                id="payout-trans-id-compact"
-                size="md"
-                value={transIdDraft}
-                onChange={(e) => setTransIdDraft(e.target.value)}
-                placeholder={t("payout.filterTransIdPlaceholder")}
-                aria-label={t("payout.filterTransId")}
-                className={filterControlClass}
+          <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
+            <div className="min-w-0 w-full flex-1">
+              <SearchInput
+                id="payout-search-compact"
+                value={qDraft}
+                onChange={setQDraft}
+                onKeyDown={onSearchKeyDown}
+                placeholder={t("payout.filterSearchPlaceholder")}
+                label={t("payout.filterSearch")}
               />
             </div>
-            <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px]">
-              <Input
-                id="payout-content-compact"
+            <div className="flex w-full items-center gap-1.5 md:w-auto md:shrink-0">
+              <Button
+                type="button"
+                variant="secondary"
                 size="md"
-                value={transferContentDraft}
-                onChange={(e) => setTransferContentDraft(e.target.value)}
-                placeholder={t("payout.filterContentPlaceholder")}
-                aria-label={t("payout.filterContent")}
-                className={filterControlClass}
-              />
-            </div>
-            <div className="w-full min-w-0 sm:min-w-[200px] sm:flex-1 sm:basis-[220px] xl:max-w-[280px]">
-              <Select
-                id="payout-merchant-compact"
+                className="min-w-0 flex-1 md:flex-none md:min-w-[6.5rem]"
+                onClick={onReset}
+                disabled={!canReset}
+                leftIcon={<IconRefresh width={15} height={15} />}
+              >
+                {t("payout.reset")}
+              </Button>
+              <Button
+                type="submit"
+                variant="soft"
                 size="md"
-                options={merchantOptions}
-                value={merchantDraft}
-                onChange={setMerchantDraft}
-                placeholder={t("payout.filterMerchantPlaceholder")}
-                clearable
-                aria-label={t("payout.filterMerchant")}
-                triggerClassName={filterControlClass}
-              />
-            </div>
-            <div className="flex w-full flex-col gap-2 sm:ml-auto sm:h-9 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-              <div className="flex w-full gap-2 sm:w-auto">
-                <Button
-                  type="submit"
-                  variant="soft"
-                  size="md"
-                  className="min-h-9 flex-1 gap-2 px-4 sm:min-w-[8.75rem] sm:flex-none"
-                  leftIcon={<IconSearch width={16} height={16} />}
-                >
-                  {t("payout.search")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="md"
-                  className="flex-1 sm:flex-none"
-                  onClick={onReset}
-                  disabled={!canReset}
-                  leftIcon={<IconRefresh width={15} height={15} />}
-                >
-                  {t("payout.reset")}
-                </Button>
-              </div>
+                className="min-h-9 min-w-0 flex-1 gap-2 px-3 md:flex-none md:min-w-[8.75rem] md:px-4"
+                leftIcon={<IconSearch width={16} height={16} />}
+              >
+                {t("payout.search")}
+              </Button>
               <button
                 type="button"
                 onClick={() => setExpanded(true)}
-                className="inline-flex h-9 items-center justify-center gap-1 px-1.5 text-label font-medium text-ink transition hover:opacity-70 sm:justify-start"
+                aria-label={t("payout.expand")}
+                title={t("payout.expand")}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink"
               >
-                {t("payout.expand")}
-                <IconChevron width={14} height={14} />
+                <IconChevron width={16} height={16} />
               </button>
             </div>
           </div>
