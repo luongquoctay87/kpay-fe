@@ -1,12 +1,5 @@
-import { IconBan } from "@/components/icons/NavIcons";
-import { BankingPlaceholderPage } from "@/features/banking/components/BankingPlaceholderPage";
+import { BlockedAccountsPage } from "@/features/blocked-accounts/components/BlockedAccountsPage";
 
 export default function Page() {
-  return (
-    <BankingPlaceholderPage
-      titleKey="pages.blockedAccounts"
-      currentKey="nav.blockedAccounts"
-      icon={<IconBan />}
-    />
-  );
+  return <BlockedAccountsPage />;
 }

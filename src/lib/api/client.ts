@@ -83,8 +83,20 @@ apiClient.interceptors.response.use(
       _retry?: boolean;
     };
     const status = error.response?.status;
+    const body = error.response?.data;
+    const bodyCode =
+      body && typeof body === "object" && "code" in body && typeof body.code === "string"
+        ? body.code
+        : null;
 
-    if (status === 401 && original && !original._retry) {
+    // AppRequestFilter returns UNAUTHORIZED when Bearer is missing/invalid. Prefer
+    // silent refresh (same as 401) even if a proxy/gateway remaps the HTTP status.
+    const shouldTryRefresh =
+      original &&
+      !original._retry &&
+      (status === 401 || (status === 403 && bodyCode === "UNAUTHORIZED"));
+
+    if (shouldTryRefresh) {
       const url = original.url ?? "";
       if (isAuthChallengeUrl(url)) {
         return Promise.reject(toApiError(error));
