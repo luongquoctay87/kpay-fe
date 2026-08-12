@@ -21,7 +21,20 @@ export const ROUTES = {
   payin: "/payin",
   payout: "/payout",
   callbackLogs: "/callback-logs",
-  bankAccounts: "/bank-accounts",
+  /**
+   * Tài nguyên › Ngân hàng — FE paths under `/banking/*`.
+   * BE REST stays `/bank-accounts`, `/bank-reconciliations`, etc.
+   */
+  bankAccounts: "/banking/accounts",
+  bankReconciliations: "/banking/reconciliations",
+  /** Phase 2 #9 — biến động số dư từ app notify. */
+  balanceMovements: "/banking/movements",
+  /** Phase 2 #10 — tài khoản chặn (blacklist). */
+  blockedAccounts: "/banking/blocked-accounts",
+  /** Phase 2 #11 — theo dõi số dư tài khoản. */
+  bankBalances: "/banking/balances",
+  /** Future: Tài nguyên › Ví điện tử. */
+  ewalletRoot: "/ewallet",
   profile: "/profile",
   pay: (token: string) => `/pay/${token}`,
 } as const;

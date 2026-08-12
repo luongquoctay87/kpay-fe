@@ -6,15 +6,14 @@ import {
   IconArrowIn,
   IconArrowOut,
   IconBank,
+  IconBell,
   IconGlobe,
   IconHash,
   IconLayers,
   IconPlus,
   IconRefresh,
   IconSearch,
-  IconSettings,
   IconSmartphone,
-  IconBell,
   IconUser,
 } from "@/components/icons/NavIcons";
 import { ColumnHeader, CopyButton, FilterBar, PageHeader, Pagination, StatCard, TableCard } from "@/components/common";
@@ -245,9 +244,9 @@ export function BankAccountsPage() {
       <PageHeader
         title={t("bankAccounts.listTitle")}
         breadcrumbs={[
-          { label: t("bankAccounts.breadcrumbRoot"), icon: <IconSettings /> },
-          { label: t("bankAccounts.breadcrumbParent") },
-          { label: t("bankAccounts.breadcrumbCurrent"), icon: <IconBank /> },
+          { label: t("bankAccounts.breadcrumbRoot"), icon: <IconLayers /> },
+          { label: t("bankAccounts.breadcrumbParent"), icon: <IconBank /> },
+          { label: t("bankAccounts.breadcrumbCurrent") },
         ]}
         actions={
           <Button

@@ -4,16 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  IconActivity,
   IconArrowIn,
   IconArrowOut,
+  IconBan,
   IconBank,
   IconChevron,
   IconChevronLeft,
+  IconFileText,
   IconHeadset,
   IconHome,
-  IconSettings,
+  IconLayers,
   IconStore,
   IconUsers,
+  IconWallet,
   IconWebhook,
 } from "@/components/icons/NavIcons";
 import { useI18n } from "@/i18n/use-i18n";
@@ -50,16 +54,54 @@ type NavGroup = {
   id: string;
   labelKey: MessageKey;
   icon: ReactNode;
-  children: NavLeaf[];
+  children: NavChild[];
 };
+
+type NavChild = NavLeaf | NavGroup;
 
 type NavEntry = NavLeaf | NavGroup;
 
-function isGroup(entry: NavEntry): entry is NavGroup {
+function isGroup(entry: NavLeaf | NavGroup): entry is NavGroup {
   return "children" in entry;
 }
 
-/** Flat trail — top-level links plus expandable groups (children indent one step). */
+function collectLeafHrefs(children: NavChild[]): string[] {
+  const hrefs: string[] = [];
+  for (const child of children) {
+    if (isGroup(child)) hrefs.push(...collectLeafHrefs(child.children));
+    else hrefs.push(child.href);
+  }
+  return hrefs;
+}
+
+function groupContainsPath(group: NavGroup, pathname: string): boolean {
+  return collectLeafHrefs(group.children).some((href) => isActive(pathname, href));
+}
+
+/** Collect ancestor group ids that should stay open for the active route. */
+function openGroupIdsForPath(entries: NavEntry[], pathname: string): string[] {
+  const ids: string[] = [];
+
+  function walk(nodes: NavChild[]): boolean {
+    let hit = false;
+    for (const node of nodes) {
+      if (!isGroup(node)) {
+        if (isActive(pathname, node.href)) hit = true;
+        continue;
+      }
+      if (walk(node.children) || groupContainsPath(node, pathname)) {
+        ids.push(node.id);
+        hit = true;
+      }
+    }
+    return hit;
+  }
+
+  walk(entries);
+  return ids;
+}
+
+/** Flat trail — top-level links plus expandable groups (supports nested subgroups). */
 const NAV: NavEntry[] = [
   { href: ROUTES.home, labelKey: "nav.overview", icon: <IconHome /> },
   { href: ROUTES.payin, labelKey: "nav.payin", icon: <IconArrowIn /> },
@@ -79,11 +121,48 @@ const NAV: NavEntry[] = [
     ],
   },
   {
-    id: "accountConfig",
-    labelKey: "nav.accountConfig",
-    icon: <IconSettings />,
+    id: "resources",
+    labelKey: "nav.resources",
+    icon: <IconLayers />,
     children: [
-      { href: ROUTES.bankAccounts, labelKey: "nav.bankAccounts", icon: <IconBank /> },
+      {
+        id: "banking",
+        labelKey: "nav.banking",
+        icon: <IconBank />,
+        children: [
+          {
+            href: ROUTES.bankAccounts,
+            labelKey: "nav.bankAccounts",
+            icon: <IconUsers />,
+          },
+          {
+            href: ROUTES.bankReconciliations,
+            labelKey: "nav.bankReconciliation",
+            icon: <IconFileText />,
+          },
+          {
+            href: ROUTES.balanceMovements,
+            labelKey: "nav.balanceMovements",
+            icon: <IconActivity />,
+          },
+          {
+            href: ROUTES.blockedAccounts,
+            labelKey: "nav.blockedAccounts",
+            icon: <IconBan />,
+          },
+          {
+            href: ROUTES.bankBalances,
+            labelKey: "nav.bankBalances",
+            icon: <IconWallet />,
+          },
+        ],
+      },
+      {
+        id: "ewallet",
+        labelKey: "nav.ewallet",
+        icon: <IconWallet />,
+        children: [],
+      },
     ],
   },
 ];
@@ -102,6 +181,8 @@ function isActive(pathname: string, href: string) {
   if (href === ROUTES.home) return pathname === ROUTES.home;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+const NEST_PAD = ["pl-[22px]", "pl-[34px]", "pl-[46px]"] as const;
 
 export function AppSidebar({
   collapsed,
@@ -125,17 +206,21 @@ export function AppSidebar({
     }
   }, [collapsed]);
 
-  // Keep the group holding the current route open.
+  // Keep ancestor groups of the current route open.
   useEffect(() => {
-    const current = NAV.find(
-      (entry) =>
-        isGroup(entry) &&
-        entry.children.some((child) => isActive(pathname, child.href)),
-    );
-    if (!current || !isGroup(current)) return;
-    setOpenGroups((prev) =>
-      prev.includes(current.id) ? prev : [...prev, current.id],
-    );
+    const needed = openGroupIdsForPath(NAV, pathname);
+    if (needed.length === 0) return;
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const id of needed) {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      }
+      return changed ? [...next] : prev;
+    });
   }, [pathname]);
 
   const brandName = useMemo(() => t("brand.name"), [t]);
@@ -149,6 +234,106 @@ export function AppSidebar({
     }
     setOpenGroups((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  function renderLeaf(leaf: NavLeaf, depth: number) {
+    const active = isActive(pathname, leaf.href);
+    const label = t(leaf.labelKey);
+    const pad = depth > 0 ? NEST_PAD[Math.min(depth, NEST_PAD.length) - 1] : undefined;
+
+    return (
+      <li key={leaf.href}>
+        <Link
+          href={leaf.href}
+          data-kpay-chrome
+          title={label}
+          aria-current={active ? "page" : undefined}
+          onClick={() => onNavigate?.()}
+          className={cn(
+            ROW,
+            collapsed && depth === 0
+              ? "justify-center px-2 py-2"
+              : cn("py-1.5 pr-2.5", pad ?? "px-2.5 py-2"),
+            active ? NAV_ACTIVE : NAV_IDLE,
+          )}
+        >
+          {leaf.icon ? (
+            <span
+              className={cn(
+                "flex h-5 w-5 shrink-0 items-center justify-center transition-colors",
+                depth > 0 && "[&>svg]:h-4 [&>svg]:w-4",
+                active ? "text-nav-active-fg" : "text-ink-secondary",
+              )}
+            >
+              {leaf.icon}
+            </span>
+          ) : null}
+          {!collapsed || depth > 0 ? (
+            <span className="truncate">{label}</span>
+          ) : null}
+        </Link>
+      </li>
+    );
+  }
+
+  function renderGroup(group: NavGroup, depth: number) {
+    const label = t(group.labelKey);
+    const hasActiveChild = groupContainsPath(group, pathname);
+    const open = openGroups.includes(group.id);
+    const pad = depth > 0 ? NEST_PAD[Math.min(depth, NEST_PAD.length) - 1] : undefined;
+
+    return (
+      <li key={group.id}>
+        <button
+          type="button"
+          onClick={() => toggleGroup(group.id)}
+          title={label}
+          aria-expanded={collapsed ? undefined : open}
+          className={cn(
+            ROW,
+            collapsed && depth === 0
+              ? "justify-center px-2 py-2"
+              : cn("py-1.5 pr-2.5", pad ?? "px-2.5 py-2"),
+            hasActiveChild ? "font-medium text-nav-active-fg" : NAV_IDLE,
+          )}
+        >
+          <span
+            className={cn(
+              "flex h-5 w-5 shrink-0 items-center justify-center transition-colors",
+              depth > 0 && "[&>svg]:h-4 [&>svg]:w-4",
+              hasActiveChild ? "text-nav-active-fg" : "text-ink-secondary",
+            )}
+          >
+            {group.icon}
+          </span>
+          {!collapsed || depth > 0 ? (
+            <>
+              <span className="flex-1 truncate text-left">{label}</span>
+              <IconChevron
+                className={cn(
+                  "shrink-0 text-subtle transition-transform",
+                  open && "rotate-180",
+                )}
+              />
+            </>
+          ) : null}
+        </button>
+
+        {open && !collapsed ? (
+          <ul className="mt-0.5 space-y-0.5">
+            {group.children.length === 0 ? (
+              <li className={cn("px-2.5 py-1.5 text-caption text-subtle", NEST_PAD[Math.min(depth + 1, NEST_PAD.length) - 1])}>
+                {t("nav.emptyGroup")}
+              </li>
+            ) : (
+              group.children.map((child) =>
+                isGroup(child) ? renderGroup(child, depth + 1) : renderLeaf(child, depth + 1),
+              )
+            )}
+          </ul>
+        ) : null}
+      </li>
     );
   }
 
@@ -197,121 +382,9 @@ export function AppSidebar({
 
       <nav className="flex-1 overflow-y-auto px-2 py-2">
         <ul className="space-y-0.5">
-          {NAV.map((entry) => {
-            if (!isGroup(entry)) {
-              const active = isActive(pathname, entry.href);
-              const label = t(entry.labelKey);
-              return (
-                <li key={entry.href}>
-                  <Link
-                    href={entry.href}
-                    data-kpay-chrome
-                    title={label}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => onNavigate?.()}
-                    className={cn(
-                      ROW,
-                      collapsed ? "justify-center px-2 py-2" : "px-2.5 py-2",
-                      active ? NAV_ACTIVE : NAV_IDLE,
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "flex h-5 w-5 shrink-0 items-center justify-center transition-colors",
-                        active ? "text-nav-active-fg" : "text-ink-secondary",
-                      )}
-                    >
-                      {entry.icon}
-                    </span>
-                    {!collapsed ? (
-                      <span className="truncate">{label}</span>
-                    ) : null}
-                  </Link>
-                </li>
-              );
-            }
-
-            const label = t(entry.labelKey);
-            const hasActiveChild = entry.children.some((child) =>
-              isActive(pathname, child.href),
-            );
-            const open = openGroups.includes(entry.id);
-
-            return (
-              <li key={entry.id}>
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(entry.id)}
-                  title={label}
-                  aria-expanded={collapsed ? undefined : open}
-                  className={cn(
-                    ROW,
-                    collapsed ? "justify-center px-2 py-2" : "px-2.5 py-2",
-                    hasActiveChild
-                      ? "font-medium text-nav-active-fg"
-                      : NAV_IDLE,
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center transition-colors",
-                      hasActiveChild ? "text-nav-active-fg" : "text-ink-secondary",
-                    )}
-                  >
-                    {entry.icon}
-                  </span>
-                  {!collapsed ? (
-                    <>
-                      <span className="flex-1 truncate text-left">{label}</span>
-                      <IconChevron
-                        className={cn(
-                          "shrink-0 text-subtle transition-transform",
-                          open && "rotate-180",
-                        )}
-                      />
-                    </>
-                  ) : null}
-                </button>
-
-                {open && !collapsed ? (
-                  <ul className="mt-0.5 space-y-0.5">
-                    {entry.children.map((child) => {
-                      const active = isActive(pathname, child.href);
-                      const childLabel = t(child.labelKey);
-                      return (
-                        <li key={child.href}>
-                          <Link
-                            href={child.href}
-                            data-kpay-chrome
-                            title={childLabel}
-                            aria-current={active ? "page" : undefined}
-                            onClick={() => onNavigate?.()}
-                            className={cn(
-                              ROW,
-                              "py-1.5 pl-[22px] pr-2.5",
-                              active ? NAV_ACTIVE : NAV_IDLE,
-                            )}
-                          >
-                            {child.icon ? (
-                              <span
-                                className={cn(
-                                  "flex h-5 w-5 shrink-0 items-center justify-center [&>svg]:h-4 [&>svg]:w-4 transition-colors",
-                                  active ? "text-nav-active-fg" : "text-ink-secondary",
-                                )}
-                              >
-                                {child.icon}
-                              </span>
-                            ) : null}
-                            <span className="truncate">{childLabel}</span>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : null}
-              </li>
-            );
-          })}
+          {NAV.map((entry) =>
+            isGroup(entry) ? renderGroup(entry, 0) : renderLeaf(entry, 0),
+          )}
         </ul>
       </nav>
     </aside>

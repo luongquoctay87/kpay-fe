@@ -5,10 +5,10 @@ import type { ReactNode } from "react";
 import {
   IconArrowIn,
   IconArrowOut,
-  IconBank,
   IconChevronRight,
   IconHeadset,
   IconStore,
+  IconUsers,
   IconWebhook,
 } from "@/components/icons/NavIcons";
 import { useI18n } from "@/i18n/use-i18n";
@@ -100,7 +100,7 @@ export function OverviewPage() {
     {
       label: t("nav.bankAccounts"),
       href: ROUTES.bankAccounts,
-      icon: <IconBank width={15} height={15} />,
+      icon: <IconUsers width={15} height={15} />,
     },
   ];
 

@@ -63,6 +63,27 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      { source: "/bank-accounts", destination: "/banking/accounts", permanent: false },
+      {
+        source: "/bank-reconciliations",
+        destination: "/banking/reconciliations",
+        permanent: false,
+      },
+      {
+        source: "/balance-movements",
+        destination: "/banking/movements",
+        permanent: false,
+      },
+      {
+        source: "/blocked-accounts",
+        destination: "/banking/blocked-accounts",
+        permanent: false,
+      },
+      { source: "/bank-balances", destination: "/banking/balances", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;
