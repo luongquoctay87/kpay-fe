@@ -57,6 +57,7 @@ import {
   visibleColumnCount,
   type ColumnVisibility,
 } from "@/features/payout/columns";
+import { isAwaitingReconciliation, realStatusLabel } from "@/features/payout/real-status";
 import {
   CALLBACK_STATUS_LABEL_KEY,
   CALLBACK_STATUS_TONE,
@@ -776,8 +777,15 @@ export function PayoutListPage() {
                   </td>
                 ) : null}
                 {show.realStatus ? (
-                  <td className="truncate px-3 py-3 text-center text-label text-ink-secondary" title={row.realStatus ?? undefined}>
-                    {row.realStatus ?? "—"}
+                  <td
+                    className="px-3 py-3 text-center text-label text-ink-secondary"
+                    title={realStatusLabel(row)}
+                  >
+                    {isAwaitingReconciliation(row) ? (
+                      <StatusBadge tone="pending">{t("payout.badgeAwaitingRecon")}</StatusBadge>
+                    ) : (
+                      <span className="truncate">{realStatusLabel(row)}</span>
+                    )}
                   </td>
                 ) : null}
                 {show.reason ? (

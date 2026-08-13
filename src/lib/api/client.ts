@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { coalesceGetAdapter } from "@/lib/api/coalesce-get";
 import { refreshSession } from "@/features/auth/refresh";
 import {
   getAccessToken,
@@ -16,6 +17,8 @@ export const apiClient = axios.create({
   baseURL: API_BASE,
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
+  // Coalesce identical concurrent GETs (React Strict Mode double-mount, etc.).
+  adapter: coalesceGetAdapter,
 });
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {

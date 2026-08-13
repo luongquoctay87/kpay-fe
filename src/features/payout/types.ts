@@ -40,6 +40,10 @@ export interface PayoutOrderListItem {
   callbackStatus: OrderCallbackStatus;
   realStatus?: string | null;
   retryCount?: number | null;
+  bankErrorCode?: string | null;
+  bankTxnId?: string | null;
+  /** null = transfer not called; true + processing = awaiting bank reconciliation */
+  submittedOk?: boolean | null;
   processedBy?: string | null;
   processedInMs?: number | null;
   createdAt?: string;

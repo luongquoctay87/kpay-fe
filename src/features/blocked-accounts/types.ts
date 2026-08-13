@@ -25,6 +25,7 @@ export interface BlockedAccountListParams {
   isActive?: boolean;
   page?: number;
   size?: number;
+  signal?: AbortSignal;
 }
 
 export interface CreateBlockedAccountBody {

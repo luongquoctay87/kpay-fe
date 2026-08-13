@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CopyButton } from "@/components/common";
 import { IconCheckCircle, IconX } from "@/components/icons/NavIcons";
 import { Button, StatusBadge } from "@/components/ui";
+import { isAwaitingReconciliation, realStatusLabel } from "@/features/payout/real-status";
 import {
   CALLBACK_STATUS_LABEL_KEY,
   CALLBACK_STATUS_TONE,
@@ -173,7 +174,20 @@ export function PayoutDetailDrawer({
             </StatusBadge>
           </DetailRow>
           <DetailRow label={t("payout.colRealStatus")}>
-            {row.realStatus ?? "—"}
+            {isAwaitingReconciliation(row) ? (
+              <StatusBadge tone="pending">{t("payout.badgeAwaitingRecon")}</StatusBadge>
+            ) : (
+              realStatusLabel(row)
+            )}
+          </DetailRow>
+          <DetailRow label={t("payout.colBankError")}>
+            {row.bankErrorCode ?? "—"}
+          </DetailRow>
+          <DetailRow label={t("payout.colBankTxnId")}>
+            {row.bankTxnId ?? "—"}
+          </DetailRow>
+          <DetailRow label={t("payout.colSubmittedOk")}>
+            {row.submittedOk == null ? "—" : row.submittedOk ? t("payout.yes") : t("payout.no")}
           </DetailRow>
           <DetailRow label={t("payout.colReason")}>
             {row.reason ?? "—"}

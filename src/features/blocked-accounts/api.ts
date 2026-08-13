@@ -19,6 +19,7 @@ export const blockedAccountApi = {
           page: params.page ?? 0,
           size: params.size ?? 20,
         },
+        signal: params.signal,
       }),
     );
   },
