@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   IconActivity,
   IconArrowIn,
@@ -92,6 +93,9 @@ const EMPTY_PAYIN_LIST = {
 
 export function PayinListPage() {
   const { t } = useI18n();
+  const searchParams = useSearchParams();
+  const qFromUrl = searchParams.get("q")?.trim() || "";
+
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
   const [expanded, setExpanded] = useState(false);
@@ -101,7 +105,7 @@ export function PayinListPage() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
 
-  const [qDraft, setQDraft] = useState("");
+  const [qDraft, setQDraft] = useState(qFromUrl);
   const [merchantDraft, setMerchantDraft] = useState<string | null>(null);
   const [channelDraft, setChannelDraft] = useState<string | null>(null);
   const [statusDraft, setStatusDraft] = useState<PayinStatus | null>(null);
@@ -119,7 +123,7 @@ export function PayinListPage() {
     createdTo?: string;
     updatedFrom?: string;
     updatedTo?: string;
-  }>({});
+  }>(() => (qFromUrl ? { q: qFromUrl } : {}));
 
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
     defaultColumnVisibility,
@@ -130,6 +134,13 @@ export function PayinListPage() {
   useEffect(() => {
     setColumnVisibility(loadColumnVisibility());
   }, []);
+
+  useEffect(() => {
+    if (!qFromUrl) return;
+    setQDraft(qFromUrl);
+    setPage(0);
+    setFilters((prev) => (prev.q === qFromUrl ? prev : { ...prev, q: qFromUrl }));
+  }, [qFromUrl]);
 
   useEffect(() => {
     let cancelled = false;

@@ -1,12 +1,11 @@
-import { IconActivity } from "@/components/icons/NavIcons";
-import { BankingPlaceholderPage } from "@/features/banking/components/BankingPlaceholderPage";
+import { Suspense } from "react";
+import { LoadingScreen } from "@/components/common/LoadingScreen";
+import { BalanceMovementsPage } from "@/features/balance-movements/components/BalanceMovementsPage";
 
 export default function Page() {
   return (
-    <BankingPlaceholderPage
-      titleKey="pages.balanceMovements"
-      currentKey="nav.balanceMovements"
-      icon={<IconActivity />}
-    />
+    <Suspense fallback={<LoadingScreen />}>
+      <BalanceMovementsPage />
+    </Suspense>
   );
 }
