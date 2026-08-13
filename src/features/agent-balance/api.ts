@@ -2,6 +2,7 @@ import { apiClient, unwrap } from "@/lib/api/client";
 
 export type AgentBalance = {
   availableBalance: number;
+  reservedBalance?: number;
   currency: string;
 };
 

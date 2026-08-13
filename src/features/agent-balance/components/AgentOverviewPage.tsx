@@ -50,6 +50,10 @@ export function AgentOverviewPage() {
           label={t("agentPortal.availableBalance")}
           value={formatMoney(balance?.availableBalance ?? 0)}
         />
+        <StatCard
+          label={t("agentPortal.reservedBalance")}
+          value={formatMoney(balance?.reservedBalance ?? 0)}
+        />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

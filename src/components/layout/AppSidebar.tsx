@@ -106,6 +106,7 @@ const NAV: NavEntry[] = [
   { href: ROUTES.home, labelKey: "nav.overview", icon: <IconHome /> },
   { href: ROUTES.payin, labelKey: "nav.payin", icon: <IconArrowIn /> },
   { href: ROUTES.payout, labelKey: "nav.payout", icon: <IconArrowOut /> },
+  { href: ROUTES.withdraw, labelKey: "nav.withdraw", icon: <IconArrowOut /> },
   {
     id: "customers",
     labelKey: "nav.customers",

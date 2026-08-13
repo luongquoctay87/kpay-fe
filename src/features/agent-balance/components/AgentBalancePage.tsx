@@ -181,6 +181,11 @@ export function AgentBalancePage() {
           value={formatMoney(balance?.availableBalance ?? 0)}
           tone="success"
         />
+        <StatCard
+          label={t("agentPortal.reservedBalance")}
+          value={formatMoney(balance?.reservedBalance ?? 0)}
+          tone="warning"
+        />
       </div>
 
       <section className="flex min-w-0 flex-col gap-3 sm:gap-4">

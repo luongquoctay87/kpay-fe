@@ -9,6 +9,7 @@ export const ROUTES = {
   portalHome: "/portal",
   portalPayin: "/portal/payin",
   portalPayout: "/portal/payout",
+  portalWithdraw: "/portal/withdraw",
   portalBalance: "/portal/balance",
   portalCommissions: "/portal/commissions",
   portalProfile: "/portal/profile",
@@ -20,6 +21,7 @@ export const ROUTES = {
   agentDetail: (id: string) => `/agents/${id}`,
   payin: "/payin",
   payout: "/payout",
+  withdraw: "/withdraw",
   callbackLogs: "/callback-logs",
   /**
    * Tài nguyên › Ngân hàng — FE paths under `/banking/*`.

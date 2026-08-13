@@ -12,6 +12,7 @@ export function getPageTitleKey(pathname: string): MessageKey {
   if (pathname.startsWith(ROUTES.agents)) return "pages.agents";
   if (pathname.startsWith(ROUTES.payin)) return "pages.payin";
   if (pathname.startsWith(ROUTES.payout)) return "pages.payout";
+  if (pathname.startsWith(ROUTES.withdraw)) return "pages.withdraw";
   if (pathname.startsWith(ROUTES.callbackLogs)) return "pages.callback";
   if (pathname.startsWith(ROUTES.bankAccounts)) return "pages.bankAccounts";
   if (pathname.startsWith(ROUTES.bankReconciliations)) {
@@ -30,6 +31,7 @@ export function getPortalPageTitleKey(pathname: string): MessageKey {
   if (pathname.startsWith(ROUTES.portalCommissions)) return "pages.agentCommissions";
   if (pathname.startsWith(ROUTES.portalPayin)) return "pages.portalPayin";
   if (pathname.startsWith(ROUTES.portalPayout)) return "pages.portalPayout";
+  if (pathname.startsWith(ROUTES.portalWithdraw)) return "pages.portalWithdraw";
   if (pathname.startsWith(ROUTES.portalBalance)) return "pages.portalBalance";
   if (pathname.startsWith(ROUTES.portalProfile)) return "pages.profile";
   return "pages.portalOverview";
