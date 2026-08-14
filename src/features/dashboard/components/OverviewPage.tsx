@@ -6,8 +6,6 @@ import {
   IconArrowIn,
   IconArrowOut,
   IconChevronRight,
-  IconHeadset,
-  IconStore,
   IconUsers,
   IconWebhook,
 } from "@/components/icons/NavIcons";
@@ -73,14 +71,9 @@ export function OverviewPage() {
 
   const shortcuts: { label: string; href: string; icon: ReactNode }[] = [
     {
-      label: t("nav.merchant"),
-      href: ROUTES.merchants,
-      icon: <IconStore width={15} height={15} />,
-    },
-    {
-      label: t("nav.agent"),
-      href: ROUTES.agents,
-      icon: <IconHeadset width={15} height={15} />,
+      label: t("nav.customersList"),
+      href: ROUTES.customers,
+      icon: <IconUsers width={15} height={15} />,
     },
     {
       label: t("nav.payin"),

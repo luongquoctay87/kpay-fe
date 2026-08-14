@@ -148,7 +148,7 @@ export function MerchantDetailPage({ id }: { id: string }) {
           }
           breadcrumbs={[
             { label: t("merchantDetail.breadcrumbParent"), icon: <IconUsers /> },
-            { label: t("merchantDetail.breadcrumbList"), href: ROUTES.merchants },
+            { label: t("merchantDetail.breadcrumbList"), href: ROUTES.customers },
             { label: merchant.name, icon: <IconStore /> },
           ]}
         />

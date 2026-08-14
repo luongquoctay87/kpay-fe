@@ -19,6 +19,8 @@ export const ROUTES = {
   agents: "/agents",
   agentNew: "/agents/new",
   agentDetail: (id: string) => `/agents/${id}`,
+  /** Phase 2 #5 — danh sách Merchant + Agent gộp. */
+  customers: "/customers",
   /** Phase 2 #1 — lịch sử giao dịch ví khách hàng. */
   customerLedgers: "/customers/ledgers",
   payin: "/payin",

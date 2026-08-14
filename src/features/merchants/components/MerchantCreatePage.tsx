@@ -201,7 +201,7 @@ export function MerchantCreatePage() {
         title={t("merchantNew.title")}
         breadcrumbs={[
           { label: t("merchantNew.breadcrumbParent"), icon: <IconUsers /> },
-          { label: t("merchantNew.breadcrumbList"), href: ROUTES.merchants },
+          { label: t("merchantNew.breadcrumbList"), href: ROUTES.customers },
           { label: t("merchantNew.title"), icon: <IconPlus /> },
         ]}
       />
@@ -438,7 +438,7 @@ export function MerchantCreatePage() {
                 <path d="m6 6 12 12" />
               </svg>
             }
-            onClick={() => router.push(ROUTES.merchants)}
+            onClick={() => router.push(ROUTES.customers)}
             disabled={submitting}
           >
             {t("merchantNew.btnCancel")}
@@ -465,7 +465,7 @@ export function MerchantCreatePage() {
           loginUsername={created.loginUsername}
           title={t("merchantNew.modalKeyTitle")}
           warning={t("merchantNew.modalKeyWarning")}
-          onClose={() => router.push(ROUTES.merchants)}
+          onClose={() => router.push(ROUTES.customers)}
         />
       ) : null}
     </div>

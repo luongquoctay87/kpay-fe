@@ -62,7 +62,7 @@ export function AgentCreatePage() {
         phone: phone.trim() || undefined,
       });
       toast.success(t("agentNew.successCreated"));
-      router.push(ROUTES.agents);
+      router.push(ROUTES.customers);
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : t("agentNew.errorCreateFailed");
       setError(msg);
@@ -78,7 +78,7 @@ export function AgentCreatePage() {
         title={t("agentNew.title")}
         breadcrumbs={[
           { label: t("agentNew.breadcrumbParent"), icon: <IconUsers /> },
-          { label: t("agentNew.breadcrumbList"), href: ROUTES.agents },
+          { label: t("agentNew.breadcrumbList"), href: ROUTES.customers },
           { label: t("agentNew.title"), icon: <IconPlus /> },
         ]}
       />
@@ -237,7 +237,7 @@ export function AgentCreatePage() {
                 <path d="m6 6 12 12" />
               </svg>
             }
-            onClick={() => router.push(ROUTES.agents)}
+            onClick={() => router.push(ROUTES.customers)}
             disabled={submitting}
           >
             {t("agentNew.btnCancel")}

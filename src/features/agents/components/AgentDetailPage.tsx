@@ -98,7 +98,7 @@ export function AgentDetailPage({ id }: { id: string }) {
           }
           breadcrumbs={[
             { label: t("agentDetail.breadcrumbParent"), icon: <IconUsers /> },
-            { label: t("agentDetail.breadcrumbList"), href: ROUTES.agents },
+            { label: t("agentDetail.breadcrumbList"), href: ROUTES.customers },
             { label: agent.name, icon: <IconHeadset /> },
           ]}
         />

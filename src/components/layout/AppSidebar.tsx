@@ -12,12 +12,10 @@ import {
   IconChevron,
   IconChevronLeft,
   IconFileText,
-  IconHeadset,
   IconHome,
   IconKey,
   IconLayers,
   IconSettings,
-  IconStore,
   IconUsers,
   IconWallet,
   IconWebhook,
@@ -159,8 +157,11 @@ const NAV: NavEntry[] = [
     labelKey: "nav.customers",
     icon: <IconUsers />,
     children: [
-      { href: ROUTES.merchants, labelKey: "nav.merchant", icon: <IconStore /> },
-      { href: ROUTES.agents, labelKey: "nav.agent", icon: <IconHeadset /> },
+      {
+        href: ROUTES.customers,
+        labelKey: "nav.customersList",
+        icon: <IconUsers />,
+      },
       {
         href: ROUTES.customerLedgers,
         labelKey: "nav.customerLedgers",
@@ -257,6 +258,8 @@ const NAV_IDLE =
 
 function isActive(pathname: string, href: string) {
   if (href === ROUTES.home) return pathname === ROUTES.home;
+  // Exact only — `/customers` must not highlight for `/customers/ledgers`.
+  if (href === ROUTES.customers) return pathname === ROUTES.customers;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

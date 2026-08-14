@@ -1,5 +1,4 @@
 import { apiClient, unwrap } from "@/lib/api/client";
-import { downloadXlsx } from "@/lib/api/download-blob";
 import type {
   CreateMerchantBody,
   CreateMerchantResp,
@@ -28,17 +27,6 @@ export const merchantApi = {
         },
       }),
     );
-  },
-
-  async export(params: { name?: string; status?: MerchantStatus } = {}): Promise<void> {
-    const res = await apiClient.get("/merchants/export", {
-      params: {
-        name: params.name || undefined,
-        status: params.status || undefined,
-      },
-      responseType: "blob",
-    });
-    downloadXlsx(res.data, "merchants.xlsx");
   },
 
   getById(id: string): Promise<MerchantDetail> {

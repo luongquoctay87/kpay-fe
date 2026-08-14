@@ -1,5 +1,4 @@
 import { apiClient, unwrap } from "@/lib/api/client";
-import { downloadXlsx } from "@/lib/api/download-blob";
 import type {
   AgentDetail,
   AgentListParams,
@@ -20,17 +19,6 @@ export const agentApi = {
         },
       }),
     );
-  },
-
-  async export(params: { name?: string; active?: boolean } = {}): Promise<void> {
-    const res = await apiClient.get("/agents/export", {
-      params: {
-        name: params.name || undefined,
-        active: params.active,
-      },
-      responseType: "blob",
-    });
-    downloadXlsx(res.data, "agents.xlsx");
   },
 
   getById(id: string): Promise<AgentDetail> {

@@ -11,6 +11,7 @@ export function getPageTitleKey(pathname: string): MessageKey {
   if (pathname.startsWith(`${ROUTES.agents}/`)) return "pages.agents";
   if (pathname.startsWith(ROUTES.agents)) return "pages.agents";
   if (pathname.startsWith(ROUTES.customerLedgers)) return "pages.customerLedgers";
+  if (pathname === ROUTES.customers) return "pages.customers";
   if (pathname.startsWith(ROUTES.payin)) return "pages.payin";
   if (pathname.startsWith(ROUTES.payout)) return "pages.payout";
   if (pathname.startsWith(ROUTES.withdraw)) return "pages.withdraw";

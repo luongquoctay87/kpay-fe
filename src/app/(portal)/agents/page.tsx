@@ -1,5 +1,7 @@
-import { AgentListPage } from "@/features/agents";
+import { redirect } from "next/navigation";
+import { ROUTES } from "@/lib/constants/routes";
 
+/** Legacy agent list → unified customer directory. */
 export default function Page() {
-  return <AgentListPage />;
+  redirect(`${ROUTES.customers}?ownerType=agent`);
 }
