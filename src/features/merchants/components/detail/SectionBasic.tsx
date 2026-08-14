@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { IconPencil, IconSave } from "@/components/icons/NavIcons";
 import {
   Button,
   Field,
   Input,
+  Select,
   Switch,
   toast,
 } from "@/components/ui";
 import { merchantApi } from "@/features/merchants/api";
-import type { MerchantDetail } from "@/features/merchants/types";
+import type { MerchantDetail, UpdateMerchantBody } from "@/features/merchants/types";
+import { transferContentApi } from "@/features/settings/api/transfer-content-api";
 import { useI18n } from "@/i18n/use-i18n";
 import { formatDateTime } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
@@ -32,24 +34,59 @@ export function SectionBasic({
   const [email, setEmail] = useState(m.email ?? "");
   const [includeStats, setIncludeStats] = useState(m.includeInStatistics);
   const [ipWhitelist, setIpWhitelist] = useState(m.ipWhitelistEnabled);
+  const [transferRuleId, setTransferRuleId] = useState<string | null>(
+    m.transferContentRuleId ?? null,
+  );
+  const [ruleOptions, setRuleOptions] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
     setName(m.name);
     setEmail(m.email ?? "");
     setIncludeStats(m.includeInStatistics);
     setIpWhitelist(m.ipWhitelistEnabled);
+    setTransferRuleId(m.transferContentRuleId ?? null);
   }, [m]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await transferContentApi.list({ isActive: true, page: 0, size: 100 });
+        if (cancelled) return;
+        setRuleOptions(
+          (data.items ?? []).map((r) => ({
+            value: r.id,
+            label: `${r.code} — ${r.name}${r.isDefault ? ` (${t("settings.badgeDefault")})` : ""}`,
+          })),
+        );
+      } catch {
+        if (!cancelled) setRuleOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
+
+  const ruleSelectOptions = useMemo(() => ruleOptions, [ruleOptions]);
 
   async function save() {
     setSaving(true);
     setError(null);
     try {
-      const res = await merchantApi.update(merchantId, {
+      const body: UpdateMerchantBody = {
         name: name.trim(),
         email: email.trim() || null,
         includeInStatistics: includeStats,
         ipWhitelistEnabled: ipWhitelist,
-      });
+      };
+      if (transferRuleId) {
+        body.transferContentRuleId = transferRuleId;
+        body.clearTransferContentRule = false;
+      } else {
+        body.clearTransferContentRule = true;
+      }
+      const res = await merchantApi.update(merchantId, body);
       onUpdated(res);
       setEditing(false);
       toast.success(t("common.updated"));
@@ -100,6 +137,10 @@ export function SectionBasic({
     }
   }
 
+  const ruleLabel =
+    ruleSelectOptions.find((o) => o.value === (m.transferContentRuleId ?? ""))?.label ??
+    (m.transferContentRuleId ? m.transferContentRuleId : t("merchantDetail.transferRuleDefault"));
+
   return (
     <section className="min-w-0 rounded-lg border border-edge bg-elevated">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-4 py-3 sm:px-5">
@@ -117,18 +158,32 @@ export function SectionBasic({
                   setEmail(m.email ?? "");
                   setIncludeStats(m.includeInStatistics);
                   setIpWhitelist(m.ipWhitelistEnabled);
+                  setTransferRuleId(m.transferContentRuleId ?? null);
                   setError(null);
                 }}
                 disabled={saving}
               >
                 {t("merchantDetail.btnCancel")}
               </Button>
-              <Button type="button" variant="primary" size="sm" loading={saving} onClick={() => void save()} leftIcon={<IconSave width={15} height={15} />}>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                loading={saving}
+                onClick={() => void save()}
+                leftIcon={<IconSave width={15} height={15} />}
+              >
                 {t("merchantDetail.btnSave")}
               </Button>
             </>
           ) : (
-            <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(true)} leftIcon={<IconPencil width={15} height={15} />}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setEditing(true)}
+              leftIcon={<IconPencil width={15} height={15} />}
+            >
               {t("merchantDetail.btnEdit")}
             </Button>
           )}
@@ -147,10 +202,40 @@ export function SectionBasic({
         {editing ? (
           <>
             <Field label={t("merchantDetail.labelName")} htmlFor="md-name">
-              <Input id="md-name" value={name} onChange={(e) => setName(e.target.value)} disabled={saving} />
+              <Input
+                id="md-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={saving}
+              />
             </Field>
             <Field label={t("merchantDetail.labelEmail")} htmlFor="md-email">
-              <Input id="md-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={saving} />
+              <Input
+                id="md-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={saving}
+              />
+            </Field>
+            <Field
+              label={t("merchantDetail.labelTransferRule")}
+              htmlFor="md-transfer-rule"
+              className="sm:col-span-2"
+            >
+              <Select
+                id="md-transfer-rule"
+                value={transferRuleId}
+                onChange={setTransferRuleId}
+                options={ruleSelectOptions}
+                placeholder={t("merchantDetail.transferRuleDefault")}
+                clearable
+                searchable
+                disabled={saving}
+              />
+              <p className="mt-1 text-caption text-muted">
+                {t("merchantDetail.transferRuleHint")}
+              </p>
             </Field>
           </>
         ) : (
@@ -162,6 +247,10 @@ export function SectionBasic({
             <div className="flex flex-col gap-0.5">
               <span className="text-label text-muted">{t("merchantDetail.labelEmail")}</span>
               <span className="text-label font-medium text-ink">{m.email ?? "—"}</span>
+            </div>
+            <div className="flex flex-col gap-0.5 sm:col-span-2">
+              <span className="text-label text-muted">{t("merchantDetail.labelTransferRule")}</span>
+              <span className="text-label font-medium text-ink">{ruleLabel}</span>
             </div>
           </>
         )}
@@ -216,6 +305,3 @@ export function SectionBasic({
     </section>
   );
 }
-
-/* ─── Section: Wallet ──────────────────────────────────────────────────── */
-

@@ -66,6 +66,10 @@ export interface UpdateMerchantBody {
   autoFinalizeWrongDenomination?: boolean;
   includeInStatistics?: boolean;
   ipWhitelistEnabled?: boolean;
+  /** Assign NDCK rule; ignored when clearTransferContentRule is true. */
+  transferContentRuleId?: string | null;
+  /** When true, clears merchant.transferContentRuleId (use default rule). */
+  clearTransferContentRule?: boolean;
 }
 
 /* ─── Detail ─────────────────────────────────────────────────────────────── */
@@ -143,6 +147,8 @@ export interface MerchantDetail {
   autoFinalizeWrongDenomination: boolean;
   includeInStatistics: boolean;
   ipWhitelistEnabled: boolean;
+  /** NDCK rule assignment; null = use default rule. */
+  transferContentRuleId?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   wallet: MerchantWallet;

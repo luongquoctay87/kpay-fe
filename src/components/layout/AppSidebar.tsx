@@ -14,12 +14,15 @@ import {
   IconFileText,
   IconHeadset,
   IconHome,
+  IconKey,
   IconLayers,
+  IconSettings,
   IconStore,
   IconUsers,
   IconWallet,
   IconWebhook,
 } from "@/components/icons/NavIcons";
+import { useAuthStore } from "@/features/auth/store";
 import { useI18n } from "@/i18n/use-i18n";
 import type { MessageKey } from "@/i18n/types";
 import { cn } from "@/lib/cn";
@@ -48,6 +51,8 @@ type NavLeaf = {
   href: string;
   labelKey: MessageKey;
   icon?: ReactNode;
+  /** Soft-hide when permissions are loaded and omit this code. */
+  permission?: string;
 };
 
 type NavGroup = {
@@ -101,6 +106,48 @@ function openGroupIdsForPath(entries: NavEntry[], pathname: string): string[] {
   return ids;
 }
 
+/** Fail-open when permissions empty/null (same as BlockedAccountsPage). */
+function canSeePermission(
+  permissions: string[] | null | undefined,
+  required?: string,
+): boolean {
+  if (!required) return true;
+  if (permissions == null || permissions.length === 0) return true;
+  return permissions.includes(required);
+}
+
+function filterNavChildren(
+  children: NavChild[],
+  permissions: string[] | null | undefined,
+): NavChild[] {
+  const out: NavChild[] = [];
+  for (const child of children) {
+    if (isGroup(child)) {
+      const nextKids = filterNavChildren(child.children, permissions);
+      if (nextKids.length > 0) out.push({ ...child, children: nextKids });
+      continue;
+    }
+    if (canSeePermission(permissions, child.permission)) out.push(child);
+  }
+  return out;
+}
+
+function filterNavEntries(
+  entries: NavEntry[],
+  permissions: string[] | null | undefined,
+): NavEntry[] {
+  const out: NavEntry[] = [];
+  for (const entry of entries) {
+    if (!isGroup(entry)) {
+      if (canSeePermission(permissions, entry.permission)) out.push(entry);
+      continue;
+    }
+    const kids = filterNavChildren(entry.children, permissions);
+    if (kids.length > 0) out.push({ ...entry, children: kids });
+  }
+  return out;
+}
+
 /** Flat trail — top-level links plus expandable groups (supports nested subgroups). */
 const NAV: NavEntry[] = [
   { href: ROUTES.home, labelKey: "nav.overview", icon: <IconHome /> },
@@ -123,6 +170,31 @@ const NAV: NavEntry[] = [
         href: ROUTES.callbackLogs,
         labelKey: "nav.callback",
         icon: <IconWebhook />,
+      },
+    ],
+  },
+  {
+    id: "settings",
+    labelKey: "nav.settings",
+    icon: <IconSettings />,
+    children: [
+      {
+        href: ROUTES.settingsTransferContent,
+        labelKey: "nav.settingsTransferContent",
+        icon: <IconFileText />,
+        permission: "settings:read",
+      },
+      {
+        href: ROUTES.settingsUsers,
+        labelKey: "nav.settingsUsers",
+        icon: <IconUsers />,
+        permission: "admin_users:read",
+      },
+      {
+        href: ROUTES.settingsRoles,
+        labelKey: "nav.settingsRoles",
+        icon: <IconKey />,
+        permission: "roles:read",
       },
     ],
   },
@@ -202,7 +274,13 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const { t } = useI18n();
+  const permissions = useAuthStore((s) => s.user?.permissions);
   const [openGroups, setOpenGroups] = useState<string[]>([]);
+
+  const navEntries = useMemo(
+    () => filterNavEntries(NAV, permissions),
+    [permissions],
+  );
 
   useEffect(() => {
     try {
@@ -214,7 +292,7 @@ export function AppSidebar({
 
   // Keep ancestor groups of the current route open.
   useEffect(() => {
-    const needed = openGroupIdsForPath(NAV, pathname);
+    const needed = openGroupIdsForPath(navEntries, pathname);
     if (needed.length === 0) return;
     setOpenGroups((prev) => {
       const next = new Set(prev);
@@ -227,7 +305,7 @@ export function AppSidebar({
       }
       return changed ? [...next] : prev;
     });
-  }, [pathname]);
+  }, [pathname, navEntries]);
 
   const brandName = useMemo(() => t("brand.name"), [t]);
 
@@ -329,7 +407,12 @@ export function AppSidebar({
         {open && !collapsed ? (
           <ul className="mt-0.5 space-y-0.5">
             {group.children.length === 0 ? (
-              <li className={cn("px-2.5 py-1.5 text-caption text-subtle", NEST_PAD[Math.min(depth + 1, NEST_PAD.length) - 1])}>
+              <li
+                className={cn(
+                  "px-2.5 py-1.5 text-caption text-subtle",
+                  NEST_PAD[Math.min(depth + 1, NEST_PAD.length) - 1],
+                )}
+              >
                 {t("nav.emptyGroup")}
               </li>
             ) : (
@@ -388,7 +471,7 @@ export function AppSidebar({
 
       <nav className="flex-1 overflow-y-auto px-2 py-2">
         <ul className="space-y-0.5">
-          {NAV.map((entry) =>
+          {navEntries.map((entry) =>
             isGroup(entry) ? renderGroup(entry, 0) : renderLeaf(entry, 0),
           )}
         </ul>

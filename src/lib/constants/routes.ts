@@ -39,6 +39,11 @@ export const ROUTES = {
   bankBalances: "/banking/balances",
   /** Future: Tài nguyên › Ví điện tử. */
   ewalletRoot: "/ewallet",
+  /** Phase 2 #2 — Cài đặt. */
+  settingsTransferContent: "/settings/transfer-content",
+  settingsUsers: "/settings/users",
+  settingsUserDetail: (id: string) => `/settings/users/${id}`,
+  settingsRoles: "/settings/roles",
   profile: "/profile",
   pay: (token: string) => `/pay/${token}`,
 } as const;
