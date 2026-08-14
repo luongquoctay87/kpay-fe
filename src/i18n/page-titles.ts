@@ -16,6 +16,8 @@ export function getPageTitleKey(pathname: string): MessageKey {
   if (pathname.startsWith(ROUTES.payout)) return "pages.payout";
   if (pathname.startsWith(ROUTES.withdraw)) return "pages.withdraw";
   if (pathname.startsWith(ROUTES.callbackLogs)) return "pages.callback";
+  if (pathname.startsWith(ROUTES.auditLogs)) return "pages.auditLogs";
+  if (pathname.startsWith(ROUTES.moneyFlowLogs)) return "pages.moneyFlowLogs";
   if (pathname.startsWith(ROUTES.bankAccounts)) return "pages.bankAccounts";
   if (pathname.startsWith(ROUTES.bankReconciliations)) {
     return "pages.bankReconciliation";

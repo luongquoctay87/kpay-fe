@@ -175,6 +175,25 @@ const NAV: NavEntry[] = [
     ],
   },
   {
+    id: "logs",
+    labelKey: "nav.logs",
+    icon: <IconFileText />,
+    children: [
+      {
+        href: ROUTES.auditLogs,
+        labelKey: "nav.auditLogs",
+        icon: <IconFileText />,
+        permission: "audit_logs:read",
+      },
+      {
+        href: ROUTES.moneyFlowLogs,
+        labelKey: "nav.moneyFlowLogs",
+        icon: <IconActivity />,
+        permission: "money_flow_logs:read",
+      },
+    ],
+  },
+  {
     id: "settings",
     labelKey: "nav.settings",
     icon: <IconSettings />,

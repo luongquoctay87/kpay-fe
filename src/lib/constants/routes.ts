@@ -27,6 +27,10 @@ export const ROUTES = {
   payout: "/payout",
   withdraw: "/withdraw",
   callbackLogs: "/callback-logs",
+  /** Phase 2 #4 — Nhật ký thao tác (audit). */
+  auditLogs: "/logs/audit",
+  /** Phase 2 #4 — Nhật ký luồng tiền (system). */
+  moneyFlowLogs: "/logs/money",
   /**
    * Tài nguyên › Ngân hàng — FE paths under `/banking/*`.
    * BE REST stays `/bank-accounts`, `/bank-reconciliations`, etc.

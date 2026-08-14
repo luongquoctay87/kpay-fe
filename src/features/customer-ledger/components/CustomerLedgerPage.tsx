@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useState, type FormEvent } from "react";
 import {
   DateRangeFilter,
   dateRangeToIsoBounds,
@@ -14,7 +14,6 @@ import {
 } from "@/components/common";
 import { Button, Select, StatusBadge, toast } from "@/components/ui";
 import { IconDownload, IconRefresh, IconSearch } from "@/components/icons/NavIcons";
-import { agentApi } from "@/features/agents/api";
 import { customerLedgerApi } from "@/features/customer-ledger/api";
 import {
   CUSTOMER_LEDGER_ENTRY_LABEL_KEY,
@@ -30,10 +29,10 @@ import {
   CUSTOMER_LEDGER_ENTRY_TYPES,
   CUSTOMER_LEDGER_OWNER_OPTIONS,
 } from "@/features/customer-ledger/types";
-import { merchantApi } from "@/features/merchants/api";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { useMerchantAgentFilterOptions } from "@/lib/options/use-merchant-agent-filter-options";
 import { ApiError } from "@/lib/types/api";
 
 const EMPTY_LIST = {
@@ -62,41 +61,7 @@ export function CustomerLedgerPage() {
     createdTo?: string;
   }>({});
 
-  const [merchantOpts, setMerchantOpts] = useState<{ value: string; label: string }[]>([]);
-  const [agentOpts, setAgentOpts] = useState<{ value: string; label: string }[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [m, a] = await Promise.all([
-          merchantApi.list({ page: 0, size: 100 }),
-          agentApi.list({ page: 0, size: 100 }),
-        ]);
-        if (cancelled) return;
-        setMerchantOpts(
-          (m.items ?? []).map((x: { id: string; code?: string; name?: string }) => ({
-            value: x.id,
-            label: `${x.code ?? ""} — ${x.name ?? x.id}`,
-          })),
-        );
-        setAgentOpts(
-          (a.items ?? []).map((x: { id: string; username?: string; name?: string }) => ({
-            value: x.id,
-            label: `${x.username ?? ""} — ${x.name ?? x.id}`,
-          })),
-        );
-      } catch {
-        if (!cancelled) {
-          setMerchantOpts([]);
-          setAgentOpts([]);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { merchantOpts, agentOpts } = useMerchantAgentFilterOptions();
 
   const ownerOptions = useMemo(
     () =>
