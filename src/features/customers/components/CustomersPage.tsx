@@ -1,28 +1,41 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   IconActivity,
+  IconChevronRight,
   IconClock,
   IconDownload,
   IconHash,
   IconHeadset,
   IconPlus,
+  IconRefresh,
+  IconSearch,
   IconStore,
   IconUsers,
   IconWallet,
 } from "@/components/icons/NavIcons";
 import {
+  DateTimeText,
   ColumnHeader,
-  FilterBar,
+  CopyButton,
   PageHeader,
   Pagination,
   SearchInput,
+  StatCard,
   TableCard,
+  filterControlClass,
 } from "@/components/common";
-import { Button, Select, StatusBadge } from "@/components/ui";
+import { Button, Select, StatusBadge, toast } from "@/components/ui";
 import { customerApi } from "@/features/customers/api";
 import {
   CUSTOMER_OWNER_LABEL_KEY,
@@ -41,8 +54,23 @@ import {
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
-import { formatDate, formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
+
+/** Explicit widths so `table-fixed` scales every column, not only Name. */
+const CUSTOMER_COLUMN_WIDTH = {
+  stt: "w-[52px]",
+  type: "w-[108px]",
+  code: "w-[168px]",
+  name: "w-[240px]",
+  balance: "w-[156px]",
+  status: "w-[124px]",
+  activity: "w-[172px]",
+  created: "w-[116px]",
+  actions: "w-[88px]",
+} as const;
+
+const TABLE_MIN_WIDTH = 1224;
 
 const EMPTY = {
   rows: [] as CustomerListItem[],
@@ -64,6 +92,20 @@ function detailHref(row: CustomerListItem): string {
     : ROUTES.agentDetail(row.id);
 }
 
+function ActionTooltip({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span className="group relative inline-flex">
+      {children}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+      >
+        {label}
+      </span>
+    </span>
+  );
+}
+
 export function CustomersPage() {
   const { t } = useI18n();
   const router = useRouter();
@@ -71,6 +113,8 @@ export function CustomersPage() {
 
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
+  const [exporting, setExporting] = useState(false);
+
   const [qDraft, setQDraft] = useState(() => searchParams.get("q")?.trim() ?? "");
   const [ownerDraft, setOwnerDraft] = useState<CustomerOwnerType | null>(() =>
     parseOwner(searchParams.get("ownerType")),
@@ -88,7 +132,6 @@ export function CustomersPage() {
     const q = searchParams.get("q")?.trim() || undefined;
     return { q, ownerType, status };
   });
-  const [exporting, setExporting] = useState(false);
 
   const ownerOptions = useMemo(
     () =>
@@ -114,15 +157,12 @@ export function CustomersPage() {
       rows: data.items ?? [],
       total: data.totalElements ?? 0,
       totalBalance:
-        data.totalAvailableBalance != null
-          ? Number(data.totalAvailableBalance)
-          : null,
+        data.totalAvailableBalance != null ? Number(data.totalAvailableBalance) : null,
     };
   }, [filters, page, size]);
 
   const mapError = useCallback(
-    (e: unknown) =>
-      e instanceof ApiError ? e.message : t("customers.loadError"),
+    (e: unknown) => (e instanceof ApiError ? e.message : t("customers.loadError")),
     [t],
   );
 
@@ -133,13 +173,24 @@ export function CustomersPage() {
   });
   const totalBalance = data.totalBalance;
 
+  const hasFilters = Boolean(filters.q || filters.ownerType || filters.status);
   const canReset =
-    Boolean(filters.q || filters.ownerType || filters.status) ||
-    Boolean(qDraft) ||
-    ownerDraft != null ||
-    statusDraft != null;
+    hasFilters || Boolean(qDraft) || ownerDraft != null || statusDraft != null;
+
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
+
+  const pageStats = useMemo(() => {
+    let merchants = 0;
+    let agents = 0;
+    let pageBalance = 0;
+    for (const row of rows) {
+      pageBalance += row.availableBalance ?? 0;
+      if (row.ownerType === "merchant") merchants += 1;
+      else agents += 1;
+    }
+    return { merchants, agents, pageBalance };
+  }, [rows]);
 
   function syncUrl(next: {
     q?: string;
@@ -154,22 +205,26 @@ export function CustomersPage() {
     router.replace(qs ? `${ROUTES.customers}?${qs}` : ROUTES.customers);
   }
 
-  function applyFilters(next: {
-    ownerType: CustomerOwnerType | null;
-    status: CustomerStatus | null;
-  }) {
+  function applyFilters() {
     setPage(0);
-    const ownerType = next.ownerType ?? undefined;
-    const status = next.status ?? undefined;
-    const q = qDraft.trim() || undefined;
-    const applied = { q, ownerType, status };
+    const applied = {
+      q: qDraft.trim() || undefined,
+      ownerType: ownerDraft ?? undefined,
+      status: statusDraft ?? undefined,
+    };
     setFilters(applied);
     syncUrl(applied);
   }
 
   function onSearch(e: FormEvent) {
     e.preventDefault();
-    applyFilters({ ownerType: ownerDraft, status: statusDraft });
+    applyFilters();
+  }
+
+  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+    e.preventDefault();
+    applyFilters();
   }
 
   function onReset() {
@@ -190,8 +245,11 @@ export function CustomersPage() {
         ownerType: filters.ownerType,
         status: filters.status,
       });
+      toast.success(t("customers.exportOk"));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("customers.exportError"));
+      const msg = e instanceof ApiError ? e.message : t("customers.exportError");
+      setError(msg);
+      toast.error(t("customers.exportError"), msg);
     } finally {
       setExporting(false);
     }
@@ -199,76 +257,100 @@ export function CustomersPage() {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
-      <PageHeader
-        title={t("customers.listTitle")}
-        breadcrumbs={[
-          { label: t("customers.breadcrumbParent"), icon: <IconUsers /> },
-          { label: t("customers.listTitle"), icon: <IconUsers /> },
-        ]}
-      />
+      <PageHeader title={t("customers.listTitle")} />
 
-      <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
-        <FilterBar
-          onSearch={onSearch}
-          onReset={onReset}
-          canReset={canReset}
-          searchLabel={t("customers.search")}
-          resetLabel={t("customers.reset")}
-          fieldsClassName="lg:grid-cols-[minmax(0,1fr)_minmax(10rem,11rem)_minmax(11rem,12.5rem)]"
-        >
-          <div className="min-w-0">
+      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label={t("customers.statTotalBalance")}
+          value={formatMoney(totalBalance ?? 0)}
+          tone="success"
+        />
+        <StatCard label={t("customers.statTotal")} value={String(total)} tone="info" />
+        <StatCard
+          label={t("customers.statMerchants")}
+          value={String(pageStats.merchants)}
+          tone="info"
+        />
+        <StatCard
+          label={t("customers.statAgents")}
+          value={String(pageStats.agents)}
+          tone="warning"
+        />
+      </div>
+
+      <form
+        onSubmit={onSearch}
+        className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5"
+      >
+        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-3">
+          <div className="min-w-0 w-full flex-1">
             <SearchInput
               id="customer-q"
               value={qDraft}
               onChange={setQDraft}
+              onKeyDown={onSearchKeyDown}
               placeholder={t("customers.filterQPlaceholder")}
               label={t("customers.filterQ")}
             />
           </div>
-          <div className="min-w-0">
+          <div className="grid w-full grid-cols-2 gap-1.5 sm:gap-3 lg:flex lg:w-auto lg:shrink-0 lg:items-center">
             <Select
               id="customer-owner"
               size="md"
               options={ownerOptions}
               value={ownerDraft}
-              onChange={(v) => {
-                setOwnerDraft(v);
-                applyFilters({ ownerType: v, status: statusDraft });
-              }}
-              placeholder={t("customers.filterOwner")}
+              onChange={setOwnerDraft}
+              placeholder={t("customers.filterOwnerPlaceholder")}
               clearable
               aria-label={t("customers.filterOwner")}
-              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
+              triggerClassName={`${filterControlClass} lg:w-[11.5rem]`}
             />
-          </div>
-          <div className="min-w-0">
             <Select
               id="customer-status"
               size="md"
               options={statusOptions}
               value={statusDraft}
-              onChange={(v) => {
-                setStatusDraft(v);
-                applyFilters({ ownerType: ownerDraft, status: v });
-              }}
-              placeholder={t("customers.filterStatus")}
+              onChange={setStatusDraft}
+              placeholder={t("customers.filterStatusPlaceholder")}
               clearable
               aria-label={t("customers.filterStatus")}
-              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
+              triggerClassName={`${filterControlClass} lg:w-[12.5rem]`}
             />
           </div>
-        </FilterBar>
-      </div>
+          <div className="flex w-full items-center gap-1.5 lg:w-auto lg:shrink-0">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              className="min-w-0 flex-1 lg:flex-none lg:min-w-[6.5rem]"
+              onClick={onReset}
+              disabled={!canReset}
+              leftIcon={<IconRefresh width={15} height={15} />}
+            >
+              {t("customers.reset")}
+            </Button>
+            <Button
+              type="submit"
+              variant="soft"
+              size="md"
+              className="min-h-9 min-w-0 flex-1 gap-2 px-3 lg:flex-none lg:min-w-[8.75rem] lg:px-4"
+              leftIcon={<IconSearch width={16} height={16} />}
+            >
+              {t("customers.search")}
+            </Button>
+          </div>
+        </div>
+      </form>
 
       <TableCard
         toolbar={
-          <div className="flex w-full flex-col gap-2 min-[400px]:w-auto min-[400px]:flex-row min-[400px]:flex-wrap">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
             <Button
               href={ROUTES.merchantNew}
               variant="primary"
               size="md"
-              className="w-full min-[400px]:w-auto"
-              leftIcon={<IconPlus width={16} height={16} />}
+              className="w-full sm:w-auto"
+              leftIcon={<IconPlus width={15} height={15} />}
             >
               {t("customers.addMerchant")}
             </Button>
@@ -276,8 +358,8 @@ export function CustomersPage() {
               href={ROUTES.agentNew}
               variant="secondary"
               size="md"
-              className="w-full min-[400px]:w-auto"
-              leftIcon={<IconPlus width={16} height={16} />}
+              className="w-full sm:w-auto"
+              leftIcon={<IconPlus width={15} height={15} />}
             >
               {t("customers.addAgent")}
             </Button>
@@ -285,10 +367,10 @@ export function CustomersPage() {
               type="button"
               variant="secondary"
               size="md"
-              className="w-full min-[400px]:w-auto"
+              className="w-full sm:w-auto"
               loading={exporting}
               onClick={() => void onExport()}
-              leftIcon={<IconDownload width={16} height={16} />}
+              leftIcon={<IconDownload width={15} height={15} />}
             >
               {t("customers.export")}
             </Button>
@@ -315,146 +397,162 @@ export function CustomersPage() {
           />
         }
       >
-        <table className="w-full min-w-[960px] table-fixed border-collapse text-left">
+        <table
+          className="w-full table-fixed border-collapse text-left"
+          style={{ minWidth: TABLE_MIN_WIDTH }}
+        >
           <thead>
-            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-              <th className="w-[10%] px-3 py-2.5 font-medium sm:px-5">
-                <ColumnHeader icon={<IconStore width={14} height={14} />}>
+            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
+              <th className={`${CUSTOMER_COLUMN_WIDTH.stt} px-3 py-3 text-center`}>
+                {t("customers.colStt")}
+              </th>
+              <th className={`${CUSTOMER_COLUMN_WIDTH.type} px-3 py-3`}>
+                <ColumnHeader icon={<IconStore width={13} height={13} />}>
                   {t("customers.colType")}
                 </ColumnHeader>
               </th>
-              <th className="w-[12%] px-3 py-2.5 font-medium sm:px-5">
-                <ColumnHeader icon={<IconHash width={14} height={14} />}>
+              <th className={`${CUSTOMER_COLUMN_WIDTH.code} px-3 py-3`}>
+                <ColumnHeader icon={<IconHash width={13} height={13} />}>
                   {t("customers.colCode")}
                 </ColumnHeader>
               </th>
-              <th className="w-[20%] px-3 py-2.5 font-medium sm:px-5">
-                <ColumnHeader icon={<IconUsers width={14} height={14} />}>
+              <th className={`${CUSTOMER_COLUMN_WIDTH.name} px-3 py-3`}>
+                <ColumnHeader icon={<IconUsers width={13} height={13} />}>
                   {t("customers.colName")}
                 </ColumnHeader>
               </th>
-              <th className="w-[12%] px-3 py-2.5 text-right font-medium sm:px-5">
-                <ColumnHeader
-                  align="right"
-                  icon={<IconWallet width={14} height={14} />}
-                >
+              <th className={`${CUSTOMER_COLUMN_WIDTH.balance} px-3 py-3 text-right`}>
+                <ColumnHeader align="right" icon={<IconWallet width={13} height={13} />}>
                   {t("customers.colBalance")}
                 </ColumnHeader>
               </th>
-              <th className="w-[10%] px-3 py-2.5 text-center font-medium sm:px-5">
-                <ColumnHeader
-                  align="center"
-                  icon={<IconActivity width={14} height={14} />}
-                >
+              <th className={`${CUSTOMER_COLUMN_WIDTH.status} px-3 py-3 text-center`}>
+                <ColumnHeader align="center" icon={<IconActivity width={13} height={13} />}>
                   {t("customers.colStatus")}
                 </ColumnHeader>
               </th>
-              <th className="w-[14%] px-3 py-2.5 text-center font-medium sm:px-5">
-                <ColumnHeader
-                  align="center"
-                  icon={<IconClock width={14} height={14} />}
-                >
+              <th className={`${CUSTOMER_COLUMN_WIDTH.activity} px-3 py-3 text-center`}>
+                <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
                   {t("customers.colActivity")}
                 </ColumnHeader>
               </th>
-              <th className="w-[12%] px-3 py-2.5 text-center font-medium sm:px-5">
-                <ColumnHeader
-                  align="center"
-                  icon={<IconClock width={14} height={14} />}
-                >
+              <th className={`${CUSTOMER_COLUMN_WIDTH.created} px-3 py-3 text-center`}>
+                <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
                   {t("customers.colCreated")}
                 </ColumnHeader>
               </th>
-              <th className="w-[10%] px-3 py-2.5 text-center font-medium sm:px-5">
+              <th className={`${CUSTOMER_COLUMN_WIDTH.actions} px-3 py-3 text-center`}>
                 {t("customers.colActions")}
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-edge text-body text-ink">
-            {!loading && rows.length === 0 ? (
+          <tbody>
+            {loading && rows.length === 0 ? (
               <tr>
-                <td
-                  colSpan={8}
-                  className="px-3 py-10 text-center text-muted sm:px-5"
-                >
-                  {t("customers.empty")}
+                <td colSpan={9} className="px-3 py-16 text-center text-label text-muted">
+                  {t("customers.loading")}
                 </td>
               </tr>
             ) : null}
-            {rows.map((row) => {
+
+            {!loading && rows.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="px-3 py-16 text-center text-label text-muted">
+                  {error
+                    ? t("customers.loadError")
+                    : hasFilters
+                      ? t("customers.emptyFiltered")
+                      : t("customers.empty")}
+                </td>
+              </tr>
+            ) : null}
+
+            {rows.map((row, idx) => {
               const statusKey = isCustomerStatus(row.status) ? row.status : null;
+              const href = detailHref(row);
+
               return (
-                <tr key={`${row.ownerType}-${row.id}`} className="bg-elevated">
-                  <td className="px-3 py-3 sm:px-5">
-                    <StatusBadge tone={CUSTOMER_OWNER_TONE[row.ownerType]}>
+                <tr
+                  key={`${row.ownerType}-${row.id}`}
+                  className="border-b border-edge hover:bg-surface/70"
+                >
+                  <td className="px-3 py-3 text-center font-mono text-label tabular-nums text-muted">
+                    {page * size + idx + 1}
+                  </td>
+                  <td className="px-3 py-3">
+                    <StatusBadge
+                      tone={CUSTOMER_OWNER_TONE[row.ownerType]}
+                      className="gap-1"
+                    >
+                      {row.ownerType === "merchant" ? (
+                        <IconStore width={11} height={11} />
+                      ) : (
+                        <IconHeadset width={11} height={11} />
+                      )}
                       {t(CUSTOMER_OWNER_LABEL_KEY[row.ownerType])}
                     </StatusBadge>
                   </td>
-                  <td className="px-3 py-3 font-mono text-label sm:px-5">
-                    <Link
-                      href={detailHref(row)}
-                      className="text-ink underline-offset-2 hover:underline"
-                    >
-                      {row.code}
-                    </Link>
+                  <td className="px-3 py-3">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <Link
+                        href={href}
+                        className="truncate font-mono text-label font-medium text-ink transition hover:text-link-hover hover:underline"
+                        title={row.code}
+                      >
+                        {row.code}
+                      </Link>
+                      <CopyButton value={row.code} label={t("customers.copyCode")} />
+                    </div>
                   </td>
-                  <td className="px-3 py-3 sm:px-5">
+                  <td className="truncate px-3 py-3 text-label text-ink" title={row.name}>
                     <Link
-                      href={detailHref(row)}
-                      className="font-medium text-ink underline-offset-2 hover:underline"
+                      href={href}
+                      className="font-medium transition hover:text-link-hover hover:underline"
                     >
                       {row.name}
                     </Link>
                   </td>
-                  <td className="px-3 py-3 text-right font-mono tabular-nums sm:px-5">
+                  <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
                     {formatMoney(row.availableBalance ?? 0)}
                   </td>
-                  <td className="px-3 py-3 text-center sm:px-5">
+                  <td className="px-3 py-3 text-center">
                     {statusKey ? (
                       <StatusBadge tone={CUSTOMER_STATUS_TONE[statusKey]}>
                         {t(CUSTOMER_STATUS_LABEL_KEY[statusKey])}
                       </StatusBadge>
                     ) : (
-                      row.status
+                      <span className="text-label text-muted">{row.status}</span>
                     )}
                   </td>
-                  <td className="px-3 py-3 text-center text-label text-muted sm:px-5">
-                    {row.lastActivityAt
-                      ? formatDateTime(row.lastActivityAt)
-                      : "—"}
+                  <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                    <DateTimeText value={row.lastActivityAt} />
                   </td>
-                  <td className="px-3 py-3 text-center text-label text-muted sm:px-5">
-                    {row.createdAt ? formatDate(row.createdAt) : "—"}
+                  <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                    <DateTimeText value={row.createdAt} />
                   </td>
-                  <td className="px-3 py-3 text-center sm:px-5">
-                    <Button
-                      href={detailHref(row)}
-                      variant="secondary"
-                      size="sm"
-                      leftIcon={
-                        row.ownerType === "merchant" ? (
-                          <IconStore width={14} height={14} />
-                        ) : (
-                          <IconHeadset width={14} height={14} />
-                        )
-                      }
-                    >
-                      {t("customers.detail")}
-                    </Button>
+                  <td className="px-3 py-3 text-center">
+                    <ActionTooltip label={t("customers.detail")}>
+                      <Button
+                        href={href}
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        aria-label={t("customers.detail")}
+                        leftIcon={<IconChevronRight width={15} height={15} />}
+                      />
+                    </ActionTooltip>
                   </td>
                 </tr>
               );
             })}
+
             {!loading && rows.length > 0 ? (
               <tr className="border-t border-edge bg-surface/50">
-                <td
-                  colSpan={3}
-                  className="px-3 py-2.5 text-label font-semibold text-ink sm:px-5"
-                >
+                <td colSpan={4} className="px-3 py-3 text-label font-semibold text-ink">
                   {t("customers.totalRow")}
                 </td>
-                <td className="px-3 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink sm:px-5">
-                  {formatMoney(totalBalance)}
+                <td className="px-3 py-3 text-right font-mono text-label font-semibold tabular-nums text-ink">
+                  {formatMoney(totalBalance ?? pageStats.pageBalance)}
                 </td>
                 <td colSpan={4} />
               </tr>

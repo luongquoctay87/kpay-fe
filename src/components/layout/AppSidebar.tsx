@@ -5,8 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   IconActivity,
+  IconAuditLog,
+  IconLog,
+  IconMoneyFlow,
   IconArrowIn,
   IconArrowOut,
+  IconWithdraw,
   IconBan,
   IconBank,
   IconChevron,
@@ -14,8 +18,9 @@ import {
   IconFileText,
   IconHome,
   IconKey,
-  IconLayers,
+  IconResource,
   IconSettings,
+  IconCustomers,
   IconUsers,
   IconWallet,
   IconWebhook,
@@ -151,11 +156,11 @@ const NAV: NavEntry[] = [
   { href: ROUTES.home, labelKey: "nav.overview", icon: <IconHome /> },
   { href: ROUTES.payin, labelKey: "nav.payin", icon: <IconArrowIn /> },
   { href: ROUTES.payout, labelKey: "nav.payout", icon: <IconArrowOut /> },
-  { href: ROUTES.withdraw, labelKey: "nav.withdraw", icon: <IconArrowOut /> },
+  { href: ROUTES.withdraw, labelKey: "nav.withdraw", icon: <IconWithdraw /> },
   {
     id: "customers",
     labelKey: "nav.customers",
-    icon: <IconUsers />,
+    icon: <IconCustomers />,
     children: [
       {
         href: ROUTES.customers,
@@ -177,18 +182,18 @@ const NAV: NavEntry[] = [
   {
     id: "logs",
     labelKey: "nav.logs",
-    icon: <IconFileText />,
+    icon: <IconLog />,
     children: [
       {
         href: ROUTES.auditLogs,
         labelKey: "nav.auditLogs",
-        icon: <IconFileText />,
+        icon: <IconAuditLog />,
         permission: "audit_logs:read",
       },
       {
         href: ROUTES.moneyFlowLogs,
         labelKey: "nav.moneyFlowLogs",
-        icon: <IconActivity />,
+        icon: <IconMoneyFlow />,
         permission: "money_flow_logs:read",
       },
     ],
@@ -221,7 +226,7 @@ const NAV: NavEntry[] = [
   {
     id: "resources",
     labelKey: "nav.resources",
-    icon: <IconLayers />,
+    icon: <IconResource />,
     children: [
       {
         id: "banking",
@@ -451,7 +456,7 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "sticky top-0 z-10 flex h-screen shrink-0 flex-col border-r-[0.5px] border-edge-soft bg-canvas transition-[width] duration-200 ease-out",
+        "sticky top-0 z-10 flex h-dvh shrink-0 flex-col border-r-[0.5px] border-edge-soft bg-canvas transition-[width] duration-200 ease-out",
         collapsed ? "w-[68px]" : "w-[248px]",
       )}
     >

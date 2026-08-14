@@ -2,6 +2,7 @@
 
 import { useCallback, useState, type FormEvent } from "react";
 import {
+  DateTimeText,
   FilterField,
   PageHeader,
   Pagination,
@@ -21,7 +22,7 @@ import {
   PORTAL_FILTER_CLASS,
   PORTAL_PAGE_CLASS,
 } from "@/lib/constants/portal-layout";
-import { formatDateTime, formatMoney, localDateTimeInputToIso } from "@/lib/format/datetime";
+import { formatMoney, localDateTimeInputToIso } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 
 const EMPTY_LIST = {
@@ -178,7 +179,7 @@ export function AgentCommissionListPage() {
                     onClick={() => setDetailRow(row)}
                   >
                     <td className="whitespace-nowrap px-3 py-2 text-caption text-muted">
-                      {formatDateTime(row.createdAt)}
+                      <DateTimeText value={row.createdAt} />
                     </td>
                     <td className="max-w-[9rem] truncate px-3 py-2 font-mono text-caption sm:max-w-none">
                       {row.requestId ?? "—"}

@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
-import { CopyButton } from "@/components/common";
+import { CopyButton, DateTimeText } from "@/components/common";
 import { IconCheckCircle, IconX } from "@/components/icons/NavIcons";
 import { Button, StatusBadge } from "@/components/ui";
 import {
@@ -14,7 +14,7 @@ import {
 import type { PayinOrderListItem } from "@/features/payin/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { ROUTES } from "@/lib/constants/routes";
-import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatMoney } from "@/lib/format/datetime";
 
 function feePercent(row: PayinOrderListItem): string {
   const base = row.acceptedAmount || row.requestValue || 0;
@@ -180,13 +180,13 @@ export function PayinDetailDrawer({
             {row.processedBy ?? "—"}
           </DetailRow>
           <DetailRow label={t("payin.colCreatedAt")}>
-            {formatDateTime(row.createdAt)}
+            <DateTimeText value={row.createdAt} />
           </DetailRow>
           <DetailRow label={t("payin.colUpdatedAt")}>
-            {formatDateTime(row.updatedAt)}
+            <DateTimeText value={row.updatedAt} />
           </DetailRow>
           <DetailRow label={t("payin.colProcessedAt")}>
-            {formatDateTime(row.processedAt)}
+            <DateTimeText value={row.processedAt} />
           </DetailRow>
           <DetailRow label={t("payin.detailCreateRequest")}>
             {row.createRequestJson ? (

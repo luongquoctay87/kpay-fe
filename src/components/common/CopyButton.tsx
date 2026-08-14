@@ -78,7 +78,10 @@ export function CopyButton({ value, label, className }: CopyButtonProps) {
   return (
     <button
       type="button"
-      onClick={() => void onCopy()}
+      onClick={(e) => {
+        e.stopPropagation();
+        void onCopy();
+      }}
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center rounded p-0.5 transition",
         copied ? "text-success" : "text-muted hover:bg-hover hover:text-ink",

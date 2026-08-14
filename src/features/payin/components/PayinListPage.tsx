@@ -27,6 +27,7 @@ import {
   IconWebhook,
 } from "@/components/icons/NavIcons";
 import {
+  DateTimeText,
   AutoRefreshControl,
   ColumnHeader,
   CopyButton,
@@ -81,7 +82,7 @@ import {
   type AutoRefreshSeconds,
 } from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
-import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatMoney } from "@/lib/format/datetime";
 import { ROUTES } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
 
@@ -273,8 +274,9 @@ export function PayinListPage() {
   }
 
   function applyFilters() {
+    const next = buildFiltersFromDraft();
     setPage(0);
-    setFilters(buildFiltersFromDraft());
+    setFilters(next);
   }
 
   function onSearch(e: FormEvent) {
@@ -833,17 +835,17 @@ export function PayinListPage() {
                 ) : null}
                 {show.processedAt ? (
                   <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
-                    {formatDateTime(row.processedAt)}
+                    <DateTimeText value={row.processedAt} />
                   </td>
                 ) : null}
                 {show.createdAt ? (
                   <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
-                    {formatDateTime(row.createdAt)}
+                    <DateTimeText value={row.createdAt} />
                   </td>
                 ) : null}
                 {show.updatedAt ? (
                   <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
-                    {formatDateTime(row.updatedAt)}
+                    <DateTimeText value={row.updatedAt} />
                   </td>
                 ) : null}
                 {show.processedBy ? (

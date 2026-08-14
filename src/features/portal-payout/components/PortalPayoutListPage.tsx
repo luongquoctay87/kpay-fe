@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
+  DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
   FilterField,
@@ -36,7 +37,7 @@ import { portalPayoutApi } from "@/features/portal-payout/api";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { PORTAL_PAGE_CLASS } from "@/lib/constants/portal-layout";
-import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 
 const EMPTY_LIST = {
@@ -116,14 +117,15 @@ export function PortalPayoutListPage() {
 
   function applyFilters() {
     const created = dateRangeToIsoBounds(createdRangeDraft);
-    setPage(0);
-    setFilters({
+    const next = {
       q: qDraft.trim() || undefined,
       status: statusDraft ?? undefined,
       callbackStatus: callbackDraft ?? undefined,
       createdFrom: created.from,
       createdTo: created.to,
-    });
+    };
+    setPage(0);
+    setFilters(next);
   }
 
   function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -376,7 +378,7 @@ export function PortalPayoutListPage() {
                       </StatusBadge>
                     </td>
                     <td className="hidden px-3 py-2 text-caption text-muted lg:table-cell">
-                      {formatDateTime(row.createdAt)}
+                      <DateTimeText value={row.createdAt} />
                     </td>
                   </tr>
                 ))

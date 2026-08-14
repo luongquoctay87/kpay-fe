@@ -3,6 +3,7 @@
 import { DatePicker } from "antd";
 import type { Dayjs } from "dayjs";
 import { cn } from "@/lib/cn";
+import { DATE_DISPLAY_FORMAT } from "@/lib/format/datetime";
 
 export type DateRangeValue = [Dayjs | null, Dayjs | null] | null;
 
@@ -50,7 +51,7 @@ export function DateRangeFilter({
       value={value}
       onChange={(dates) => onChange(dates ?? null)}
       allowClear
-      format="DD/MM/YYYY"
+      format={DATE_DISPLAY_FORMAT}
       placeholder={placeholder}
       aria-label={ariaLabel}
       separator={<RangeSeparator />}

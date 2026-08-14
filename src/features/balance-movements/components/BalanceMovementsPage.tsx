@@ -9,6 +9,7 @@ import {
   IconSearch,
 } from "@/components/icons/NavIcons";
 import {
+  DateTimeText,
   ColumnHeader,
   CopyButton,
   DateRangeFilter,
@@ -35,7 +36,6 @@ import {
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
-import { formatDateTime } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -130,14 +130,15 @@ export function BalanceMovementsPage() {
   function applyFilters(overrides?: Partial<{ status: string | null }>) {
     const bounds = dateRangeToIsoBounds(rangeDraft);
     const nextStatus = overrides?.status !== undefined ? overrides.status : statusDraft;
-    setPage(0);
-    setFilters({
+    const next = {
       q: qDraft.trim() || undefined,
       deviceId: deviceDraft.trim() || undefined,
       processStatus: nextStatus || undefined,
       from: bounds.from,
       to: bounds.to,
-    });
+    };
+    setPage(0);
+    setFilters(next);
   }
 
   function onSearch(e: FormEvent) {
@@ -355,7 +356,7 @@ function MovementRow({
   return (
     <tr className="hover:bg-panel-2/60">
       <td className="whitespace-nowrap px-3 py-3 align-top text-ink-secondary">
-        {formatDateTime(row.createdAt)}
+        <DateTimeText value={row.createdAt} />
       </td>
       {showDirection ? (
         <td className="px-3 py-3 text-center align-top">

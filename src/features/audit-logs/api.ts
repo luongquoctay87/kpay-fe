@@ -1,6 +1,7 @@
 import { apiClient, unwrap } from "@/lib/api/client";
 import { downloadXlsx } from "@/lib/api/download-blob";
 import type {
+  AuditLogListItem,
   AuditLogListParams,
   AuditLogListResp,
 } from "@/features/audit-logs/types";
@@ -32,6 +33,10 @@ export const auditLogApi = {
         },
       }),
     );
+  },
+
+  get(id: number): Promise<AuditLogListItem> {
+    return unwrap(apiClient.get(`/audit-logs/${id}`));
   },
 
   async export(params: Omit<AuditLogListParams, "page" | "size"> = {}): Promise<void> {

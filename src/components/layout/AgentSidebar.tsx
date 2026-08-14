@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import {
   IconArrowIn,
-  IconArrowOut,
+  IconWithdraw,
   IconChevronLeft,
   IconHome,
   IconStore,
@@ -34,7 +34,7 @@ const NAV: NavLeaf[] = [
     labelKey: "nav.agentCommissions",
     icon: <IconArrowIn />,
   },
-  { href: ROUTES.portalWithdraw, labelKey: "nav.portalWithdraw", icon: <IconArrowOut /> },
+  { href: ROUTES.portalWithdraw, labelKey: "nav.portalWithdraw", icon: <IconWithdraw /> },
   { href: ROUTES.portalBalance, labelKey: "nav.portalBalance", icon: <IconStore /> },
 ];
 

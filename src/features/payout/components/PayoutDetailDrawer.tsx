@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
-import { CopyButton } from "@/components/common";
+import { CopyButton, DateTimeText } from "@/components/common";
 import { IconCheckCircle, IconX } from "@/components/icons/NavIcons";
 import { Button, StatusBadge } from "@/components/ui";
 import { isAwaitingReconciliation, realStatusLabel } from "@/features/payout/real-status";
@@ -15,7 +15,7 @@ import {
 import type { PayoutOrderListItem } from "@/features/payout/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { ROUTES } from "@/lib/constants/routes";
-import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatMoney } from "@/lib/format/datetime";
 
 function feePercent(row: PayoutOrderListItem): string {
   if (!row.amount || !row.fee) return "0.00";
@@ -208,10 +208,10 @@ export function PayoutDetailDrawer({
             {formatProcessedIn(row.processedInMs)}
           </DetailRow>
           <DetailRow label={t("payout.colCreatedAt")}>
-            {formatDateTime(row.createdAt)}
+            <DateTimeText value={row.createdAt} />
           </DetailRow>
           <DetailRow label={t("payout.colUpdatedAt")}>
-            {formatDateTime(row.updatedAt)}
+            <DateTimeText value={row.updatedAt} />
           </DetailRow>
           <DetailRow label={t("payout.detailCreateRequest")}>
             {row.createRequestJson ? (

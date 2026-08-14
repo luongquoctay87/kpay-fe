@@ -14,6 +14,7 @@ import {
   IconUser,
 } from "@/components/icons/NavIcons";
 import {
+  DateTimeText,
   ColumnHeader,
   CopyButton,
   FilterBar,
@@ -30,7 +31,6 @@ import { EditBlockedAccountModal } from "@/features/blocked-accounts/components/
 import type { BlockedAccountListItem } from "@/features/blocked-accounts/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
-import { formatDateTime } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 
 const EMPTY_LIST = {
@@ -388,7 +388,7 @@ export function BlockedAccountsPage() {
                   </p>
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 align-top text-muted">
-                  {formatDateTime(row.createdAt)}
+                  <DateTimeText value={row.createdAt} />
                 </td>
                 {canWrite ? (
                   <td className="px-3 py-3 text-right align-top">

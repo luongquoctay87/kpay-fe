@@ -12,6 +12,8 @@ import {
   IconX,
 } from "@/components/icons/NavIcons";
 import { Button, ConfirmDialog, StatusBadge, toast } from "@/components/ui";
+import { hasAdminStaffRole } from "@/features/auth/admin-role";
+import { useAuthStore } from "@/features/auth/store";
 import { agentApi } from "@/features/agents/api";
 import { EditAgentModal } from "@/features/agents/components/EditAgentModal";
 import { SectionBasic } from "@/features/agents/components/detail/SectionBasic";
@@ -27,6 +29,7 @@ import { ApiError } from "@/lib/types/api";
 
 export function AgentDetailPage({ id }: { id: string }) {
   const { t } = useI18n();
+  const canResetPassword = hasAdminStaffRole(useAuthStore((s) => s.user));
   const [showEdit, setShowEdit] = useState(false);
   const [showAdjust, setShowAdjust] = useState(false);
   const [showResetPw, setShowResetPw] = useState(false);
@@ -130,19 +133,21 @@ export function AgentDetailPage({ id }: { id: string }) {
           >
             {agent.active ? t("agentDetail.btnSuspend") : t("agentDetail.btnActivate")}
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            className="w-full sm:w-auto"
-            onClick={() => {
-              setResetError(null);
-              setShowResetPw(true);
-            }}
-            leftIcon={<IconKey width={15} height={15} className="shrink-0" />}
-          >
-            {t("agentDetail.btnResetPassword")}
-          </Button>
+          {canResetPassword ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setResetError(null);
+                setShowResetPw(true);
+              }}
+              leftIcon={<IconKey width={15} height={15} className="shrink-0" />}
+            >
+              {t("agentDetail.btnResetPassword")}
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -227,7 +232,7 @@ export function AgentDetailPage({ id }: { id: string }) {
         />
       ) : null}
 
-      {showResetPw ? (
+      {showResetPw && canResetPassword ? (
         <ResetPasswordModal
           labels={{
             title: t("agentDetail.modalResetPwTitle"),

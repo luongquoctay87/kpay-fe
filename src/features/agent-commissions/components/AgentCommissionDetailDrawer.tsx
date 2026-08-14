@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { CopyButton } from "@/components/common";
+import { CopyButton, DateTimeText } from "@/components/common";
 import { IconX } from "@/components/icons/NavIcons";
 import { Button } from "@/components/ui";
 import type { AgentCommissionItem } from "@/features/agent-commissions/api";
 import { useI18n } from "@/i18n/use-i18n";
-import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatMoney } from "@/lib/format/datetime";
 
 function DetailRow({
   label,
@@ -92,10 +92,10 @@ export function AgentCommissionDetailDrawer({
             {formatMoney(row.balanceAfter)}
           </DetailRow>
           <DetailRow label={t("agentPortal.colPaidAt")}>
-            {formatDateTime(row.paidAt)}
+            <DateTimeText value={row.paidAt} />
           </DetailRow>
           <DetailRow label={t("agentPortal.colCreatedAt")}>
-            {formatDateTime(row.createdAt)}
+            <DateTimeText value={row.createdAt} />
           </DetailRow>
           <DetailRow label={t("agentPortal.colNote")}>
             {row.note ?? "—"}

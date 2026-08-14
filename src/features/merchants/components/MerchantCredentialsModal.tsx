@@ -1,11 +1,11 @@
 "use client";
 
-import dayjs from "dayjs";
 import { useEffect } from "react";
 import { CopyButton } from "@/components/common";
 import { IconCheckCircle, IconDownload } from "@/components/icons/NavIcons";
 import { Button, Input } from "@/components/ui";
 import { useI18n } from "@/i18n/use-i18n";
+import { formatDateTime } from "@/lib/format/datetime";
 
 function CredentialRow({
   id,
@@ -77,7 +77,7 @@ export function MerchantCredentialsModal({
     lines.push(
       `${t("merchantDetail.labelMerchantKey")}: ${merchantKey}`,
       `${t("merchantDetail.labelSecretKey")}: ${merchantSecret}`,
-      `${t("common.fileLabelCreatedAt")}: ${dayjs().format("DD/MM/YYYY HH:mm:ss")}`,
+      `${t("common.fileLabelCreatedAt")}: ${formatDateTime(new Date())}`,
     );
 
     const url = URL.createObjectURL(

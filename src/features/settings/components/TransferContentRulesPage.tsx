@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   IconEye,
   IconFileText,
@@ -13,11 +13,15 @@ import {
   IconX,
 } from "@/components/icons/NavIcons";
 import {
+  DateTimeText,
   ColumnHeader,
-  FilterBar,
+  FilterField,
   PageHeader,
   Pagination,
+  SearchInput,
+  StatCard,
   TableCard,
+  filterControlClass,
 } from "@/components/common";
 import { Button, Field, Input, Select, StatusBadge, Switch, Textarea, toast } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
@@ -31,7 +35,6 @@ import type {
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
-import { formatDateTime } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 
 const EMPTY_LIST = {
@@ -40,6 +43,68 @@ const EMPTY_LIST = {
 };
 
 const DEFAULT_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+type PatternPart = { kind: "prefix" | "random" | "fragment"; text: string };
+
+function ndckPatternParts(
+  prefix: string,
+  position: string | null,
+  randomLength: number,
+  includeFragment: boolean,
+  fragmentLen: number,
+): PatternPart[] {
+  const pfx = prefix.trim() || "PREFIX";
+  const n = Number.isFinite(randomLength) ? Math.min(Math.max(Math.trunc(randomLength), 1), 24) : 8;
+  const rand = "X".repeat(n);
+  const fragN = Number.isFinite(fragmentLen)
+    ? Math.min(Math.max(Math.trunc(fragmentLen), 1), 16)
+    : 8;
+  const frag = includeFragment ? "R".repeat(fragN) : "";
+  const parts: PatternPart[] = [];
+  const push = (kind: PatternPart["kind"], text: string) => {
+    if (text) parts.push({ kind, text });
+  };
+  if (position === "after") {
+    push("fragment", frag);
+    push("random", rand);
+    push("prefix", pfx);
+  } else if (position === "middle") {
+    const left = Math.floor(n / 2);
+    push("random", "X".repeat(left));
+    push("prefix", pfx);
+    push("random", "X".repeat(n - left));
+    push("fragment", frag);
+  } else {
+    push("prefix", pfx);
+    push("fragment", frag);
+    push("random", rand);
+  }
+  return parts;
+}
+
+function SettingSwitch({
+  label,
+  hint,
+  checked,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-lg border border-edge bg-surface px-3.5 py-2.5">
+      <div className="min-w-0">
+        <p className="text-label text-ink">{label}</p>
+        {hint ? <p className="mt-0.5 text-caption text-muted">{hint}</p> : null}
+      </div>
+      <Switch checked={checked} onChange={onChange} disabled={disabled} aria-label={label} />
+    </div>
+  );
+}
 
 function RuleFormModal({
   mode,
@@ -95,12 +160,29 @@ function RuleFormModal({
     [t],
   );
 
+  const patternParts = useMemo(
+    () =>
+      ndckPatternParts(
+        prefix,
+        prefixPosition,
+        Number(randomLength),
+        includeRequestFragment,
+        Number(requestFragmentMaxLen),
+      ),
+    [prefix, prefixPosition, randomLength, includeRequestFragment, requestFragmentMaxLen],
+  );
+
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    function onKey(e: globalThis.KeyboardEvent) {
       if (e.key === "Escape" && !submitting) onClose();
     }
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [onClose, submitting]);
 
   async function onSubmit(e: FormEvent) {
@@ -169,141 +251,255 @@ function RuleFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !submitting) onClose();
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="tcr-form-title"
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-panel shadow-xl ring-1 ring-edge"
+        className="flex max-h-[min(100dvh-1.5rem,90vh)] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
       >
-        <div className="flex items-start justify-between gap-3 border-b border-edge px-5 py-4">
-          <h2 id="tcr-form-title" className="text-base font-semibold text-ink">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-edge px-4 py-4 sm:px-5">
+          <p id="tcr-form-title" className="kpay-text-title font-semibold">
             {mode === "create" ? t("settings.ruleModalCreate") : t("settings.ruleModalEdit")}
-          </h2>
+          </p>
           <button
             type="button"
-            className="rounded-lg p-1.5 text-muted hover:bg-panel-2 hover:text-ink"
             onClick={onClose}
             disabled={submitting}
+            className="rounded p-1 text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
             aria-label={t("common.cancel")}
           >
-            <IconX className="h-4 w-4" />
+            <IconX width={16} height={16} />
           </button>
         </div>
-        <form noValidate onSubmit={onSubmit} className="space-y-3 px-5 py-4">
-          {mode === "create" ? (
-            <Field label={t("settings.labelCode")} required error={required.errorOf("code")}>
-              <Input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                disabled={submitting}
-                invalid={Boolean(required.errorOf("code"))}
-                autoComplete="off"
-              />
-            </Field>
-          ) : (
-            <div className="flex flex-col gap-0.5">
-              <span className="text-label text-muted">{t("settings.labelCode")}</span>
-              <span className="font-mono text-ink">{initial?.code}</span>
+
+        <form noValidate onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
+            <div className="space-y-3">
+              <p className="text-label font-medium text-ink">{t("settings.sectionIdentity")}</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {mode === "create" ? (
+                  <Field
+                    label={t("settings.labelCode")}
+                    htmlFor="tcr-code"
+                    required
+                    error={required.errorOf("code")}
+                  >
+                    <Input
+                      id="tcr-code"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.toUpperCase())}
+                      disabled={submitting}
+                      invalid={Boolean(required.errorOf("code"))}
+                      autoComplete="off"
+                      autoFocus
+                      placeholder={t("settings.placeholderCode")}
+                      className="font-mono"
+                    />
+                  </Field>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-label font-medium text-muted">
+                      {t("settings.labelCode")}
+                    </span>
+                    <span className="flex h-9 items-center font-mono text-label text-ink">
+                      {initial?.code}
+                    </span>
+                  </div>
+                )}
+                <Field
+                  label={t("settings.labelName")}
+                  htmlFor="tcr-name"
+                  required
+                  error={required.errorOf("name")}
+                >
+                  <Input
+                    id="tcr-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    disabled={submitting}
+                    invalid={Boolean(required.errorOf("name"))}
+                    placeholder={t("settings.placeholderRuleName")}
+                    autoFocus={mode === "edit"}
+                  />
+                </Field>
+              </div>
             </div>
-          )}
-          <Field label={t("settings.labelName")} required error={required.errorOf("name")}>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={submitting}
-              invalid={Boolean(required.errorOf("name"))}
-            />
-          </Field>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={t("settings.labelPrefix")} required error={required.errorOf("prefix")}>
-              <Input
-                value={prefix}
-                onChange={(e) => setPrefix(e.target.value)}
+
+            <div className="space-y-3">
+              <p className="text-label font-medium text-ink">{t("settings.sectionPattern")}</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label={t("settings.labelPrefix")}
+                  htmlFor="tcr-prefix"
+                  required
+                  error={required.errorOf("prefix")}
+                >
+                  <Input
+                    id="tcr-prefix"
+                    value={prefix}
+                    onChange={(e) => setPrefix(e.target.value.toUpperCase())}
+                    disabled={submitting}
+                    invalid={Boolean(required.errorOf("prefix"))}
+                    placeholder={t("settings.placeholderPrefix")}
+                    className="font-mono"
+                  />
+                </Field>
+                <Field
+                  label={t("settings.labelPosition")}
+                  htmlFor="tcr-position"
+                  required
+                  error={required.errorOf("prefixPosition")}
+                >
+                  <Select
+                    id="tcr-position"
+                    value={prefixPosition}
+                    onChange={setPrefixPosition}
+                    options={positionOptions}
+                    disabled={submitting}
+                    invalid={Boolean(required.errorOf("prefixPosition"))}
+                  />
+                </Field>
+                <Field
+                  label={t("settings.labelRandomLength")}
+                  htmlFor="tcr-random-len"
+                  required
+                  hint={t("settings.hintRandomLength")}
+                  error={required.errorOf("randomLength")}
+                >
+                  <Input
+                    id="tcr-random-len"
+                    type="number"
+                    min={4}
+                    max={24}
+                    value={randomLength}
+                    onChange={(e) => setRandomLength(e.target.value)}
+                    disabled={submitting}
+                    invalid={Boolean(required.errorOf("randomLength"))}
+                  />
+                </Field>
+                <Field
+                  label={t("settings.labelAlphabet")}
+                  htmlFor="tcr-alphabet"
+                  hint={t("settings.hintAlphabet")}
+                >
+                  <Input
+                    id="tcr-alphabet"
+                    value={randomAlphabet}
+                    onChange={(e) => setRandomAlphabet(e.target.value.toUpperCase())}
+                    disabled={submitting}
+                    className="font-mono"
+                  />
+                </Field>
+              </div>
+
+              <div className="rounded-lg border border-edge bg-surface px-3.5 py-3">
+                <p className="text-caption font-medium text-muted">{t("settings.patternPreview")}</p>
+                <p className="mt-1.5 break-all font-mono text-label leading-relaxed">
+                  {patternParts.map((part, i) => (
+                    <span
+                      key={`${part.kind}-${i}`}
+                      className={
+                        part.kind === "prefix"
+                          ? "font-semibold text-ink"
+                          : part.kind === "fragment"
+                            ? "text-accent"
+                            : "tracking-wide text-muted"
+                      }
+                    >
+                      {part.text}
+                    </span>
+                  ))}
+                </p>
+                <p className="mt-1.5 text-caption text-muted">{t("settings.patternPreviewHint")}</p>
+              </div>
+
+              <SettingSwitch
+                label={t("settings.labelIncludeFragment")}
+                hint={t("settings.hintFragment")}
+                checked={includeRequestFragment}
+                onChange={setIncludeRequestFragment}
                 disabled={submitting}
-                invalid={Boolean(required.errorOf("prefix"))}
               />
-            </Field>
-            <Field
-              label={t("settings.labelPosition")}
-              required
-              error={required.errorOf("prefixPosition")}
+              {includeRequestFragment ? (
+                <Field label={t("settings.labelFragmentMaxLen")} htmlFor="tcr-frag-len">
+                  <Input
+                    id="tcr-frag-len"
+                    type="number"
+                    min={1}
+                    max={32}
+                    value={requestFragmentMaxLen}
+                    onChange={(e) => setRequestFragmentMaxLen(e.target.value)}
+                    disabled={submitting}
+                  />
+                </Field>
+              ) : null}
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-label font-medium text-ink">{t("settings.sectionApply")}</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <SettingSwitch
+                  label={t("settings.labelIsDefault")}
+                  hint={t("settings.hintIsDefault")}
+                  checked={isDefault}
+                  onChange={setIsDefault}
+                  disabled={submitting}
+                />
+                <SettingSwitch
+                  label={t("settings.labelIsActive")}
+                  hint={t("settings.hintIsActive")}
+                  checked={isActive}
+                  onChange={setIsActive}
+                  disabled={submitting}
+                />
+              </div>
+              <Field label={t("settings.labelNote")} htmlFor="tcr-note">
+                <Textarea
+                  id="tcr-note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  disabled={submitting}
+                  rows={2}
+                />
+              </Field>
+            </div>
+
+            {error ? (
+              <p
+                role="alert"
+                className="rounded-lg border border-danger-edge bg-danger-bg px-3 py-2.5 text-label text-danger"
+              >
+                {error}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              className="w-full sm:w-auto"
+              leftIcon={<IconX width={15} height={15} />}
+              onClick={onClose}
+              disabled={submitting}
             >
-              <Select
-                value={prefixPosition}
-                onChange={setPrefixPosition}
-                options={positionOptions}
-                disabled={submitting}
-                invalid={Boolean(required.errorOf("prefixPosition"))}
-              />
-            </Field>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field
-              label={t("settings.labelRandomLength")}
-              required
-              error={required.errorOf("randomLength")}
-            >
-              <Input
-                type="number"
-                min={4}
-                max={24}
-                value={randomLength}
-                onChange={(e) => setRandomLength(e.target.value)}
-                disabled={submitting}
-                invalid={Boolean(required.errorOf("randomLength"))}
-              />
-            </Field>
-            <Field label={t("settings.labelAlphabet")}>
-              <Input
-                value={randomAlphabet}
-                onChange={(e) => setRandomAlphabet(e.target.value)}
-                disabled={submitting}
-              />
-            </Field>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-label text-muted">{t("settings.labelIncludeFragment")}</span>
-            <Switch
-              checked={includeRequestFragment}
-              onChange={setIncludeRequestFragment}
-              disabled={submitting}
-            />
-          </div>
-          {includeRequestFragment ? (
-            <Field label={t("settings.labelFragmentMaxLen")}>
-              <Input
-                type="number"
-                min={1}
-                max={32}
-                value={requestFragmentMaxLen}
-                onChange={(e) => setRequestFragmentMaxLen(e.target.value)}
-                disabled={submitting}
-              />
-            </Field>
-          ) : null}
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-label text-muted">{t("settings.labelIsDefault")}</span>
-            <Switch checked={isDefault} onChange={setIsDefault} disabled={submitting} />
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-label text-muted">{t("settings.labelIsActive")}</span>
-            <Switch checked={isActive} onChange={setIsActive} disabled={submitting} />
-          </div>
-          <Field label={t("settings.labelNote")}>
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              disabled={submitting}
-              rows={2}
-            />
-          </Field>
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
-          <div className="flex justify-end gap-2 border-t border-edge pt-4">
-            <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
               {t("common.cancel")}
             </Button>
-            <Button type="submit" loading={submitting} leftIcon={<IconSave className="h-4 w-4" />}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              className="w-full sm:w-auto"
+              loading={submitting}
+              leftIcon={<IconSave width={15} height={15} />}
+            >
               {mode === "create" ? t("settings.btnCreate") : t("settings.btnSave")}
             </Button>
           </div>
@@ -343,69 +539,88 @@ function PreviewModal({
   }, [load]);
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    function onKey(e: globalThis.KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="tcr-preview-title"
-        className="w-full max-w-md rounded-xl bg-panel shadow-xl ring-1 ring-edge"
+        className="flex max-h-[min(100dvh-1.5rem,90vh)] w-full max-w-md flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
       >
-        <div className="flex items-start justify-between gap-3 border-b border-edge px-5 py-4">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-edge px-4 py-4 sm:px-5">
           <div>
-            <h2 id="tcr-preview-title" className="text-base font-semibold text-ink">
+            <p id="tcr-preview-title" className="kpay-text-title font-semibold">
               {t("settings.previewTitle")}
-            </h2>
-            <p className="mt-1 text-sm text-muted">
+            </p>
+            <p className="mt-1 text-label text-muted">
               {rule.code} · {rule.name}
             </p>
           </div>
           <button
             type="button"
-            className="rounded-lg p-1.5 text-muted hover:bg-panel-2 hover:text-ink"
+            className="rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
             onClick={onClose}
             aria-label={t("common.close")}
           >
-            <IconX className="h-4 w-4" />
+            <IconX width={16} height={16} />
           </button>
         </div>
-        <div className="space-y-3 px-5 py-4">
-          {loading ? <p className="text-sm text-muted">{t("common.loading")}</p> : null}
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
+          {loading ? <p className="text-label text-muted">{t("common.loading")}</p> : null}
+          {error ? (
+            <p
+              role="alert"
+              className="rounded-lg border border-danger-edge bg-danger-bg px-3 py-2.5 text-label text-danger"
+            >
+              {error}
+            </p>
+          ) : null}
           {!loading && !error && samples.length === 0 ? (
-            <p className="text-sm text-muted">{t("settings.previewEmpty")}</p>
+            <p className="text-label text-muted">{t("settings.previewEmpty")}</p>
           ) : null}
           <ul className="space-y-2">
             {samples.map((s) => (
               <li
                 key={s}
-                className="rounded-lg border border-edge bg-surface px-3 py-2 font-mono text-sm text-ink"
+                className="rounded-lg border border-edge bg-surface px-3 py-2 font-mono text-label text-ink"
               >
                 {s}
               </li>
             ))}
           </ul>
-          <div className="flex justify-end gap-2 border-t border-edge pt-4">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void load()}
-              disabled={loading}
-              leftIcon={<IconRefresh width={16} height={16} />}
-            >
-              {t("common.refresh")}
-            </Button>
-            <Button type="button" onClick={onClose}>
-              {t("common.close")}
-            </Button>
-          </div>
+        </div>
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            className="w-full sm:w-auto"
+            onClick={() => void load()}
+            disabled={loading}
+            leftIcon={<IconRefresh width={15} height={15} />}
+          >
+            {t("common.refresh")}
+          </Button>
+          <Button type="button" variant="primary" size="md" className="w-full sm:w-auto" onClick={onClose}>
+            {t("common.close")}
+          </Button>
         </div>
       </div>
     </div>
@@ -469,7 +684,9 @@ export function TransferContentRulesPage() {
   const hasFilters = Boolean(filters.q || filters.isActive !== undefined);
   const draftsDirty = Boolean(qDraft) || activeDraft != null;
   const canReset = hasFilters || draftsDirty;
-  const colSpan = 8;
+  const colSpan = 9;
+  const activeOnPage = rows.filter((r) => r.isActive).length;
+  const inactiveOnPage = rows.filter((r) => !r.isActive).length;
 
   function positionLabel(pos: PrefixPosition) {
     if (pos === "before") return t("settings.positionBefore");
@@ -477,18 +694,24 @@ export function TransferContentRulesPage() {
     return t("settings.positionAfter");
   }
 
-  function applyFilters(overrides?: Partial<{ active: string | null }>) {
-    const nextActive = overrides && "active" in overrides ? overrides.active : activeDraft;
+  function applyFilters() {
     setPage(0);
     setFilters({
       q: qDraft.trim() || undefined,
-      isActive: nextActive != null ? nextActive === "true" : undefined,
+      isActive: activeDraft != null ? activeDraft === "true" : undefined,
     });
   }
 
   function onSearch(e: FormEvent) {
     e.preventDefault();
     applyFilters();
+  }
+
+  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      applyFilters();
+    }
   }
 
   function onReset() {
@@ -507,172 +730,207 @@ export function TransferContentRulesPage() {
           { label: t("nav.settingsTransferContent"), icon: <IconFileText /> },
         ]}
         actions={
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          canWrite ? (
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              className="w-full sm:w-auto"
+              leftIcon={<IconPlus width={16} height={16} />}
+              onClick={() => setShowCreate(true)}
+            >
+              {t("settings.btnAddRule")}
+            </Button>
+          ) : null
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
+        <StatCard label={t("settings.statTotal")} value={String(total)} tone="info" />
+        <StatCard
+          label={t("settings.statActive")}
+          value={String(activeOnPage)}
+          tone="success"
+        />
+        <StatCard
+          label={t("settings.statInactive")}
+          value={String(inactiveOnPage)}
+          tone="default"
+        />
+      </div>
+
+      <form
+        onSubmit={onSearch}
+        className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5"
+      >
+        <div className="flex flex-col gap-2.5 md:flex-row md:items-end md:gap-3">
+          <div className="flex min-w-0 w-full flex-1 flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1">
+              <FilterField label={t("settings.filterQ")} htmlFor="tcr-q">
+                <SearchInput
+                  id="tcr-q"
+                  value={qDraft}
+                  onChange={setQDraft}
+                  onKeyDown={onSearchKeyDown}
+                  placeholder={t("settings.filterQPlaceholder")}
+                  label={t("settings.filterQ")}
+                />
+              </FilterField>
+            </div>
+            <div className="w-full shrink-0 sm:w-[10.5rem]">
+              <FilterField label={t("settings.filterStatus")} htmlFor="tcr-status">
+                <Select
+                  id="tcr-status"
+                  size="md"
+                  value={activeDraft}
+                  onChange={setActiveDraft}
+                  options={statusOptions}
+                  placeholder={t("settings.filterStatusAll")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+            </div>
+          </div>
+          <div className="flex w-full shrink-0 items-center gap-1.5 md:w-auto">
             <Button
               type="button"
               variant="secondary"
               size="md"
-              className="w-full sm:w-auto"
-              leftIcon={<IconRefresh width={16} height={16} />}
-              onClick={() => void refresh()}
-              disabled={loading}
+              className="min-w-0 flex-1 md:flex-none md:min-w-[6.5rem]"
+              onClick={onReset}
+              disabled={!canReset}
+              leftIcon={<IconRefresh width={15} height={15} />}
             >
-              {t("common.refresh")}
+              {t("common.reset")}
             </Button>
-            {canWrite ? (
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                className="w-full sm:w-auto"
-                leftIcon={<IconPlus width={16} height={16} />}
-                onClick={() => setShowCreate(true)}
-              >
-                {t("settings.btnAddRule")}
-              </Button>
-            ) : null}
-          </div>
-        }
-      />
-
-      <p className="text-sm text-muted">{t("settings.transferHint")}</p>
-
-      <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
-        <FilterBar
-          onSearch={onSearch}
-          onReset={onReset}
-          canReset={canReset}
-          loading={loading}
-          searchLabel={t("common.search")}
-          resetLabel={t("common.reset")}
-          fieldsClassName="lg:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_minmax(8rem,10rem)]"
-        >
-          <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-            <Input
+            <Button
+              type="submit"
+              variant="soft"
               size="md"
-              value={qDraft}
-              onChange={(e) => setQDraft(e.target.value)}
-              placeholder={t("settings.filterQPlaceholder")}
-              aria-label={t("settings.filterQ")}
-              className="!border-edge bg-surface/80 hover:!border-edge-strong"
-              leftAddon={<IconSearch width={15} height={15} />}
-            />
+              className="min-h-9 min-w-0 flex-1 gap-2 px-3 md:flex-none md:min-w-[8.75rem] md:px-4"
+              leftIcon={<IconSearch width={16} height={16} />}
+            >
+              {t("common.search")}
+            </Button>
           </div>
-          <div className="min-w-0">
-            <Select
-              size="md"
-              value={activeDraft}
-              onChange={(v) => {
-                setActiveDraft(v);
-                applyFilters({ active: v });
-              }}
-              options={statusOptions}
-              placeholder={t("settings.filterStatusAll")}
-              clearable
-              aria-label={t("settings.filterStatus")}
-              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-            />
-          </div>
-        </FilterBar>
-      </div>
+        </div>
+      </form>
 
       <TableCard
         error={error}
         onRetry={() => void refresh()}
-        onRefresh={() => void refresh()}
         loading={loading}
-        refreshLabel={t("common.refresh")}
         pagination={
-          total > 0 || loading ? (
-            <Pagination
-              page={page}
-              pageSize={size}
-              total={total}
-              loading={loading}
-              onPageChange={setPage}
-              onPageSizeChange={(s: number) => {
-                setSize(s);
-                setPage(0);
-              }}
-              rangeLabel={t("settings.range", { from, to, total })}
-            />
-          ) : null
+          <Pagination
+            page={page}
+            pageSize={size}
+            total={total}
+            loading={loading}
+            onPageChange={setPage}
+            onPageSizeChange={(s: number) => {
+              setSize(s);
+              setPage(0);
+            }}
+            rangeLabel={t("settings.range", { from, to, total })}
+          />
         }
       >
         <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 960 }}>
+          <colgroup>
+            <col style={{ width: 48 }} />
+            <col style={{ width: 128 }} />
+            <col />
+            <col style={{ width: 88 }} />
+            <col style={{ width: 88 }} />
+            <col style={{ width: 72 }} />
+            <col style={{ width: 88 }} />
+            <col style={{ width: 112 }} />
+            <col style={{ width: 180 }} />
+          </colgroup>
           <thead>
             <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className="w-[8rem] px-3 py-3">
+              <th className="w-12 px-3 py-3 text-center">{t("settings.colStt")}</th>
+              <th className="px-3 py-3">
                 <ColumnHeader>{t("settings.colCode")}</ColumnHeader>
               </th>
-              <th className="min-w-[8rem] px-3 py-3">
+              <th className="min-w-0 px-3 py-3">
                 <ColumnHeader>{t("settings.colName")}</ColumnHeader>
               </th>
-              <th className="w-[6rem] px-3 py-3">
+              <th className="px-3 py-3">
                 <ColumnHeader>{t("settings.colPrefix")}</ColumnHeader>
               </th>
-              <th className="w-[6.5rem] px-3 py-3">
+              <th className="px-3 py-3">
                 <ColumnHeader>{t("settings.colPosition")}</ColumnHeader>
               </th>
-              <th className="w-[5rem] px-3 py-3">
+              <th className="px-3 py-3">
                 <ColumnHeader>{t("settings.colRandom")}</ColumnHeader>
               </th>
-              <th className="w-[5.5rem] px-3 py-3">
+              <th className="px-3 py-3">
                 <ColumnHeader icon={<IconLayers width={13} height={13} />}>
                   {t("settings.colMerchants")}
                 </ColumnHeader>
               </th>
-              <th className="w-[7rem] px-3 py-3">
+              <th className="px-3 py-3">
                 <ColumnHeader>{t("settings.colStatus")}</ColumnHeader>
               </th>
-              <th className="w-[11rem] px-3 py-3 text-right">
+              <th className="px-3 py-3 text-right">
                 <ColumnHeader align="right">{t("settings.colActions")}</ColumnHeader>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-edge">
+          <tbody>
             {loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-4 py-10 text-center text-muted">
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
                   {t("common.loading")}
                 </td>
               </tr>
             ) : null}
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-4 py-10 text-center text-muted">
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
                   {hasFilters ? t("settings.rulesEmptyFiltered") : t("settings.rulesEmpty")}
                 </td>
               </tr>
             ) : null}
-            {rows.map((row) => (
-              <tr key={row.id} className="hover:bg-panel-2/60">
-                <td className="px-3 py-3 align-top">
-                  <div className="font-mono text-ink">{row.code}</div>
+            {rows.map((row, idx) => (
+              <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
+                <td className="px-3 py-3 text-center font-mono text-caption tabular-nums text-muted">
+                  {page * size + idx + 1}
+                </td>
+                <td className="px-3 py-3">
+                  <div className="font-mono text-label text-ink">{row.code}</div>
                   {row.isDefault ? (
                     <StatusBadge tone="info" className="mt-1">
                       {t("settings.badgeDefault")}
                     </StatusBadge>
                   ) : null}
                 </td>
-                <td className="px-3 py-3 align-top">
-                  <p className="truncate text-ink" title={row.name}>
+                <td className="min-w-0 px-3 py-3">
+                  <p className="truncate text-label text-ink" title={row.name}>
                     {row.name}
                   </p>
-                  <p className="mt-0.5 text-caption text-muted">{formatDateTime(row.updatedAt)}</p>
+                  <p className="mt-0.5 text-caption text-muted">
+                    <DateTimeText value={row.updatedAt} />
+                  </p>
                 </td>
-                <td className="px-3 py-3 align-top font-mono text-ink">{row.prefix}</td>
-                <td className="px-3 py-3 align-top text-muted">
+                <td className="px-3 py-3 font-mono text-label text-ink">{row.prefix}</td>
+                <td className="px-3 py-3 text-label text-muted">
                   {positionLabel(row.prefixPosition)}
                 </td>
-                <td className="px-3 py-3 align-top text-ink">{row.randomLength}</td>
-                <td className="px-3 py-3 align-top text-ink">{row.merchantCount ?? 0}</td>
-                <td className="px-3 py-3 align-top">
+                <td className="px-3 py-3 font-mono text-label tabular-nums text-ink">
+                  {row.randomLength}
+                </td>
+                <td className="px-3 py-3 font-mono text-label tabular-nums text-ink">
+                  {row.merchantCount ?? 0}
+                </td>
+                <td className="px-3 py-3">
                   <StatusBadge tone={row.isActive ? "active" : "disabled"}>
                     {row.isActive ? t("settings.statusActive") : t("settings.statusInactive")}
                   </StatusBadge>
                 </td>
-                <td className="px-3 py-3 text-right align-top">
+                <td className="px-3 py-3 text-right">
                   <div className="inline-flex flex-wrap items-center justify-end gap-2">
                     <Button
                       type="button"

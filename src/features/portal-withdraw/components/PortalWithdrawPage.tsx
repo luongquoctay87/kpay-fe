@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
   FilterField,
@@ -31,7 +32,7 @@ import {
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { PORTAL_PAGE_CLASS } from "@/lib/constants/portal-layout";
-import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatMoney } from "@/lib/format/datetime";
 import { formatMoneyInput, parseMoneyDigits, parseMoneyNumber } from "@/lib/format/money";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
 import { ApiError } from "@/lib/types/api";
@@ -139,13 +140,14 @@ export function PortalWithdrawPage() {
 
   function applyFilters() {
     const created = dateRangeToIsoBounds(createdRangeDraft);
-    setPage(0);
-    setFilters({
+    const next = {
       q: qDraft.trim() || undefined,
       status: statusDraft ?? undefined,
       createdFrom: created.from,
       createdTo: created.to,
-    });
+    };
+    setPage(0);
+    setFilters(next);
   }
 
   function onReset() {
@@ -438,7 +440,7 @@ export function PortalWithdrawPage() {
                       {row.rejectReason}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      {formatDateTime(row.createdAt)}
+                      <DateTimeText value={row.createdAt} />
                     </td>
                   </tr>
                 ))

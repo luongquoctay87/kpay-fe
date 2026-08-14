@@ -84,7 +84,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
   const needsTotpSetup = profileSynced && user?.totpEnabled === false;
 
   return (
-    <div className="kpay-shell flex min-h-screen bg-canvas font-sans text-ink">
+    <div className="kpay-shell flex min-h-dvh w-full overflow-x-hidden bg-canvas font-sans text-ink">
       <AppSidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed((v) => !v)}
@@ -92,7 +92,9 @@ export function PortalShell({ children }: { children: ReactNode }) {
       />
       <div className="flex min-w-0 flex-1 flex-col bg-canvas">
         <AppHeader />
-        <main className="min-h-0 flex-1 overflow-auto bg-canvas">{children}</main>
+        <main className="min-h-0 w-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-canvas">
+          {children}
+        </main>
         <AppFooter variant="portal" />
       </div>
       {needsTotpSetup ? <TotpSetupRequiredModal /> : null}

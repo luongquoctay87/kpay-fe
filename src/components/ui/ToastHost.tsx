@@ -6,19 +6,19 @@ import { cn } from "@/lib/cn";
 
 const shellClass: Record<ToastTone, string> = {
   success: "border-success/20 bg-elevated",
-  error: "border-danger-edge bg-elevated",
+  error: "border-danger-edge bg-danger-bg",
   info: "border-edge bg-elevated",
 };
 
 const badgeClass: Record<ToastTone, string> = {
   success: "bg-success-bg text-success ring-1 ring-inset ring-success/20",
-  error: "bg-danger-bg text-danger ring-1 ring-inset ring-danger-edge",
+  error: "bg-elevated text-danger ring-1 ring-inset ring-danger-edge",
   info: "bg-panel text-accent ring-1 ring-inset ring-edge",
 };
 
 const titleClass: Record<ToastTone, string> = {
   success: "text-ink",
-  error: "text-ink",
+  error: "text-danger",
   info: "text-ink",
 };
 
@@ -69,39 +69,32 @@ export function ToastHost() {
             key={item.id}
             role="status"
             className={cn(
-              "pointer-events-auto flex w-max max-w-[min(100vw-2rem,20rem)] border shadow-[0_8px_24px_-8px_rgba(24,24,27,0.18)]",
+              "pointer-events-auto flex w-max max-w-[min(100vw-2rem,26rem)] items-start gap-2.5 rounded-xl border px-3 py-2.5 shadow-[0_8px_24px_-8px_rgba(24,24,27,0.18)]",
               item.leaving ? "kpay-toast-leave" : "kpay-toast-enter",
-              hasDescription
-                ? "items-start gap-2.5 rounded-xl px-3.5 py-3"
-                : "h-10 items-center gap-2.5 rounded-xl pl-2.5 pr-2",
               shellClass[item.tone],
             )}
           >
             <span
               className={cn(
-                "flex size-5 shrink-0 items-center justify-center rounded-full",
-                hasDescription && "mt-0.5",
+                "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full",
                 badgeClass[item.tone],
               )}
             >
               <ToneIcon tone={item.tone} />
             </span>
 
-            <div className={cn("min-w-0", hasDescription ? "flex-1 pt-0.5" : "px-0.5")}>
-              <p className={cn("text-label font-medium leading-5", titleClass[item.tone])}>
+            <div className="min-w-0 flex-1">
+              <p className={cn("text-label font-medium leading-5 break-words", titleClass[item.tone])}>
                 {item.title}
               </p>
               {hasDescription ? (
-                <p className="mt-1 text-caption leading-4 text-muted">{item.description}</p>
+                <p className="mt-1 text-caption leading-5 text-muted break-words">{item.description}</p>
               ) : null}
             </div>
 
             <button
               type="button"
-              className={cn(
-                "flex size-7 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-hover hover:text-ink",
-                hasDescription && "mt-0.5",
-              )}
+              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink"
               aria-label={t("common.close")}
               onClick={() => dismiss(item.id)}
             >

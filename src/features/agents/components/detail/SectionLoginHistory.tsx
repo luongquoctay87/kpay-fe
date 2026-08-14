@@ -2,7 +2,7 @@
 
 import { type AgentLoginHistoryItem } from "@/features/agents/types";
 import { useI18n } from "@/i18n/use-i18n";
-import { formatDateTime } from "@/lib/format/datetime";
+import { DateTimeText } from "@/components/common";
 
 export function SectionLoginHistory({ rows }: { rows: AgentLoginHistoryItem[] }) {
   const { t } = useI18n();
@@ -36,7 +36,7 @@ export function SectionLoginHistory({ rows }: { rows: AgentLoginHistoryItem[] })
                   <td className="py-2">{row.os ?? "—"}</td>
                   <td className="py-2">{row.status ?? "—"}</td>
                   <td className="py-2">{row.failureReason ?? "—"}</td>
-                  <td className="py-2 text-muted">{formatDateTime(row.loginAt)}</td>
+                  <td className="py-2 text-muted"><DateTimeText value={row.loginAt} /></td>
                 </tr>
               ))}
             </tbody>

@@ -1,19 +1,57 @@
 "use client";
 
-import { useCallback, useMemo, useState, type FormEvent } from "react";
 import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
+import {
+  ColumnHeader,
   DateRangeFilter,
-  dateRangeToIsoBounds,
-  FilterBar,
+  DateTimeText,
+  FilterField,
   PageHeader,
   Pagination,
   SearchInput,
+  StatCard,
   TableCard,
+  dateRangeToIsoBounds,
+  filterControlClass,
   type DateRangeValue,
 } from "@/components/common";
-import { IconDownload, IconFileText, IconRefresh } from "@/components/icons/NavIcons";
 import { Button, Input, Select, StatusBadge, toast } from "@/components/ui";
+import {
+  IconActivity,
+  IconAuditLog,
+  IconCheckCircle,
+  IconChevron,
+  IconClock,
+  IconDownload,
+  IconFileText,
+  IconGlobe,
+  IconHash,
+  IconHeadset,
+  IconLog,
+  IconRefresh,
+  IconSearch,
+  IconStore,
+  IconUser,
+} from "@/components/icons/NavIcons";
 import { auditLogApi } from "@/features/audit-logs/api";
+import { ColumnPicker } from "@/features/audit-logs/components/ColumnPicker";
+import { AuditDetailDrawer } from "@/features/audit-logs/components/AuditDetailDrawer";
+import {
+  AUDIT_LOG_COLUMN_WIDTH,
+  auditLogsTableMinWidth,
+  defaultColumnVisibility,
+  loadColumnVisibility,
+  saveColumnVisibility,
+  visibleColumnCount,
+  type ColumnVisibility,
+} from "@/features/audit-logs/columns";
 import {
   AUDIT_ACTOR_LABEL_KEY,
   AUDIT_ACTOR_TONE,
@@ -24,7 +62,6 @@ import {
 } from "@/features/audit-logs/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
-import { formatDateTime } from "@/lib/format/datetime";
 import { useMerchantAgentFilterOptions } from "@/lib/options/use-merchant-agent-filter-options";
 import { ApiError } from "@/lib/types/api";
 
@@ -33,10 +70,38 @@ const EMPTY = {
   total: 0,
 };
 
+function entityLabel(row: AuditLogListItem) {
+  if (row.entityId) return `${row.entityType}:${row.entityId}`;
+  return row.entityType;
+}
+
+function actorIcon(actorType: string) {
+  if (actorType === "agent") return <IconHeadset width={11} height={11} />;
+  if (actorType === "merchant") return <IconStore width={11} height={11} />;
+  return <IconUser width={11} height={11} />;
+}
+
 export function AuditLogsPage() {
   const { t } = useI18n();
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
+  const [expanded, setExpanded] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
+    defaultColumnVisibility,
+  );
+
+  useEffect(() => {
+    setColumnVisibility(loadColumnVisibility());
+  }, []);
+
+  function onColumnVisibilityChange(next: ColumnVisibility) {
+    setColumnVisibility(next);
+    saveColumnVisibility(next);
+  }
+
+  const colSpan = visibleColumnCount(columnVisibility);
+  const show = columnVisibility;
 
   const [qDraft, setQDraft] = useState("");
   const [actorDraft, setActorDraft] = useState<AuditActorType | null>(null);
@@ -80,7 +145,7 @@ export function AuditLogsPage() {
     [t],
   );
 
-  const { loading, error, rows, total, refresh } = usePagedList({
+  const { loading, error, setError, rows, total, refresh } = usePagedList({
     load: loadList,
     empty: EMPTY,
     mapError,
@@ -98,14 +163,22 @@ export function AuditLogsPage() {
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
 
-  function applyFilters(overrides?: Partial<{ actorType: AuditActorType | null }>) {
+  const pageStats = useMemo(() => {
+    let ok = 0;
+    let fail = 0;
+    for (const row of rows) {
+      if (row.success) ok += 1;
+      else fail += 1;
+    }
+    return { ok, fail };
+  }, [rows]);
+
+  function applyFilters() {
     const bounds = dateRangeToIsoBounds(rangeDraft);
-    const actorType =
-      overrides?.actorType !== undefined ? overrides.actorType : actorDraft;
     setPage(0);
     setFilters({
       q: qDraft.trim() || undefined,
-      actorType: actorType ?? undefined,
+      actorType: actorDraft ?? undefined,
       action: actionDraft.trim() || undefined,
       merchantId: merchantDraft ?? undefined,
       agentId: agentDraft ?? undefined,
@@ -115,6 +188,12 @@ export function AuditLogsPage() {
   }
 
   function onSearch(e: FormEvent) {
+    e.preventDefault();
+    applyFilters();
+  }
+
+  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
     e.preventDefault();
     applyFilters();
   }
@@ -131,121 +210,187 @@ export function AuditLogsPage() {
   }
 
   async function onExport() {
+    setExporting(true);
+    setError(null);
     try {
       await auditLogApi.export(filters);
       toast.success(t("auditLogs.exportOk"));
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : t("auditLogs.exportError");
+      setError(msg);
       toast.error(t("auditLogs.exportError"), msg);
+    } finally {
+      setExporting(false);
     }
   }
 
-  function entityLabel(row: AuditLogListItem) {
-    if (row.entityId) return `${row.entityType}:${row.entityId}`;
-    return row.entityType;
-  }
+  const filterActions = (
+    <div className="flex w-full shrink-0 items-center gap-1.5 md:w-auto">
+      <Button
+        type="button"
+        variant="secondary"
+        size="md"
+        className="min-w-0 flex-1 md:flex-none md:min-w-[6.5rem]"
+        onClick={onReset}
+        disabled={!canReset}
+        leftIcon={<IconRefresh width={15} height={15} />}
+      >
+        {t("auditLogs.reset")}
+      </Button>
+      <Button
+        type="submit"
+        variant="soft"
+        size="md"
+        className="min-h-9 min-w-0 flex-1 gap-2 px-3 md:flex-none md:min-w-[8.75rem] md:px-4"
+        leftIcon={<IconSearch width={16} height={16} />}
+      >
+        {t("auditLogs.search")}
+      </Button>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-label={expanded ? t("auditLogs.collapse") : t("auditLogs.expand")}
+        title={expanded ? t("auditLogs.collapse") : t("auditLogs.expand")}
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink"
+      >
+        <IconChevron className={expanded ? "rotate-180" : undefined} width={16} height={16} />
+      </button>
+    </div>
+  );
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader
         title={t("auditLogs.listTitle")}
         breadcrumbs={[
-          { label: t("auditLogs.breadcrumbParent"), icon: <IconFileText /> },
-          { label: t("auditLogs.listTitle"), icon: <IconFileText /> },
+          { label: t("auditLogs.breadcrumbParent"), icon: <IconLog /> },
+          { label: t("auditLogs.listTitle"), icon: <IconAuditLog /> },
         ]}
-        actions={
-          <div className="flex flex-wrap gap-2">
+      />
+
+      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
+        <StatCard label={t("auditLogs.statTotal")} value={String(total)} tone="info" />
+        <StatCard label={t("auditLogs.statOk")} value={String(pageStats.ok)} tone="success" />
+        <StatCard label={t("auditLogs.statFail")} value={String(pageStats.fail)} tone="danger" />
+      </div>
+
+      <form
+        onSubmit={onSearch}
+        className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5"
+      >
+        {expanded ? (
+          <div className="flex flex-col gap-3.5">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
+              <FilterField label={t("auditLogs.filterActor")} htmlFor="al-actor">
+                <Select
+                  id="al-actor"
+                  size="md"
+                  options={actorOptions}
+                  value={actorDraft}
+                  onChange={setActorDraft}
+                  placeholder={t("auditLogs.filterActorPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("auditLogs.filterAction")} htmlFor="al-action">
+                <Input
+                  id="al-action"
+                  size="md"
+                  value={actionDraft}
+                  onChange={(e) => setActionDraft(e.target.value)}
+                  onKeyDown={onSearchKeyDown}
+                  placeholder={t("auditLogs.filterActionPlaceholder")}
+                  className={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("auditLogs.filterMerchant")} htmlFor="al-merchant">
+                <Select
+                  id="al-merchant"
+                  size="md"
+                  options={merchantOpts}
+                  value={merchantDraft}
+                  onChange={setMerchantDraft}
+                  placeholder={t("auditLogs.filterMerchantPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("auditLogs.filterAgent")} htmlFor="al-agent">
+                <Select
+                  id="al-agent"
+                  size="md"
+                  options={agentOpts}
+                  value={agentDraft}
+                  onChange={setAgentDraft}
+                  placeholder={t("auditLogs.filterAgentPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <div className="min-w-0 sm:col-span-2 xl:col-span-1">
+                <FilterField label={t("auditLogs.filterDate")} htmlFor="al-range">
+                  <DateRangeFilter
+                    id="al-range"
+                    value={rangeDraft}
+                    onChange={setRangeDraft}
+                    placeholder={[
+                      t("auditLogs.filterDateFromPlaceholder"),
+                      t("auditLogs.filterDateToPlaceholder"),
+                    ]}
+                    aria-label={t("auditLogs.filterDate")}
+                  />
+                </FilterField>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
+              <div className="min-w-0 w-full flex-1">
+                <SearchInput
+                  id="al-q"
+                  value={qDraft}
+                  onChange={setQDraft}
+                  onKeyDown={onSearchKeyDown}
+                  placeholder={t("auditLogs.filterQPlaceholder")}
+                  label={t("auditLogs.filterQ")}
+                />
+              </div>
+              {filterActions}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
+            <div className="min-w-0 w-full flex-1">
+              <SearchInput
+                id="al-q-compact"
+                value={qDraft}
+                onChange={setQDraft}
+                onKeyDown={onSearchKeyDown}
+                placeholder={t("auditLogs.filterQPlaceholder")}
+                label={t("auditLogs.filterQ")}
+              />
+            </div>
+            {filterActions}
+          </div>
+        )}
+      </form>
+
+      <TableCard
+        toolbar={
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <Button
               type="button"
               variant="secondary"
-              size="sm"
-              leftIcon={<IconRefresh width={14} height={14} />}
-              onClick={() => void refresh()}
-              disabled={loading}
-            >
-              {t("auditLogs.refresh")}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              leftIcon={<IconDownload width={14} height={14} />}
+              size="md"
+              loading={exporting}
               onClick={() => void onExport()}
+              leftIcon={<IconDownload width={15} height={15} />}
             >
               {t("auditLogs.export")}
             </Button>
+            <ColumnPicker visibility={columnVisibility} onChange={onColumnVisibilityChange} />
           </div>
         }
-      />
-
-      <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
-        <FilterBar
-          onSearch={onSearch}
-          onReset={onReset}
-          canReset={canReset}
-          loading={loading}
-          searchLabel={t("auditLogs.search")}
-          resetLabel={t("auditLogs.reset")}
-          fieldsClassName="lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"
-        >
-          <SearchInput
-            id="al-q"
-            value={qDraft}
-            onChange={setQDraft}
-            placeholder={t("auditLogs.filterQPlaceholder")}
-            label={t("auditLogs.filterQ")}
-          />
-          <Select
-            id="al-actor"
-            size="md"
-            options={actorOptions}
-            value={actorDraft}
-            onChange={(v) => {
-              setActorDraft(v);
-              applyFilters({ actorType: v });
-            }}
-            placeholder={t("auditLogs.filterActor")}
-            clearable
-            aria-label={t("auditLogs.filterActor")}
-          />
-          <Input
-            id="al-action"
-            size="md"
-            value={actionDraft}
-            onChange={(e) => setActionDraft(e.target.value)}
-            placeholder={t("auditLogs.filterActionPlaceholder")}
-            aria-label={t("auditLogs.filterAction")}
-          />
-          <Select
-            id="al-merchant"
-            size="md"
-            options={merchantOpts}
-            value={merchantDraft}
-            onChange={setMerchantDraft}
-            placeholder={t("auditLogs.filterMerchant")}
-            clearable
-            aria-label={t("auditLogs.filterMerchant")}
-          />
-          <Select
-            id="al-agent"
-            size="md"
-            options={agentOpts}
-            value={agentDraft}
-            onChange={setAgentDraft}
-            placeholder={t("auditLogs.filterAgent")}
-            clearable
-            aria-label={t("auditLogs.filterAgent")}
-          />
-          <DateRangeFilter
-            id="al-range"
-            value={rangeDraft}
-            onChange={setRangeDraft}
-            aria-label={t("auditLogs.filterDate")}
-          />
-        </FilterBar>
-      </div>
-
-      <TableCard
         error={error}
         onRetry={refresh}
         retryLabel={t("auditLogs.refresh")}
@@ -267,124 +412,179 @@ export function AuditLogsPage() {
           />
         }
       >
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-body">
-            <thead className="border-b border-edge bg-panel text-caption text-muted">
+        <table
+          className="w-full table-fixed border-collapse text-left"
+          style={{ minWidth: auditLogsTableMinWidth(columnVisibility) }}
+        >
+          <thead>
+            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
+              <th className={`${AUDIT_LOG_COLUMN_WIDTH.stt} px-3 py-3 text-center`}>
+                {t("auditLogs.colStt")}
+              </th>
+              {show.time ? (
+                <th className={`${AUDIT_LOG_COLUMN_WIDTH.time} px-3 py-3 text-center`}>
+                  <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
+                    {t("auditLogs.colTime")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.actorType ? (
+                <th className={`${AUDIT_LOG_COLUMN_WIDTH.actorType} px-3 py-3`}>
+                  <ColumnHeader icon={<IconUser width={13} height={13} />}>
+                    {t("auditLogs.colActorType")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.actor ? (
+                <th className={`${AUDIT_LOG_COLUMN_WIDTH.actor} px-3 py-3`}>
+                  <ColumnHeader icon={<IconUser width={13} height={13} />}>
+                    {t("auditLogs.colActor")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.action ? (
+                <th className={`${AUDIT_LOG_COLUMN_WIDTH.action} px-3 py-3`}>
+                  <ColumnHeader icon={<IconHash width={13} height={13} />}>
+                    {t("auditLogs.colAction")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.entity ? (
+                <th className={`${AUDIT_LOG_COLUMN_WIDTH.entity} px-3 py-3`}>
+                  <ColumnHeader icon={<IconFileText width={13} height={13} />}>
+                    {t("auditLogs.colEntity")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.summary ? (
+                <th className={`${AUDIT_LOG_COLUMN_WIDTH.summary} px-3 py-3`}>
+                  <ColumnHeader icon={<IconActivity width={13} height={13} />}>
+                    {t("auditLogs.colSummary")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.success ? (
+                <th className={`${AUDIT_LOG_COLUMN_WIDTH.success} px-3 py-3 text-center`}>
+                  <ColumnHeader align="center" icon={<IconCheckCircle width={13} height={13} />}>
+                    {t("auditLogs.colSuccess")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.ip ? (
+                <th className={`${AUDIT_LOG_COLUMN_WIDTH.ip} px-3 py-3`}>
+                  <ColumnHeader icon={<IconGlobe width={13} height={13} />}>
+                    {t("auditLogs.colIp")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+            </tr>
+          </thead>
+          <tbody>
+            {loading && rows.length === 0 ? (
               <tr>
-                <th className="px-3 py-2">{t("auditLogs.colTime")}</th>
-                <th className="px-3 py-2">{t("auditLogs.colActorType")}</th>
-                <th className="px-3 py-2">{t("auditLogs.colActor")}</th>
-                <th className="px-3 py-2">{t("auditLogs.colAction")}</th>
-                <th className="hidden px-3 py-2 lg:table-cell">{t("auditLogs.colEntity")}</th>
-                <th className="px-3 py-2">{t("auditLogs.colSummary")}</th>
-                <th className="px-3 py-2 text-center">{t("auditLogs.colSuccess")}</th>
-                <th className="hidden px-3 py-2 xl:table-cell">{t("auditLogs.colIp")}</th>
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
+                  {t("auditLogs.loading")}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {loading && rows.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-10 text-center text-muted">
-                    {t("auditLogs.loading")}
+            ) : null}
+
+            {!loading && rows.length === 0 ? (
+              <tr>
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
+                  {error
+                    ? t("auditLogs.loadError")
+                    : hasFilters
+                      ? t("auditLogs.emptyFiltered")
+                      : t("auditLogs.empty")}
+                </td>
+              </tr>
+            ) : null}
+
+            {rows.map((row, idx) => {
+              const entity = entityLabel(row);
+              return (
+                <tr
+                  key={row.id}
+                  className={`cursor-pointer border-b border-edge hover:bg-surface/70 ${
+                    row.success ? "" : "bg-danger-bg/30"
+                  }`}
+                  onClick={() => setDetail(row)}
+                >
+                  <td className="px-3 py-3 text-center font-mono text-caption tabular-nums text-muted">
+                    {page * size + idx + 1}
                   </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-10 text-center text-muted">
-                    {hasFilters ? t("auditLogs.emptyFiltered") : t("auditLogs.empty")}
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="cursor-pointer border-b border-edge-soft hover:bg-surface/70"
-                    onClick={() => setDetail(row)}
-                  >
-                    <td className="whitespace-nowrap px-3 py-2 text-caption text-muted">
-                      {formatDateTime(row.occurredAt)}
+                  {show.time ? (
+                    <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                      <DateTimeText value={row.occurredAt} />
                     </td>
-                    <td className="px-3 py-2">
+                  ) : null}
+                  {show.actorType ? (
+                    <td className="px-3 py-3">
                       {isAuditActorType(row.actorType) ? (
-                        <StatusBadge tone={AUDIT_ACTOR_TONE[row.actorType]}>
+                        <StatusBadge tone={AUDIT_ACTOR_TONE[row.actorType]} className="w-fit gap-1">
+                          {actorIcon(row.actorType)}
                           {t(AUDIT_ACTOR_LABEL_KEY[row.actorType])}
                         </StatusBadge>
                       ) : (
-                        row.actorType
+                        <span className="text-label text-muted">{row.actorType}</span>
                       )}
                     </td>
-                    <td className="px-3 py-2">{row.actorUsername ?? "—"}</td>
-                    <td className="px-3 py-2 font-mono text-caption">{row.action}</td>
-                    <td
-                      className="hidden max-w-[10rem] truncate px-3 py-2 font-mono text-caption text-muted lg:table-cell"
-                      title={entityLabel(row)}
-                    >
-                      {entityLabel(row)}
+                  ) : null}
+                  {show.actor ? (
+                    <td className="px-3 py-3">
+                      <div className="flex min-w-0 flex-col gap-1">
+                        {!show.actorType && isAuditActorType(row.actorType) ? (
+                          <StatusBadge tone={AUDIT_ACTOR_TONE[row.actorType]} className="w-fit gap-1">
+                            {actorIcon(row.actorType)}
+                            {t(AUDIT_ACTOR_LABEL_KEY[row.actorType])}
+                          </StatusBadge>
+                        ) : !show.actorType ? (
+                          <span className="text-caption text-muted">{row.actorType}</span>
+                        ) : null}
+                        <span
+                          className="truncate text-label font-medium text-ink"
+                          title={row.actorUsername ?? undefined}
+                        >
+                          {row.actorUsername ?? "—"}
+                        </span>
+                      </div>
                     </td>
-                    <td className="max-w-[16rem] truncate px-3 py-2" title={row.summary}>
-                      {row.summary}
+                  ) : null}
+                  {show.action ? (
+                    <td className="truncate px-3 py-3 font-mono text-caption text-ink" title={row.action}>
+                      {row.action}
                     </td>
-                    <td className="px-3 py-2 text-center">
+                  ) : null}
+                  {show.entity ? (
+                    <td className="truncate px-3 py-3 font-mono text-caption text-muted" title={entity}>
+                      {entity}
+                    </td>
+                  ) : null}
+                  {show.summary ? (
+                    <td className="truncate px-3 py-3 text-label text-muted" title={row.summary}>
+                      {row.summary || "—"}
+                    </td>
+                  ) : null}
+                  {show.success ? (
+                    <td className="px-3 py-3 text-center">
                       <StatusBadge tone={row.success ? "active" : "danger"}>
                         {row.success ? t("auditLogs.successOk") : t("auditLogs.successFail")}
                       </StatusBadge>
                     </td>
-                    <td className="hidden px-3 py-2 font-mono text-caption text-muted xl:table-cell">
+                  ) : null}
+                  {show.ip ? (
+                    <td className="truncate px-3 py-3 font-mono text-caption text-muted" title={row.ipAddress ?? undefined}>
                       {row.ipAddress ?? "—"}
                     </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ) : null}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </TableCard>
 
-      {detail ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="audit-detail-title"
-            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-edge bg-elevated p-4 shadow-xl"
-          >
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <h2 id="audit-detail-title" className="text-body font-semibold text-ink">
-                {t("auditLogs.detailTitle")}
-              </h2>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setDetail(null)}>
-                {t("auditLogs.detailClose")}
-              </Button>
-            </div>
-            <dl className="space-y-2 text-label">
-              <div>
-                <dt className="text-muted">{t("auditLogs.colAction")}</dt>
-                <dd className="font-mono">{detail.action}</dd>
-              </div>
-              <div>
-                <dt className="text-muted">{t("auditLogs.colSummary")}</dt>
-                <dd>{detail.summary}</dd>
-              </div>
-              {detail.errorMessage ? (
-                <div>
-                  <dt className="text-muted">{t("auditLogs.colError")}</dt>
-                  <dd className="text-danger">{detail.errorMessage}</dd>
-                </div>
-              ) : null}
-              <div>
-                <dt className="text-muted">{t("auditLogs.colDetail")}</dt>
-                <dd>
-                  <pre className="mt-1 overflow-x-auto rounded-md bg-panel p-2 font-mono text-caption">
-                    {detail.detailJson
-                      ? JSON.stringify(detail.detailJson, null, 2)
-                      : "—"}
-                  </pre>
-                </dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-      ) : null}
+      {detail ? <AuditDetailDrawer id={detail.id} onClose={() => setDetail(null)} /> : null}
     </div>
   );
 }

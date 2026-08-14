@@ -14,8 +14,8 @@ import { merchantApi } from "@/features/merchants/api";
 import type { MerchantDetail, UpdateMerchantBody } from "@/features/merchants/types";
 import { transferContentApi } from "@/features/settings/api/transfer-content-api";
 import { useI18n } from "@/i18n/use-i18n";
-import { formatDateTime } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
+import { DateTimeText } from "@/components/common";
 
 export function SectionBasic({
   m,
@@ -262,11 +262,11 @@ export function SectionBasic({
 
         <div className="flex flex-col gap-0.5">
           <span className="text-label text-muted">{t("merchantDetail.labelCreated")}</span>
-          <span className="text-label font-medium text-ink">{formatDateTime(m.createdAt)}</span>
+          <span className="text-label font-medium text-ink"><DateTimeText value={m.createdAt} /></span>
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-label text-muted">{t("merchantDetail.labelUpdated")}</span>
-          <span className="text-label font-medium text-ink">{formatDateTime(m.updatedAt)}</span>
+          <span className="text-label font-medium text-ink"><DateTimeText value={m.updatedAt} /></span>
         </div>
 
         <div className="flex items-center justify-between">

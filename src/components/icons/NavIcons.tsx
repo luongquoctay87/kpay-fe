@@ -50,6 +50,18 @@ export function IconArrowOut(props: IconProps) {
   );
 }
 
+/** Withdraw — rút tiền (ví → ngân hàng) */
+export function IconWithdraw(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H19a2 2 0 0 1 2 2v1" />
+      <rect x="2" y="8" width="20" height="12" rx="2" />
+      <path d="M12 15V9" />
+      <path d="m9 12 3-3 3 3" />
+    </svg>
+  );
+}
+
 /** Merchant — cửa hàng */
 export function IconStore(props: IconProps) {
   return (
@@ -120,6 +132,17 @@ export function IconUsers(props: IconProps) {
       <circle cx="17" cy="9" r="2.5" />
       <path d="M21 19.5c-1-2.2-2.6-3.2-5-3.2" />
       <path d="M12.5 15.8c1.4.3 2.6 1.2 3.5 2.7" />
+    </svg>
+  );
+}
+
+/** Khách hàng — nhóm merchant + agent */
+export function IconCustomers(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <circle cx="12" cy="10" r="2.5" />
+      <path d="M8.5 16.5c.6-1.8 2-2.8 3.5-2.8s2.9 1 3.5 2.8" />
     </svg>
   );
 }
@@ -348,6 +371,20 @@ export function IconLayers(props: IconProps) {
   );
 }
 
+/** Tài nguyên — resource pool / infrastructure */
+export function IconResource(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="4" width="18" height="5" rx="1.5" />
+      <rect x="3" y="10" width="18" height="5" rx="1.5" />
+      <rect x="3" y="16" width="18" height="5" rx="1.5" />
+      <circle cx="7" cy="6.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="7" cy="12.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="7" cy="18.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function IconMoreHorizontal(props: IconProps) {
   return (
     <svg {...base(props)}>
@@ -391,6 +428,45 @@ export function IconActivity(props: IconProps) {
   return (
     <svg {...base(props)}>
       <path d="M22 12h-4l-3 7-6-14-3 7H2" />
+    </svg>
+  );
+}
+
+/** Audit log — hành vi admin / portal */
+export function IconAuditLog(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 3 20 7v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z" />
+      <path d="m8 12.2 2.6 2.6L16 9.4" />
+    </svg>
+  );
+}
+
+/** Money flow / system log — luồng tiền hệ thống */
+export function IconMoneyFlow(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="6" cy="6" r="2.5" />
+      <circle cx="18" cy="6" r="2.5" />
+      <circle cx="12" cy="18" r="2.5" />
+      <path d="M8.2 7.5 9.8 16" />
+      <path d="M15.8 7.5 14.2 16" />
+      <path d="M8.5 6h7" />
+    </svg>
+  );
+}
+
+/** Nhật ký — log journal */
+export function IconLog(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
+      <path d="M11 8h6" />
+      <circle cx="8" cy="12" r="1" fill="currentColor" stroke="none" />
+      <path d="M11 12h6" />
+      <circle cx="8" cy="16" r="1" fill="currentColor" stroke="none" />
+      <path d="M11 16h5" />
     </svg>
   );
 }

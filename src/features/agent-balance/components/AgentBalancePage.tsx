@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
+  DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
   FilterField,
@@ -27,7 +28,7 @@ import { useI18n } from "@/i18n/use-i18n";
 import type { MessageKey } from "@/i18n/types";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { PORTAL_PAGE_CLASS } from "@/lib/constants/portal-layout";
-import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 
 const EMPTY_LIST = {
@@ -120,13 +121,14 @@ export function AgentBalancePage() {
   function applyFilters() {
     const created = dateRangeToIsoBounds(createdRangeDraft);
     const q = qDraft.trim();
-    setPage(0);
-    setFilters({
+    const next = {
       q: q || undefined,
       entryType: entryTypeDraft ?? undefined,
       createdFrom: created.from,
       createdTo: created.to,
-    });
+    };
+    setPage(0);
+    setFilters(next);
   }
 
   function onSearch(e: FormEvent) {
@@ -330,7 +332,7 @@ export function AgentBalancePage() {
                   rows.map((row) => (
                     <tr key={row.id} className="border-b border-edge-soft">
                       <td className="whitespace-nowrap px-3 py-2 text-caption text-muted">
-                        {formatDateTime(row.createdAt)}
+                        <DateTimeText value={row.createdAt} />
                       </td>
                       <td className="max-w-[12rem] px-3 py-2 sm:max-w-none">
                         {row.entryType in LEDGER_LABEL_KEY ? (

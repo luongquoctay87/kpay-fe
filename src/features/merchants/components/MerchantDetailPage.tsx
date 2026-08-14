@@ -12,6 +12,8 @@ import {
   IconX,
 } from "@/components/icons/NavIcons";
 import { Button, ConfirmDialog, StatusBadge, toast } from "@/components/ui";
+import { hasAdminStaffRole } from "@/features/auth/admin-role";
+import { useAuthStore } from "@/features/auth/store";
 import { merchantApi } from "@/features/merchants/api";
 import { SectionBasic } from "@/features/merchants/components/detail/SectionBasic";
 import { SectionChannels } from "@/features/merchants/components/detail/SectionChannels";
@@ -29,6 +31,7 @@ import { ApiError } from "@/lib/types/api";
 
 export function MerchantDetailPage({ id }: { id: string }) {
   const { t } = useI18n();
+  const canResetPassword = hasAdminStaffRole(useAuthStore((s) => s.user));
   const [showAdjust, setShowAdjust] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const [showResetPw, setShowResetPw] = useState(false);
@@ -181,16 +184,18 @@ export function MerchantDetailPage({ id }: { id: string }) {
           >
             {t("merchantDetail.btnConfig")}
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            className="w-full sm:w-auto"
-            onClick={() => setShowResetPw(true)}
-            leftIcon={<IconKey width={15} height={15} />}
-          >
-            {t("merchantDetail.btnResetPassword")}
-          </Button>
+          {canResetPassword ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              className="w-full sm:w-auto"
+              onClick={() => setShowResetPw(true)}
+              leftIcon={<IconKey width={15} height={15} />}
+            >
+              {t("merchantDetail.btnResetPassword")}
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -274,7 +279,7 @@ export function MerchantDetailPage({ id }: { id: string }) {
           }}
         />
       )}
-      {showResetPw && (
+      {showResetPw && canResetPassword && (
         <ResetPasswordModal
           labels={{
             title: t("merchantDetail.modalResetPwTitle"),

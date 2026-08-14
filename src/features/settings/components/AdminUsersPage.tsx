@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   IconPlus,
   IconRefresh,
@@ -13,13 +13,17 @@ import {
   IconX,
 } from "@/components/icons/NavIcons";
 import {
+  DateTimeText,
   ColumnHeader,
-  FilterBar,
+  FilterField,
   PageHeader,
   Pagination,
+  SearchInput,
+  StatCard,
   TableCard,
+  filterControlClass,
 } from "@/components/common";
-import { Button, Field, Input, Select, StatusBadge, toast } from "@/components/ui";
+import { Button, Field, Input, PasswordVisibilityToggle, Select, StatusBadge, toast } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { adminUsersApi } from "@/features/settings/api/admin-users-api";
 import { rolesApi } from "@/features/settings/api/roles-api";
@@ -28,13 +32,21 @@ import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
-import { formatDateTime } from "@/lib/format/datetime";
+import { generateLoginPassword } from "@/lib/password/generate-login-password";
 import { ApiError } from "@/lib/types/api";
 
 const EMPTY_LIST = {
   rows: [] as AdminUserListItem[],
   total: 0,
 };
+
+/** Khớp User.username @Pattern + CreateAdminUserReq @Size. */
+const ADMIN_USERNAME_RE = /^\w{4,100}$/;
+
+function derivedAdminEmail(username: string): string {
+  const u = username.trim().toLowerCase();
+  return u ? `${u}@kpay.local` : "";
+}
 
 function CreateUserModal({
   onClose,
@@ -45,15 +57,27 @@ function CreateUserModal({
 }) {
   const { t } = useI18n();
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [roleCodes, setRoleCodes] = useState<string[]>([]);
   const [roleOptions, setRoleOptions] = useState<{ value: string; label: string }[]>([]);
   const [rolesLoading, setRolesLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const required = useRequiredFields({ username, email, password });
+  const email = derivedAdminEmail(username);
+  const required = useRequiredFields({ username, password });
+  const usernameInvalid = Boolean(username.trim()) && !ADMIN_USERNAME_RE.test(username.trim());
+  const passwordTooShort = Boolean(password) && password.length < 6;
+  const rolesMissing = roleCodes.length === 0;
+  const usernameError =
+    required.errorOf("username") ??
+    (required.revealed && usernameInvalid ? t("common.fieldInvalidUsername") : undefined);
+  const passwordError =
+    required.errorOf("password") ??
+    (required.revealed && passwordTooShort ? t("common.fieldPasswordMin") : undefined);
+  const rolesError =
+    required.revealed && rolesMissing ? t("common.fieldRequiredSelect") : undefined;
 
   useEffect(() => {
     let cancelled = false;
@@ -80,11 +104,16 @@ function CreateUserModal({
   }, []);
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    function onKey(e: globalThis.KeyboardEvent) {
       if (e.key === "Escape" && !submitting) onClose();
     }
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [onClose, submitting]);
 
   function toggleRole(code: string) {
@@ -96,17 +125,13 @@ function CreateUserModal({
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (required.hasMissing) {
+    if (required.hasMissing || usernameInvalid || passwordTooShort || rolesMissing) {
       required.reveal();
-      return;
-    }
-    if (roleCodes.length === 0) {
-      setError(t("settings.errorRolesRequired"));
       return;
     }
     const body: CreateAdminUserBody = {
       username: username.trim(),
-      email: email.trim(),
+      email,
       password,
       roleCodes,
     };
@@ -125,89 +150,171 @@ function CreateUserModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !submitting) onClose();
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="admin-user-create-title"
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-panel shadow-xl ring-1 ring-edge"
+        className="flex max-h-[min(100dvh-1.5rem,90vh)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
       >
-        <div className="flex items-start justify-between gap-3 border-b border-edge px-5 py-4">
-          <h2 id="admin-user-create-title" className="text-base font-semibold text-ink">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-edge px-4 py-4 sm:px-5">
+          <p id="admin-user-create-title" className="kpay-text-title font-semibold">
             {t("settings.userModalCreate")}
-          </h2>
+          </p>
           <button
             type="button"
-            className="rounded-lg p-1.5 text-muted hover:bg-panel-2 hover:text-ink"
             onClick={onClose}
             disabled={submitting}
+            className="rounded p-1 text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
             aria-label={t("common.cancel")}
           >
-            <IconX className="h-4 w-4" />
+            <IconX width={16} height={16} />
           </button>
         </div>
-        <form noValidate onSubmit={onSubmit} className="space-y-3 px-5 py-4">
-          <Field label={t("settings.labelUsername")} required error={required.errorOf("username")}>
-            <Input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={submitting}
-              invalid={Boolean(required.errorOf("username"))}
-              autoComplete="off"
-            />
-          </Field>
-          <Field label={t("settings.labelEmail")} required error={required.errorOf("email")}>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={submitting}
-              invalid={Boolean(required.errorOf("email"))}
-            />
-          </Field>
-          <Field label={t("settings.labelPassword")} required error={required.errorOf("password")}>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={submitting}
-              invalid={Boolean(required.errorOf("password"))}
-              autoComplete="new-password"
-            />
-          </Field>
-          <fieldset className="space-y-2">
-            <legend className="text-label text-muted">
-              {t("settings.labelRoles")} <span className="text-danger">*</span>
-            </legend>
-            {rolesLoading ? (
-              <p className="text-sm text-muted">{t("common.loading")}</p>
-            ) : roleOptions.length === 0 ? (
-              <p className="text-sm text-muted">{t("settings.rolesLoadEmpty")}</p>
-            ) : (
-              <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-lg border border-edge p-3">
-                {roleOptions.map((opt) => (
-                  <label
-                    key={opt.value}
-                    className="flex cursor-pointer items-center gap-2 text-sm text-ink"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={roleCodes.includes(opt.value)}
-                      onChange={() => toggleRole(opt.value)}
-                      disabled={submitting}
+        <form noValidate onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
+            <Field
+              label={t("settings.labelUsername")}
+              htmlFor="au-create-username"
+              required
+              error={usernameError}
+            >
+              <Input
+                id="au-create-username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={submitting}
+                invalid={Boolean(usernameError)}
+                autoComplete="off"
+                autoFocus
+                maxLength={100}
+              />
+            </Field>
+            <Field
+              label={t("settings.labelEmail")}
+              htmlFor="au-create-email"
+              hint={t("settings.hintCreateEmail")}
+            >
+              <Input
+                id="au-create-email"
+                type="email"
+                value={email}
+                disabled
+                autoComplete="off"
+              />
+            </Field>
+            <Field
+              label={t("settings.labelPassword")}
+              htmlFor="au-create-password"
+              required
+              error={passwordError}
+            >
+              <Input
+                id="au-create-password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={submitting}
+                invalid={Boolean(passwordError)}
+                autoComplete="new-password"
+                maxLength={100}
+                rightAddon={
+                  <span className="flex shrink-0 items-center gap-0.5 pr-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPassword(generateLoginPassword());
+                        setShowPassword(true);
+                      }}
+                      title={t("common.generatePassword")}
+                      aria-label={t("common.generatePassword")}
+                      className="flex items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
+                    >
+                      <IconRefresh width={15} height={15} />
+                    </button>
+                    <PasswordVisibilityToggle
+                      visible={showPassword}
+                      onToggle={() => setShowPassword((v) => !v)}
+                      showLabel={t("common.showPassword")}
+                      hideLabel={t("common.hidePassword")}
                     />
-                    {opt.label}
-                  </label>
-                ))}
-              </div>
-            )}
-          </fieldset>
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
-          <div className="flex justify-end gap-2 border-t border-edge pt-4">
-            <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
+                  </span>
+                }
+              />
+            </Field>
+            <fieldset className="space-y-2">
+              <legend className="text-label font-medium text-ink">
+                {t("settings.labelRoles")}
+                <span className="text-danger"> *</span>
+              </legend>
+              {rolesLoading ? (
+                <p className="text-label text-muted">{t("common.loading")}</p>
+              ) : roleOptions.length === 0 ? (
+                <p className="text-label text-muted">{t("settings.rolesLoadEmpty")}</p>
+              ) : (
+                <div
+                  className={[
+                    "max-h-48 space-y-1.5 overflow-y-auto rounded-lg border bg-surface p-3",
+                    rolesError ? "border-danger-edge" : "border-edge",
+                  ].join(" ")}
+                >
+                  {roleOptions.map((opt) => (
+                    <label
+                      key={opt.value}
+                      className="flex cursor-pointer items-center gap-2 text-label text-ink"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={roleCodes.includes(opt.value)}
+                        onChange={() => toggleRole(opt.value)}
+                        disabled={submitting}
+                      />
+                      {opt.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {rolesError ? (
+                <p className="text-caption text-danger" role="alert">
+                  {rolesError}
+                </p>
+              ) : null}
+            </fieldset>
+            {error ? (
+              <p
+                role="alert"
+                className="rounded-lg border border-danger-edge bg-danger-bg px-3 py-2.5 text-label text-danger"
+              >
+                {error}
+              </p>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              className="w-full sm:w-auto"
+              leftIcon={<IconX width={15} height={15} />}
+              onClick={onClose}
+              disabled={submitting}
+            >
               {t("common.cancel")}
             </Button>
-            <Button type="submit" loading={submitting} leftIcon={<IconSave className="h-4 w-4" />}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              className="w-full sm:w-auto"
+              loading={submitting}
+              disabled={rolesLoading || roleOptions.length === 0}
+              leftIcon={<IconSave width={15} height={15} />}
+            >
               {t("settings.btnCreate")}
             </Button>
           </div>
@@ -270,20 +377,30 @@ export function AdminUsersPage() {
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
   const hasFilters = Boolean(filters.q || filters.isActive !== undefined);
-  const canReset = hasFilters || Boolean(qDraft) || activeDraft != null;
+  const draftsDirty = Boolean(qDraft) || activeDraft != null;
+  const canReset = hasFilters || draftsDirty;
+  const colSpan = 7;
+  const activeOnPage = rows.filter((r) => r.isActive).length;
+  const inactiveOnPage = rows.filter((r) => !r.isActive).length;
 
-  function applyFilters(overrides?: Partial<{ active: string | null }>) {
-    const nextActive = overrides && "active" in overrides ? overrides.active : activeDraft;
+  function applyFilters() {
     setPage(0);
     setFilters({
       q: qDraft.trim() || undefined,
-      isActive: nextActive != null ? nextActive === "true" : undefined,
+      isActive: activeDraft != null ? activeDraft === "true" : undefined,
     });
   }
 
   function onSearch(e: FormEvent) {
     e.preventDefault();
     applyFilters();
+  }
+
+  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      applyFilters();
+    }
   }
 
   function onReset() {
@@ -302,166 +419,193 @@ export function AdminUsersPage() {
           { label: t("nav.settingsUsers"), icon: <IconUsers /> },
         ]}
         actions={
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          canWrite ? (
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              className="w-full sm:w-auto"
+              leftIcon={<IconPlus width={16} height={16} />}
+              onClick={() => setShowCreate(true)}
+            >
+              {t("settings.btnAddUser")}
+            </Button>
+          ) : null
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
+        <StatCard label={t("settings.usersStatTotal")} value={String(total)} tone="info" />
+        <StatCard
+          label={t("settings.statActive")}
+          value={String(activeOnPage)}
+          tone="success"
+        />
+        <StatCard
+          label={t("settings.statInactive")}
+          value={String(inactiveOnPage)}
+          tone="default"
+        />
+      </div>
+
+      <form
+        onSubmit={onSearch}
+        className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5"
+      >
+        <div className="flex flex-col gap-2.5 md:flex-row md:items-end md:gap-3">
+          <div className="flex min-w-0 w-full flex-1 flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1">
+              <FilterField label={t("settings.filterQ")} htmlFor="au-q">
+                <SearchInput
+                  id="au-q"
+                  value={qDraft}
+                  onChange={setQDraft}
+                  onKeyDown={onSearchKeyDown}
+                  placeholder={t("settings.filterUserQPlaceholder")}
+                  label={t("settings.filterQ")}
+                />
+              </FilterField>
+            </div>
+            <div className="w-full shrink-0 sm:w-[10.5rem]">
+              <FilterField label={t("settings.filterStatus")} htmlFor="au-status">
+                <Select
+                  id="au-status"
+                  size="md"
+                  value={activeDraft}
+                  onChange={setActiveDraft}
+                  options={statusOptions}
+                  placeholder={t("settings.filterStatusAll")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+            </div>
+          </div>
+          <div className="flex w-full shrink-0 items-center gap-1.5 md:w-auto">
             <Button
               type="button"
               variant="secondary"
               size="md"
-              className="w-full sm:w-auto"
-              leftIcon={<IconRefresh width={16} height={16} />}
-              onClick={() => void refresh()}
-              disabled={loading}
+              className="min-w-0 flex-1 md:flex-none md:min-w-[6.5rem]"
+              onClick={onReset}
+              disabled={!canReset}
+              leftIcon={<IconRefresh width={15} height={15} />}
             >
-              {t("common.refresh")}
+              {t("common.reset")}
             </Button>
-            {canWrite ? (
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                className="w-full sm:w-auto"
-                leftIcon={<IconPlus width={16} height={16} />}
-                onClick={() => setShowCreate(true)}
-              >
-                {t("settings.btnAddUser")}
-              </Button>
-            ) : null}
-          </div>
-        }
-      />
-
-      <p className="text-sm text-muted">{t("settings.usersHint")}</p>
-
-      <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
-        <FilterBar
-          onSearch={onSearch}
-          onReset={onReset}
-          canReset={canReset}
-          loading={loading}
-          searchLabel={t("common.search")}
-          resetLabel={t("common.reset")}
-          fieldsClassName="lg:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_minmax(8rem,10rem)]"
-        >
-          <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-            <Input
+            <Button
+              type="submit"
+              variant="soft"
               size="md"
-              value={qDraft}
-              onChange={(e) => setQDraft(e.target.value)}
-              placeholder={t("settings.filterUserQPlaceholder")}
-              aria-label={t("settings.filterQ")}
-              className="!border-edge bg-surface/80 hover:!border-edge-strong"
-              leftAddon={<IconSearch width={15} height={15} />}
-            />
+              className="min-h-9 min-w-0 flex-1 gap-2 px-3 md:flex-none md:min-w-[8.75rem] md:px-4"
+              leftIcon={<IconSearch width={16} height={16} />}
+            >
+              {t("common.search")}
+            </Button>
           </div>
-          <div className="min-w-0">
-            <Select
-              size="md"
-              value={activeDraft}
-              onChange={(v) => {
-                setActiveDraft(v);
-                applyFilters({ active: v });
-              }}
-              options={statusOptions}
-              placeholder={t("settings.filterStatusAll")}
-              clearable
-              aria-label={t("settings.filterStatus")}
-              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-            />
-          </div>
-        </FilterBar>
-      </div>
+        </div>
+      </form>
 
       <TableCard
         error={error}
         onRetry={() => void refresh()}
-        onRefresh={() => void refresh()}
         loading={loading}
-        refreshLabel={t("common.refresh")}
         pagination={
-          total > 0 || loading ? (
-            <Pagination
-              page={page}
-              pageSize={size}
-              total={total}
-              loading={loading}
-              onPageChange={setPage}
-              onPageSizeChange={(s: number) => {
-                setSize(s);
-                setPage(0);
-              }}
-              rangeLabel={t("settings.range", { from, to, total })}
-            />
-          ) : null
+          <Pagination
+            page={page}
+            pageSize={size}
+            total={total}
+            loading={loading}
+            onPageChange={setPage}
+            onPageSizeChange={(s: number) => {
+              setSize(s);
+              setPage(0);
+            }}
+            rangeLabel={t("settings.range", { from, to, total })}
+          />
         }
       >
         <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 880 }}>
+          <colgroup>
+            <col style={{ width: 48 }} />
+            <col style={{ width: 160 }} />
+            <col />
+            <col style={{ width: 160 }} />
+            <col style={{ width: 88 }} />
+            <col style={{ width: 112 }} />
+            <col style={{ width: 160 }} />
+          </colgroup>
           <thead>
             <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className="w-[10rem] px-3 py-3">
+              <th className="w-12 px-3 py-3 text-center">{t("settings.colStt")}</th>
+              <th className="px-3 py-3">
                 <ColumnHeader>{t("settings.colUsername")}</ColumnHeader>
               </th>
-              <th className="min-w-[10rem] px-3 py-3">
+              <th className="min-w-0 px-3 py-3">
                 <ColumnHeader>{t("settings.colEmail")}</ColumnHeader>
               </th>
-              <th className="w-[10rem] px-3 py-3">
+              <th className="px-3 py-3">
                 <ColumnHeader>{t("settings.colRoles")}</ColumnHeader>
               </th>
-              <th className="w-[6rem] px-3 py-3">
+              <th className="px-3 py-3">
                 <ColumnHeader>{t("settings.colTotp")}</ColumnHeader>
               </th>
-              <th className="w-[7rem] px-3 py-3">
+              <th className="px-3 py-3">
                 <ColumnHeader>{t("settings.colStatus")}</ColumnHeader>
               </th>
-              <th className="w-[10rem] px-3 py-3">
+              <th className="px-3 py-3">
                 <ColumnHeader>{t("settings.colLastLogin")}</ColumnHeader>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-edge">
+          <tbody>
             {loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-muted">
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
                   {t("common.loading")}
                 </td>
               </tr>
             ) : null}
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-muted">
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
                   {hasFilters ? t("settings.usersEmptyFiltered") : t("settings.usersEmpty")}
                 </td>
               </tr>
             ) : null}
-            {rows.map((row) => (
-              <tr key={row.id} className="hover:bg-panel-2/60">
-                <td className="px-3 py-3 align-top">
+            {rows.map((row, idx) => (
+              <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
+                <td className="px-3 py-3 text-center font-mono text-caption tabular-nums text-muted">
+                  {page * size + idx + 1}
+                </td>
+                <td className="px-3 py-3">
                   <Link
                     href={ROUTES.settingsUserDetail(row.id)}
-                    className="font-medium text-ink underline-offset-2 hover:underline"
+                    className="font-medium text-label text-ink underline-offset-2 hover:underline"
                   >
                     {row.username}
                   </Link>
                 </td>
-                <td className="px-3 py-3 align-top">
-                  <p className="truncate text-ink" title={row.email}>
+                <td className="min-w-0 px-3 py-3">
+                  <p className="truncate text-label text-ink" title={row.email}>
                     {row.email}
                   </p>
                 </td>
-                <td className="px-3 py-3 align-top text-muted">
+                <td className="truncate px-3 py-3 text-label text-muted">
                   {(row.roleCodes ?? []).join(", ") || "—"}
                 </td>
-                <td className="px-3 py-3 align-top">
+                <td className="px-3 py-3">
                   <StatusBadge tone={row.totpEnabled ? "active" : "disabled"}>
                     {row.totpEnabled ? t("common.on") : t("common.off")}
                   </StatusBadge>
                 </td>
-                <td className="px-3 py-3 align-top">
+                <td className="px-3 py-3">
                   <StatusBadge tone={row.isActive ? "active" : "disabled"}>
                     {row.isActive ? t("settings.statusActive") : t("settings.statusInactive")}
                   </StatusBadge>
                 </td>
-                <td className="whitespace-nowrap px-3 py-3 align-top text-muted">
-                  {formatDateTime(row.lastLoginAt)}
+                <td className="whitespace-nowrap px-3 py-3 text-label text-muted">
+                  <DateTimeText value={row.lastLoginAt} />
                 </td>
               </tr>
             ))}

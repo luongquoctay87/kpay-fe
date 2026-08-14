@@ -160,9 +160,16 @@ function toApiError(error: AxiosError<ApiResponse<unknown> | { error?: string }>
   );
 }
 
-export async function unwrap<T>(promise: Promise<{ data: ApiResponse<T> }>): Promise<T> {
-  const { data } = await promise;
-  if (data == null || typeof data !== "object") {
+export async function unwrap<T>(
+  promise: Promise<{ data: ApiResponse<T> | "" | null; status: number }>,
+): Promise<T> {
+  const { data, status } = await promise;
+  // HTTP 204 (and some proxies) omit the body — DELETE/no-content must not look like a
+  // misconfigured BACKEND_ORIGIN.
+  if (status === 204 || data == null || data === "") {
+    return undefined as T;
+  }
+  if (typeof data !== "object") {
     throw new ApiError(
       "INVALID_RESPONSE",
       "Server trả về dữ liệu không hợp lệ. Kiểm tra BACKEND_ORIGIN trỏ đúng Spring Boot.",

@@ -11,6 +11,7 @@ import {
   IconWallet,
 } from "@/components/icons/NavIcons";
 import {
+  DateTimeText,
   ColumnHeader,
   CopyButton,
   FilterBar,
@@ -26,7 +27,7 @@ import { bankBalanceApi } from "@/features/bank-balances/api";
 import type { BankBalanceListItem } from "@/features/bank-balances/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
-import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 
 const EMPTY_LIST = {
@@ -432,7 +433,7 @@ export function BankBalancesPage() {
                     <MoneyAmount value={row.lastKnownBalance} />
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 align-top text-muted">
-                    {formatDateTime(row.balanceCheckedAt)}
+                    <DateTimeText value={row.balanceCheckedAt} />
                   </td>
                   <td className="px-3 py-3 align-top">
                     <StatusBadge tone={checkTone(row.balanceCheckStatus)}>

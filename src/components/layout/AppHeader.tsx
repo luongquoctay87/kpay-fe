@@ -12,6 +12,7 @@ import { useAuthStore } from "@/features/auth/store";
 import { getPageTitleKey } from "@/i18n/page-titles";
 import { useI18n } from "@/i18n/use-i18n";
 import { ROUTES } from "@/lib/constants/routes";
+import { DateTimeText } from "@/components/common";
 
 export function AppHeader() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export function AppHeader() {
   const tabTitle = `${pageTitle} · ${t("brand.admin")}`;
 
   useEffect(() => {
-    const id = setInterval(() => setNow(dayjs()), 30_000);
+    const id = setInterval(() => setNow(dayjs()), 1_000);
     return () => clearInterval(id);
   }, []);
 
@@ -56,7 +57,7 @@ export function AppHeader() {
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <LocaleSwitcher />
           <time className="kpay-text-caption hidden tabular-nums sm:block">
-            {now.format("DD/MM/YYYY HH:mm")}
+            <DateTimeText value={now.toDate()} />
           </time>
 
           <div className="relative" ref={menuRef}>

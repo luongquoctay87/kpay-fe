@@ -22,4 +22,4 @@ export {
   dateRangeToIsoBounds,
   type DateRangeValue,
 } from "@/components/common/DateRangeFilter";
-export { ColumnPicker } from "@/components/common/ColumnPicker";
+export { DateTimeText } from "@/components/common/DateTimeText";

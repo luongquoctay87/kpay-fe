@@ -35,6 +35,9 @@ export interface AuditLogListItem {
   actorAgentId?: string | null;
   actorUsername?: string | null;
   merchantId?: string | null;
+  merchantCode?: string | null;
+  merchantName?: string | null;
+  requestId?: string | null;
   action: string;
   entityType: string;
   entityId?: string | null;

@@ -25,6 +25,7 @@ import {
   IconWallet,
 } from "@/components/icons/NavIcons";
 import {
+  DateTimeText,
   ColumnHeader,
   CopyButton,
   DateRangeFilter,
@@ -70,7 +71,7 @@ import {
 import { useAuthStore } from "@/features/auth/store";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
-import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatMoney } from "@/lib/format/datetime";
 import { parseMoneyDigits, parseMoneyNumber } from "@/lib/format/money";
 import { ApiError } from "@/lib/types/api";
 
@@ -268,8 +269,9 @@ export function BankReconciliationPage() {
   }
 
   function applyFilters() {
+    const next = buildFiltersFromDraft();
     setPage(0);
-    setFilters(buildFiltersFromDraft());
+    setFilters(next);
   }
 
   function onSearch(e: FormEvent) {
@@ -707,7 +709,7 @@ export function BankReconciliationPage() {
               <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
                 {show.postedAt ? (
                   <td className="whitespace-nowrap px-3 py-2.5 text-label text-ink">
-                    {formatDateTime(row.postedAt)}
+                    <DateTimeText value={row.postedAt} />
                   </td>
                 ) : null}
                 {show.bankTxnId ? (
@@ -797,7 +799,7 @@ export function BankReconciliationPage() {
                 ) : null}
                 {show.fetchedAt ? (
                   <td className="whitespace-nowrap px-3 py-2.5 text-label text-muted">
-                    {formatDateTime(row.fetchedAt)}
+                    <DateTimeText value={row.fetchedAt} />
                   </td>
                 ) : null}
               </tr>

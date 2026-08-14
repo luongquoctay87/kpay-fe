@@ -26,6 +26,7 @@ import {
   IconWebhook,
 } from "@/components/icons/NavIcons";
 import {
+  DateTimeText,
   ColumnHeader,
   CopyButton,
   DateRangeFilter,
@@ -77,7 +78,7 @@ import {
 } from "@/features/payout/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
-import { formatDateTime, formatMoney } from "@/lib/format/datetime";
+import { formatMoney } from "@/lib/format/datetime";
 import { ROUTES } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
 
@@ -246,8 +247,9 @@ export function PayoutListPage() {
   }
 
   function applyFilters() {
+    const next = buildFiltersFromDraft();
     setPage(0);
-    setFilters(buildFiltersFromDraft());
+    setFilters(next);
   }
 
   function onSearch(e: FormEvent) {
@@ -829,12 +831,12 @@ export function PayoutListPage() {
                 ) : null}
                 {show.createdAt ? (
                   <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
-                    {formatDateTime(row.createdAt)}
+                    <DateTimeText value={row.createdAt} />
                   </td>
                 ) : null}
                 {show.updatedAt ? (
                   <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
-                    {formatDateTime(row.updatedAt)}
+                    <DateTimeText value={row.updatedAt} />
                   </td>
                 ) : null}
                 <td className="px-3 py-3 text-center">

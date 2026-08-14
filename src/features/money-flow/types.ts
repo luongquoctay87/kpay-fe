@@ -9,7 +9,9 @@ export const MONEY_FLOW_DIRECTION_OPTIONS: MoneyFlowDirection[] = [
 
 /** MVP stages from LOGS.md §4.2. */
 export const MONEY_FLOW_STAGE_OPTIONS = [
+  "payin.created",
   "bank.inbound",
+  "payin.unmatched",
   "bank.outbound",
   "payin.matched",
   "payin.finalized",
