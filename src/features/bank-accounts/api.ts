@@ -17,6 +17,7 @@ export const bankAccountApi = {
           accountNumber: params.accountNumber || undefined,
           bankName: params.bankName || undefined,
           status: params.status,
+          accountType: params.accountType,
           canCollect: params.canCollect,
           canDisburse: params.canDisburse,
           page: params.page ?? 0,

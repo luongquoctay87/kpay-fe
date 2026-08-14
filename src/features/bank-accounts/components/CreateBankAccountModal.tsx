@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { IconSave, IconX } from "@/components/icons/NavIcons";
 import { Button, Field, Input, MoneyInput, Select, Textarea, toast } from "@/components/ui";
 import { bankAccountApi } from "@/features/bank-accounts/api";
-import type { BankOption, CreateBankAccountBody } from "@/features/bank-accounts/types";
+import { BANK_ACCOUNT_TYPE_LABEL_KEY } from "@/features/bank-accounts/status";
+import {
+  BANK_ACCOUNT_TYPE_OPTIONS,
+  type BankOption,
+  type BankAccountType,
+  type CreateBankAccountBody,
+} from "@/features/bank-accounts/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
 import { parseMoneyNumber } from "@/lib/format/money";
@@ -24,6 +30,7 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
   const [bankCode, setBankCode] = useState<string | null>(null);
   const [accountHolder, setAccountHolder] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
+  const [accountType, setAccountType] = useState<BankAccountType>("operating");
   const [dailyLimit, setDailyLimit] = useState("");
   const [openingBalance, setOpeningBalance] = useState("");
   const [weight, setWeight] = useState("0");
@@ -81,6 +88,15 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
     [banks],
   );
 
+  const typeOptions = useMemo(
+    () =>
+      BANK_ACCOUNT_TYPE_OPTIONS.map((v) => ({
+        value: v,
+        label: t(BANK_ACCOUNT_TYPE_LABEL_KEY[v]),
+      })),
+    [t],
+  );
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -120,6 +136,7 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
       bankCode,
       accountHolder: accountHolder.trim(),
       accountNumber: accountNumber.trim(),
+      accountType,
       dailyLimit: dailyNum,
       openingBalance: openingNum,
       weight: weightNum,
@@ -236,6 +253,18 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
                 required
                 invalid={Boolean(required.errorOf("accountNumber"))}
                 inputMode="numeric"
+                disabled={submitting}
+              />
+            </Field>
+
+            <Field label={t("bankAccounts.colAccountType")} htmlFor="ba-type">
+              <Select
+                id="ba-type"
+                options={typeOptions}
+                value={accountType}
+                onChange={(v) => {
+                  if (v) setAccountType(v);
+                }}
                 disabled={submitting}
               />
             </Field>

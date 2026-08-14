@@ -6,13 +6,16 @@ import { Button, Field, Input, MoneyInput, Select, Textarea, toast } from "@/com
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import {
   BANK_ACCOUNT_STATUS_LABEL_KEY,
+  BANK_ACCOUNT_TYPE_LABEL_KEY,
 } from "@/features/bank-accounts/status";
-import type {
-  BankAccountListItem,
-  BankAccountStatus,
-  UpdateBankAccountBody,
+import {
+  BANK_ACCOUNT_STATUS_OPTIONS,
+  BANK_ACCOUNT_TYPE_OPTIONS,
+  type BankAccountListItem,
+  type BankAccountStatus,
+  type BankAccountType,
+  type UpdateBankAccountBody,
 } from "@/features/bank-accounts/types";
-import { BANK_ACCOUNT_STATUS_OPTIONS } from "@/features/bank-accounts/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
 import { parseMoneyNumber } from "@/lib/format/money";
@@ -33,6 +36,9 @@ export function EditBankAccountModal({
 
   const [accountHolder, setAccountHolder] = useState(account.accountHolder);
   const [status, setStatus] = useState<BankAccountStatus>(account.status);
+  const [accountType, setAccountType] = useState<BankAccountType>(
+    account.accountType,
+  );
   const [canCollect, setCanCollect] = useState(account.canCollect ? "true" : "false");
   const [canDisburse, setCanDisburse] = useState(account.canDisburse ? "true" : "false");
   const [dailyLimit, setDailyLimit] = useState(
@@ -64,6 +70,15 @@ export function EditBankAccountModal({
       BANK_ACCOUNT_STATUS_OPTIONS.map((v) => ({
         value: v,
         label: t(BANK_ACCOUNT_STATUS_LABEL_KEY[v]),
+      })),
+    [t],
+  );
+
+  const typeOptions = useMemo(
+    () =>
+      BANK_ACCOUNT_TYPE_OPTIONS.map((v) => ({
+        value: v,
+        label: t(BANK_ACCOUNT_TYPE_LABEL_KEY[v]),
       })),
     [t],
   );
@@ -125,6 +140,7 @@ export function EditBankAccountModal({
     const body: UpdateBankAccountBody = {
       accountHolder: accountHolder.trim(),
       status,
+      accountType,
       canCollect: canCollect === "true",
       canDisburse: canDisburse === "true",
       dailyLimit: dailyNum,
@@ -215,7 +231,7 @@ export function EditBankAccountModal({
               />
             </Field>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("bankAccounts.labelStatus")} htmlFor="ba-edit-status">
                 <Select
                   id="ba-edit-status"
@@ -227,6 +243,20 @@ export function EditBankAccountModal({
                   disabled={submitting}
                 />
               </Field>
+              <Field label={t("bankAccounts.colAccountType")} htmlFor="ba-edit-type">
+                <Select
+                  id="ba-edit-type"
+                  options={typeOptions}
+                  value={accountType}
+                  onChange={(v) => {
+                    if (v) setAccountType(v);
+                  }}
+                  disabled={submitting}
+                />
+              </Field>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("bankAccounts.colCollect")} htmlFor="ba-edit-collect">
                 <Select
                   id="ba-edit-collect"

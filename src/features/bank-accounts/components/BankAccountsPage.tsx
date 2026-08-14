@@ -35,13 +35,17 @@ import {
 import {
   BANK_ACCOUNT_STATUS_LABEL_KEY,
   BANK_ACCOUNT_STATUS_TONE,
+  BANK_ACCOUNT_TYPE_LABEL_KEY,
+  BANK_ACCOUNT_TYPE_TONE,
 } from "@/features/bank-accounts/status";
-import type {
-  BankAccountListItem,
-  BankAccountStats,
-  BankAccountStatus,
+import {
+  BANK_ACCOUNT_STATUS_OPTIONS,
+  BANK_ACCOUNT_TYPE_OPTIONS,
+  type BankAccountListItem,
+  type BankAccountStats,
+  type BankAccountStatus,
+  type BankAccountType,
 } from "@/features/bank-accounts/types";
-import { BANK_ACCOUNT_STATUS_OPTIONS } from "@/features/bank-accounts/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { ApiError } from "@/lib/types/api";
@@ -115,6 +119,7 @@ export function BankAccountsPage() {
   const [accountDraft, setAccountDraft] = useState("");
   const [bankDraft, setBankDraft] = useState("");
   const [statusDraft, setStatusDraft] = useState<BankAccountStatus | null>(null);
+  const [typeDraft, setTypeDraft] = useState<BankAccountType | null>(null);
   const [collectDraft, setCollectDraft] = useState<string | null>(null);
   const [disburseDraft, setDisburseDraft] = useState<string | null>(null);
 
@@ -122,6 +127,7 @@ export function BankAccountsPage() {
     accountNumber?: string;
     bankName?: string;
     status?: BankAccountStatus;
+    accountType?: BankAccountType;
     canCollect?: boolean;
     canDisburse?: boolean;
   }>({});
@@ -147,6 +153,15 @@ export function BankAccountsPage() {
       BANK_ACCOUNT_STATUS_OPTIONS.map((v) => ({
         value: v,
         label: t(BANK_ACCOUNT_STATUS_LABEL_KEY[v]),
+      })),
+    [t],
+  );
+
+  const typeOptions = useMemo(
+    () =>
+      BANK_ACCOUNT_TYPE_OPTIONS.map((v) => ({
+        value: v,
+        label: t(BANK_ACCOUNT_TYPE_LABEL_KEY[v]),
       })),
     [t],
   );
@@ -184,6 +199,7 @@ export function BankAccountsPage() {
     filters.accountNumber ||
       filters.bankName ||
       filters.status ||
+      filters.accountType ||
       filters.canCollect != null ||
       filters.canDisburse != null,
   );
@@ -192,6 +208,7 @@ export function BankAccountsPage() {
     Boolean(accountDraft) ||
     Boolean(bankDraft) ||
     statusDraft != null ||
+    typeDraft != null ||
     collectDraft != null ||
     disburseDraft != null;
   const from = total === 0 ? 0 : page * size + 1;
@@ -204,12 +221,14 @@ export function BankAccountsPage() {
   function applyFilters(
     overrides?: Partial<{
       status: BankAccountStatus | null;
+      accountType: BankAccountType | null;
       collect: string | null;
       disburse: string | null;
     }>,
   ) {
     const next = {
       status: statusDraft,
+      accountType: typeDraft,
       collect: collectDraft,
       disburse: disburseDraft,
       ...overrides,
@@ -219,6 +238,7 @@ export function BankAccountsPage() {
       accountNumber: accountDraft.trim() || undefined,
       bankName: bankDraft.trim() || undefined,
       status: next.status ?? undefined,
+      accountType: next.accountType ?? undefined,
       canCollect: next.collect != null ? next.collect === "true" : undefined,
       canDisburse: next.disburse != null ? next.disburse === "true" : undefined,
     });
@@ -233,6 +253,7 @@ export function BankAccountsPage() {
     setAccountDraft("");
     setBankDraft("");
     setStatusDraft(null);
+    setTypeDraft(null);
     setCollectDraft(null);
     setDisburseDraft(null);
     setFilters({});
@@ -277,7 +298,7 @@ export function BankAccountsPage() {
           canReset={canReset}
           searchLabel={t("bankAccounts.search")}
           resetLabel={t("bankAccounts.reset")}
-          fieldsClassName="lg:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_repeat(3,minmax(7.5rem,8.5rem))]"
+          fieldsClassName="lg:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_repeat(4,minmax(7.5rem,8.5rem))]"
         >
           <div className="min-w-0 sm:col-span-2 lg:col-span-1">
             <Input
@@ -315,6 +336,22 @@ export function BankAccountsPage() {
               placeholder={t("bankAccounts.filterStatus")}
               clearable
               aria-label={t("bankAccounts.filterStatus")}
+              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
+            />
+          </div>
+          <div className="min-w-0">
+            <Select
+              id="ba-filter-type"
+              size="md"
+              options={typeOptions}
+              value={typeDraft}
+              onChange={(v) => {
+                setTypeDraft(v);
+                applyFilters({ accountType: v });
+              }}
+              placeholder={t("bankAccounts.filterAccountType")}
+              clearable
+              aria-label={t("bankAccounts.filterAccountType")}
               triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
             />
           </div>
@@ -406,6 +443,15 @@ export function BankAccountsPage() {
                 <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.bank} ${BANK_ACCOUNT_COLUMN_ALIGN.bank} px-3 py-3`}>
                   <ColumnHeader icon={<IconBank width={13} height={13} />}>
                     {t("bankAccounts.colBank")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.accountType ? (
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.accountType} ${BANK_ACCOUNT_COLUMN_ALIGN.accountType} px-3 py-3`}
+                >
+                  <ColumnHeader align="center" icon={<IconLayers width={13} height={13} />}>
+                    {t("bankAccounts.colAccountType")}
                   </ColumnHeader>
                 </th>
               ) : null}
@@ -542,6 +588,13 @@ export function BankAccountsPage() {
                     >
                       {row.bankCode}
                     </span>
+                  </td>
+                ) : null}
+                {show.accountType ? (
+                  <td className="px-3 py-3 text-center">
+                    <StatusBadge tone={BANK_ACCOUNT_TYPE_TONE[row.accountType]}>
+                      {t(BANK_ACCOUNT_TYPE_LABEL_KEY[row.accountType])}
+                    </StatusBadge>
                   </td>
                 ) : null}
                 {show.status ? (

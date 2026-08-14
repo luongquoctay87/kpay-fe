@@ -1,6 +1,9 @@
 /** Align với BE BankAccount list/create. */
 export type BankAccountStatus = "active" | "inactive" | "blocked";
 
+/** Phase 2 #7 — Thu chi / Ảo / An toàn. */
+export type BankAccountType = "operating" | "virtual" | "safe";
+
 export interface BankAccountStats {
   total: number;
   with3Sources: number;
@@ -16,6 +19,7 @@ export interface BankAccountListItem {
   accountNumber: string;
   accountHolder: string;
   status: BankAccountStatus;
+  accountType: BankAccountType;
   canCollect: boolean;
   canDisburse: boolean;
   dailyLimit?: number | null;
@@ -44,6 +48,7 @@ export interface BankAccountListParams {
   accountNumber?: string;
   bankName?: string;
   status?: BankAccountStatus;
+  accountType?: BankAccountType;
   canCollect?: boolean;
   canDisburse?: boolean;
   page?: number;
@@ -60,6 +65,7 @@ export interface CreateBankAccountBody {
   bankCode: string;
   accountHolder: string;
   accountNumber: string;
+  accountType?: BankAccountType;
   dailyLimit?: number;
   openingBalance?: number;
   weight?: number;
@@ -70,6 +76,7 @@ export interface CreateBankAccountBody {
 export interface UpdateBankAccountBody {
   accountHolder?: string;
   status?: BankAccountStatus;
+  accountType?: BankAccountType;
   canCollect?: boolean;
   canDisburse?: boolean;
   dailyLimit?: number;
@@ -87,4 +94,10 @@ export const BANK_ACCOUNT_STATUS_OPTIONS: BankAccountStatus[] = [
   "active",
   "blocked",
   "inactive",
+];
+
+export const BANK_ACCOUNT_TYPE_OPTIONS: BankAccountType[] = [
+  "operating",
+  "virtual",
+  "safe",
 ];
