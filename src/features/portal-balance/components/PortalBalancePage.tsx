@@ -316,9 +316,13 @@ export function PortalBalancePage() {
                         {formatDateTime(row.createdAt)}
                       </td>
                       <td className="max-w-[12rem] px-3 py-2 sm:max-w-none">
-                        <StatusBadge tone={LEDGER_ENTRY_TONE[row.entryType]}>
-                          {t(LEDGER_ENTRY_LABEL_KEY[row.entryType])}
-                        </StatusBadge>
+                        {row.entryType in LEDGER_ENTRY_LABEL_KEY ? (
+                          <StatusBadge tone={LEDGER_ENTRY_TONE[row.entryType]}>
+                            {t(LEDGER_ENTRY_LABEL_KEY[row.entryType])}
+                          </StatusBadge>
+                        ) : (
+                          row.entryType
+                        )}
                       </td>
                       <td
                         className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${amountToneClass(row.amount)}`}

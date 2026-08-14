@@ -115,6 +115,11 @@ const NAV: NavEntry[] = [
       { href: ROUTES.merchants, labelKey: "nav.merchant", icon: <IconStore /> },
       { href: ROUTES.agents, labelKey: "nav.agent", icon: <IconHeadset /> },
       {
+        href: ROUTES.customerLedgers,
+        labelKey: "nav.customerLedgers",
+        icon: <IconFileText />,
+      },
+      {
         href: ROUTES.callbackLogs,
         labelKey: "nav.callback",
         icon: <IconWebhook />,

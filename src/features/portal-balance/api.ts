@@ -15,7 +15,10 @@ export type LedgerEntryType =
   | "manual_credit"
   | "manual_debit"
   | "fee_adjust"
-  | "agent_commission";
+  | "agent_commission"
+  | "withdraw_reserve"
+  | "withdraw_capture"
+  | "withdraw_release";
 
 export type PortalLedgerItem = {
   id: number;
@@ -55,6 +58,9 @@ export const LEDGER_ENTRY_TYPES: LedgerEntryType[] = [
   "manual_debit",
   "fee_adjust",
   "agent_commission",
+  "withdraw_reserve",
+  "withdraw_capture",
+  "withdraw_release",
 ];
 
 export const portalBalanceApi = {

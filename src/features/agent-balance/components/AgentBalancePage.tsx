@@ -39,6 +39,9 @@ const LEDGER_LABEL_KEY: Record<AgentLedgerEntryType, MessageKey> = {
   agent_commission: "agentPortal.ledgerAgentCommission",
   manual_credit: "agentPortal.ledgerManualCredit",
   manual_debit: "agentPortal.ledgerManualDebit",
+  withdraw_reserve: "portal.ledgerWithdrawReserve",
+  withdraw_capture: "portal.ledgerWithdrawCapture",
+  withdraw_release: "portal.ledgerWithdrawRelease",
 };
 
 function amountToneClass(amount: number) {
@@ -302,6 +305,9 @@ export function AgentBalancePage() {
                   <th className="hidden whitespace-nowrap px-3 py-2 text-right font-medium sm:table-cell">
                     {t("agentPortal.colBalanceAfter")}
                   </th>
+                  <th className="hidden whitespace-nowrap px-3 py-2 text-right font-medium md:table-cell">
+                    {t("agentPortal.reservedBalance")}
+                  </th>
                   <th className="hidden px-3 py-2 font-medium lg:table-cell">
                     {t("agentPortal.colRef")}
                   </th>
@@ -310,13 +316,13 @@ export function AgentBalancePage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-3 py-8 text-center text-muted">
+                    <td colSpan={7} className="px-3 py-8 text-center text-muted">
                       {t("common.loading")}
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-3 py-8 text-center text-muted">
+                    <td colSpan={7} className="px-3 py-8 text-center text-muted">
                       {t("common.noData")}
                     </td>
                   </tr>
@@ -347,6 +353,9 @@ export function AgentBalancePage() {
                       </td>
                       <td className="hidden whitespace-nowrap px-3 py-2 text-right tabular-nums sm:table-cell">
                         {formatMoney(row.balanceAfter)}
+                      </td>
+                      <td className="hidden whitespace-nowrap px-3 py-2 text-right tabular-nums md:table-cell">
+                        {formatMoney(row.reservedAfter ?? 0)}
                       </td>
                       <td className="hidden max-w-[8rem] truncate px-3 py-2 font-mono text-caption lg:table-cell">
                         {row.refType && row.refId

@@ -1,8 +1,8 @@
 import type { BadgeTone } from "@/components/ui/StatusBadge";
-import type { LedgerEntryType } from "@/features/portal-balance/api";
+import type { CustomerLedgerEntryType } from "@/features/customer-ledger/types";
 import type { MessageKey } from "@/i18n/types";
 
-export const LEDGER_ENTRY_LABEL_KEY: Record<LedgerEntryType, MessageKey> = {
+export const CUSTOMER_LEDGER_ENTRY_LABEL_KEY: Record<CustomerLedgerEntryType, MessageKey> = {
   payin_credit: "portal.ledgerPayinCredit",
   payout_reserve: "portal.ledgerPayoutReserve",
   payout_capture: "portal.ledgerPayoutCapture",
@@ -16,8 +16,7 @@ export const LEDGER_ENTRY_LABEL_KEY: Record<LedgerEntryType, MessageKey> = {
   withdraw_release: "portal.ledgerWithdrawRelease",
 };
 
-/** Color tone per ledger entry type (credits / holds / debits). */
-export const LEDGER_ENTRY_TONE: Record<LedgerEntryType, BadgeTone> = {
+export const CUSTOMER_LEDGER_ENTRY_TONE: Record<CustomerLedgerEntryType, BadgeTone> = {
   payin_credit: "active",
   payout_reserve: "pending",
   payout_capture: "danger",
@@ -31,6 +30,6 @@ export const LEDGER_ENTRY_TONE: Record<LedgerEntryType, BadgeTone> = {
   withdraw_release: "info",
 };
 
-export function isLedgerEntryType(v: string): v is LedgerEntryType {
-  return v in LEDGER_ENTRY_LABEL_KEY;
+export function isCustomerLedgerEntryType(v: string): v is CustomerLedgerEntryType {
+  return v in CUSTOMER_LEDGER_ENTRY_LABEL_KEY;
 }

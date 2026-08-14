@@ -9,13 +9,17 @@ export type AgentBalance = {
 export type AgentLedgerEntryType =
   | "agent_commission"
   | "manual_credit"
-  | "manual_debit";
+  | "manual_debit"
+  | "withdraw_reserve"
+  | "withdraw_capture"
+  | "withdraw_release";
 
 export type AgentLedgerItem = {
   id: number;
   entryType: AgentLedgerEntryType | string;
   amount: number;
   balanceAfter: number;
+  reservedAfter?: number;
   refType?: string | null;
   refId?: string | null;
   note?: string | null;
@@ -43,6 +47,9 @@ export const AGENT_LEDGER_ENTRY_TYPES: AgentLedgerEntryType[] = [
   "agent_commission",
   "manual_credit",
   "manual_debit",
+  "withdraw_reserve",
+  "withdraw_capture",
+  "withdraw_release",
 ];
 
 export const agentBalanceApi = {
