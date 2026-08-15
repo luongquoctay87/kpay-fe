@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { IconLink, IconUnlink, IconX } from "@/components/icons/NavIcons";
+import { ColumnHeader } from "@/components/common";
+import { IconLink, IconSettings, IconStore, IconUnlink, IconX } from "@/components/icons/NavIcons";
 import {
   Button,
   ConfirmDialog,
@@ -212,10 +213,16 @@ export function SectionLinkedMerchants({
         ) : (
           <table className="w-full text-left text-label">
             <thead>
-              <tr className="border-b border-edge text-muted">
-                <th className="py-2 font-medium">{t("agentDetail.colMerchantName")}</th>
-                <th className="w-12 py-2 text-right font-medium">
-                  <span className="sr-only">{t("agentDetail.colActions")}</span>
+              <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconStore width={14} height={14} />}>
+                    {t("agentDetail.colMerchantName")}
+                  </ColumnHeader>
+                </th>
+                <th className="w-12 px-3 py-2.5 text-right">
+                  <ColumnHeader align="right" icon={<IconSettings width={14} height={14} />}>
+                    <span className="sr-only">{t("agentDetail.colActions")}</span>
+                  </ColumnHeader>
                 </th>
               </tr>
             </thead>

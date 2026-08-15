@@ -2,14 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
+  IconActivity,
   IconEye,
   IconFileText,
+  IconHash,
+  IconInbox,
+  IconKey,
   IconLayers,
   IconPlus,
   IconRefresh,
+  IconRepeat,
   IconSave,
   IconSearch,
   IconSettings,
+  IconStore,
   IconX,
 } from "@/components/icons/NavIcons";
 import {
@@ -640,6 +646,7 @@ export function TransferContentRulesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<TransferContentRule | null>(null);
   const [previewing, setPreviewing] = useState<TransferContentRule | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const [qDraft, setQDraft] = useState("");
   const [activeDraft, setActiveDraft] = useState<string | null>(null);
@@ -684,7 +691,7 @@ export function TransferContentRulesPage() {
   const hasFilters = Boolean(filters.q || filters.isActive !== undefined);
   const draftsDirty = Boolean(qDraft) || activeDraft != null;
   const canReset = hasFilters || draftsDirty;
-  const colSpan = 9;
+  const colSpan = 8;
   const activeOnPage = rows.filter((r) => r.isActive).length;
   const inactiveOnPage = rows.filter((r) => !r.isActive).length;
 
@@ -719,6 +726,20 @@ export function TransferContentRulesPage() {
     setActiveDraft(null);
     setPage(0);
     setFilters({});
+  }
+
+  async function onToggleActive(row: TransferContentRule, next: boolean) {
+    if (!canWrite || togglingId) return;
+    setTogglingId(row.id);
+    try {
+      await transferContentApi.update(row.id, { isActive: next });
+      toast.success(t("settings.ruleUpdateOk"));
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t("settings.ruleSaveError"));
+    } finally {
+      setTogglingId(null);
+    }
   }
 
   return (
@@ -836,46 +857,58 @@ export function TransferContentRulesPage() {
           />
         }
       >
-        <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 960 }}>
+        <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 880 }}>
           <colgroup>
-            <col style={{ width: 48 }} />
-            <col style={{ width: 128 }} />
-            <col />
-            <col style={{ width: 88 }} />
-            <col style={{ width: 88 }} />
-            <col style={{ width: 72 }} />
-            <col style={{ width: 88 }} />
-            <col style={{ width: 112 }} />
-            <col style={{ width: 180 }} />
+            <col style={{ width: "5%" }} />
+            <col style={{ width: "15%" }} />
+            <col style={{ width: "26%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "12%" }} />
           </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className="w-12 px-3 py-3 text-center">{t("settings.colStt")}</th>
-              <th className="px-3 py-3">
-                <ColumnHeader>{t("settings.colCode")}</ColumnHeader>
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className="px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("settings.colStt")}
+                </ColumnHeader>
               </th>
-              <th className="min-w-0 px-3 py-3">
-                <ColumnHeader>{t("settings.colName")}</ColumnHeader>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconKey width={14} height={14} />}>
+                  {t("settings.colCode")}
+                </ColumnHeader>
               </th>
-              <th className="px-3 py-3">
-                <ColumnHeader>{t("settings.colPrefix")}</ColumnHeader>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                  {t("settings.colName")}
+                </ColumnHeader>
               </th>
-              <th className="px-3 py-3">
-                <ColumnHeader>{t("settings.colPosition")}</ColumnHeader>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                  {t("settings.colPrefix")}
+                </ColumnHeader>
               </th>
-              <th className="px-3 py-3">
-                <ColumnHeader>{t("settings.colRandom")}</ColumnHeader>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconLayers width={14} height={14} />}>
+                  {t("settings.colPosition")}
+                </ColumnHeader>
               </th>
-              <th className="px-3 py-3">
-                <ColumnHeader icon={<IconLayers width={13} height={13} />}>
+              <th className="px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconRepeat width={14} height={14} />}>
+                  {t("settings.colRandom")}
+                </ColumnHeader>
+              </th>
+              <th className="px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconStore width={14} height={14} />}>
                   {t("settings.colMerchants")}
                 </ColumnHeader>
               </th>
-              <th className="px-3 py-3">
-                <ColumnHeader>{t("settings.colStatus")}</ColumnHeader>
-              </th>
-              <th className="px-3 py-3 text-right">
-                <ColumnHeader align="right">{t("settings.colActions")}</ColumnHeader>
+              <th className="px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
+                  {t("settings.colStatus")}
+                </ColumnHeader>
               </th>
             </tr>
           </thead>
@@ -889,68 +922,124 @@ export function TransferContentRulesPage() {
             ) : null}
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
-                  {hasFilters ? t("settings.rulesEmptyFiltered") : t("settings.rulesEmpty")}
+                <td colSpan={colSpan} className="px-3 py-16">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
+                    >
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {hasFilters ? t("settings.rulesEmptyFiltered") : t("settings.rulesEmpty")}
+                    </p>
+                    {!hasFilters && canWrite ? (
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="md"
+                        leftIcon={<IconPlus width={16} height={16} />}
+                        onClick={() => setShowCreate(true)}
+                      >
+                        {t("settings.btnAddRule")}
+                      </Button>
+                    ) : null}
+                    {hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("common.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : null}
             {rows.map((row, idx) => (
               <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
-                <td className="px-3 py-3 text-center font-mono text-caption tabular-nums text-muted">
+                <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                   {page * size + idx + 1}
                 </td>
-                <td className="px-3 py-3">
-                  <div className="font-mono text-label text-ink">{row.code}</div>
-                  {row.isDefault ? (
-                    <StatusBadge tone="info" className="mt-1">
-                      {t("settings.badgeDefault")}
-                    </StatusBadge>
-                  ) : null}
+                <td className="px-3 py-2.5">
+                  <div className="min-w-0">
+                    <span
+                      className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
+                      title={row.code}
+                    >
+                      {row.code}
+                    </span>
+                    {row.isDefault ? (
+                      <div className="mt-1">
+                        <StatusBadge tone="info">{t("settings.badgeDefault")}</StatusBadge>
+                      </div>
+                    ) : null}
+                  </div>
                 </td>
-                <td className="min-w-0 px-3 py-3">
-                  <p className="truncate text-label text-ink" title={row.name}>
-                    {row.name}
-                  </p>
-                  <p className="mt-0.5 text-caption text-muted">
-                    <DateTimeText value={row.updatedAt} />
-                  </p>
-                </td>
-                <td className="px-3 py-3 font-mono text-label text-ink">{row.prefix}</td>
-                <td className="px-3 py-3 text-label text-muted">
-                  {positionLabel(row.prefixPosition)}
-                </td>
-                <td className="px-3 py-3 font-mono text-label tabular-nums text-ink">
-                  {row.randomLength}
-                </td>
-                <td className="px-3 py-3 font-mono text-label tabular-nums text-ink">
-                  {row.merchantCount ?? 0}
-                </td>
-                <td className="px-3 py-3">
-                  <StatusBadge tone={row.isActive ? "active" : "disabled"}>
-                    {row.isActive ? t("settings.statusActive") : t("settings.statusInactive")}
-                  </StatusBadge>
-                </td>
-                <td className="px-3 py-3 text-right">
-                  <div className="inline-flex flex-wrap items-center justify-end gap-2">
+                <td className="px-3 py-2.5">
+                  <div className="flex min-w-0 items-start gap-1.5">
                     <Button
                       type="button"
-                      variant="secondary"
+                      variant="ghost"
                       size="sm"
-                      leftIcon={<IconEye width={14} height={14} />}
+                      iconOnly
+                      className="mt-0.5 shrink-0"
+                      leftIcon={<IconEye width={15} height={15} />}
+                      aria-label={t("settings.btnPreview")}
+                      title={t("settings.btnPreview")}
                       onClick={() => setPreviewing(row)}
-                    >
-                      {t("settings.btnPreview")}
-                    </Button>
-                    {canWrite ? (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setEditing(row)}
-                      >
-                        {t("settings.btnEdit")}
-                      </Button>
-                    ) : null}
+                    />
+                    <div className="min-w-0 flex-1">
+                      {canWrite ? (
+                        <button
+                          type="button"
+                          className="block max-w-full truncate text-left text-label font-medium text-ink transition hover:text-link-hover hover:underline"
+                          title={row.name}
+                          onClick={() => setEditing(row)}
+                        >
+                          {row.name}
+                        </button>
+                      ) : (
+                        <p className="truncate text-label text-ink" title={row.name}>
+                          {row.name}
+                        </p>
+                      )}
+                      <p className="mt-0.5 text-caption text-muted">
+                        <DateTimeText value={row.updatedAt} />
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-3 py-2.5">
+                  <span
+                    className="block truncate font-mono text-label text-ink"
+                    title={row.prefix}
+                  >
+                    {row.prefix}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 text-label text-muted">
+                  {positionLabel(row.prefixPosition)}
+                </td>
+                <td className="px-3 py-2.5 text-center font-mono text-label tabular-nums text-ink">
+                  {row.randomLength}
+                </td>
+                <td className="px-3 py-2.5 text-center font-mono text-label tabular-nums text-ink">
+                  {row.merchantCount ?? 0}
+                </td>
+                <td className="px-3 py-2.5 text-center">
+                  <div className="inline-flex items-center justify-center">
+                    <Switch
+                      checked={row.isActive}
+                      disabled={!canWrite || togglingId === row.id}
+                      aria-label={
+                        row.isActive ? t("settings.statusActive") : t("settings.statusInactive")
+                      }
+                      onChange={(next) => void onToggleActive(row, next)}
+                    />
                   </div>
                 </td>
               </tr>

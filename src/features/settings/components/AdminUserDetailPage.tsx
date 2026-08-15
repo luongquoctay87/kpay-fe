@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  IconClock,
+  IconFileText,
+  IconGlobe,
+  IconHash,
   IconKey,
   IconPlus,
   IconSave,
@@ -209,6 +213,7 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
     permissions.length === 0 ||
     permissions.includes("admin_users:write");
   const canResetPassword = hasAdminStaffRole(me);
+  const canChangeRoles = canResetPassword;
   const editingSelf = Boolean(me?.id && me.id === userId);
 
   const [user, setUser] = useState<AdminUserDetail | null>(null);
@@ -239,7 +244,9 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
     try {
       const [detail, roleList] = await Promise.all([
         adminUsersApi.getById(userId),
-        rolesApi.list().catch(() => [] as RoleItem[]),
+        canChangeRoles
+          ? rolesApi.list().catch(() => [] as RoleItem[])
+          : Promise.resolve([] as RoleItem[]),
       ]);
       setUser(detail);
       setRoles(roleList ?? []);
@@ -257,7 +264,7 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [userId, t]);
+  }, [userId, t, canChangeRoles]);
 
   useEffect(() => {
     void load();
@@ -310,7 +317,7 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
 
   async function onSave() {
     if (!canWrite) return;
-    if (roleCodes.length === 0) {
+    if (canChangeRoles && roleCodes.length === 0) {
       toast.error(t("settings.errorRolesRequired"));
       return;
     }
@@ -318,7 +325,7 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
       toast.error(t("settings.errorCannotDisableSelf"));
       return;
     }
-    if (editingSelf && !selectedRolesKeepAdminWrite()) {
+    if (canChangeRoles && editingSelf && !selectedRolesKeepAdminWrite()) {
       toast.error(t("settings.errorCannotRemoveOwnWrite"));
       return;
     }
@@ -333,7 +340,7 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
       const body: UpdateAdminUserBody = {
         email: email.trim(),
         isActive,
-        roleCodes,
+        ...(canChangeRoles ? { roleCodes } : {}),
         loginIpWhitelistEnabled,
         loginHoursEnabled,
         loginHoursStart: loginHoursEnabled ? toTimeApi(loginHoursStart) : null,
@@ -528,35 +535,55 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
             <fieldset className="space-y-2">
               <legend className="text-label font-medium text-ink">
                 {t("settings.labelRoles")}
-                {canWrite ? <span className="text-danger"> *</span> : null}
+                {canChangeRoles ? <span className="text-danger"> *</span> : null}
               </legend>
-              {roles.length === 0 ? (
-                <p className="text-label text-muted">{t("settings.rolesLoadEmpty")}</p>
+              {canChangeRoles ? (
+                roles.length === 0 ? (
+                  <p className="text-label text-muted">{t("settings.rolesLoadEmpty")}</p>
+                ) : (
+                  <div className="max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-edge bg-surface p-3">
+                    {roles.map((r) => (
+                      <label
+                        key={r.code}
+                        className={[
+                          "flex items-center gap-2 text-label text-ink",
+                          r.isActive ? "cursor-pointer" : "cursor-default",
+                        ].join(" ")}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={roleCodes.includes(r.code)}
+                          onChange={() => toggleRole(r.code)}
+                          disabled={saving || !r.isActive}
+                        />
+                        <span>
+                          {r.code} — {r.name}
+                          {r.isSystem ? (
+                            <span className="ml-1 text-caption text-muted">
+                              ({t("settings.badgeSystem")})
+                            </span>
+                          ) : null}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )
               ) : (
-                <div className="max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-edge bg-surface p-3">
-                  {roles.map((r) => (
-                    <label
-                      key={r.code}
-                      className="flex cursor-pointer items-center gap-2 text-label text-ink"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={roleCodes.includes(r.code)}
-                        onChange={() => toggleRole(r.code)}
-                        disabled={!canWrite || saving || !r.isActive}
-                      />
-                      <span>
-                        {r.code} — {r.name}
-                        {r.isSystem ? (
-                          <span className="ml-1 text-caption text-muted">
-                            ({t("settings.badgeSystem")})
-                          </span>
-                        ) : null}
-                      </span>
-                    </label>
-                  ))}
+                <div className="flex flex-wrap gap-1.5">
+                  {roleCodes.length === 0 ? (
+                    <p className="text-label text-muted">—</p>
+                  ) : (
+                    roleCodes.map((code) => (
+                      <StatusBadge key={code} tone="neutral">
+                        {code}
+                      </StatusBadge>
+                    ))
+                  )}
                 </div>
               )}
+              {!canChangeRoles ? (
+                <p className="text-caption text-muted">{t("settings.rolesAdminOnlyHint")}</p>
+              ) : null}
             </fieldset>
           </div>
         </section>
@@ -664,20 +691,32 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
               {canWrite ? <col style={{ width: 112 }} /> : null}
             </colgroup>
             <thead>
-              <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-                <th className="w-12 px-3 py-3 text-center">{t("settings.colStt")}</th>
+              <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+                <th className="w-12 px-3 py-3 text-center">
+                  <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                    {t("settings.colStt")}
+                  </ColumnHeader>
+                </th>
                 <th className="px-3 py-3">
-                  <ColumnHeader>{t("settings.labelCidr")}</ColumnHeader>
+                  <ColumnHeader icon={<IconGlobe width={14} height={14} />}>
+                    {t("settings.labelCidr")}
+                  </ColumnHeader>
                 </th>
                 <th className="min-w-0 px-3 py-3">
-                  <ColumnHeader>{t("settings.labelIpNote")}</ColumnHeader>
+                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                    {t("settings.labelIpNote")}
+                  </ColumnHeader>
                 </th>
                 <th className="px-3 py-3">
-                  <ColumnHeader>{t("settings.colCreatedAt")}</ColumnHeader>
+                  <ColumnHeader icon={<IconClock width={14} height={14} />}>
+                    {t("settings.colCreatedAt")}
+                  </ColumnHeader>
                 </th>
                 {canWrite ? (
                   <th className="px-3 py-3 text-right">
-                    <ColumnHeader align="right">{t("settings.colActions")}</ColumnHeader>
+                    <ColumnHeader align="right" icon={<IconSettings width={14} height={14} />}>
+                      {t("settings.colActions")}
+                    </ColumnHeader>
                   </th>
                 ) : null}
               </tr>

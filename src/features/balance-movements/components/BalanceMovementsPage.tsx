@@ -1,15 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
 import {
   IconActivity,
   IconBank,
+  IconClock,
+  IconFileText,
+  IconHash,
+  IconInbox,
   IconLayers,
   IconRefresh,
-  IconSearch,
+  IconSmartphone,
+  IconWallet,
 } from "@/components/icons/NavIcons";
 import {
   DateTimeText,
+  AutoRefreshControl,
   ColumnHeader,
   CopyButton,
   DateRangeFilter,
@@ -18,11 +30,13 @@ import {
   MoneyAmount,
   PageHeader,
   Pagination,
+  SearchInput,
   StatCard,
   TableCard,
+  filterControlClass,
   type DateRangeValue,
 } from "@/components/common";
-import { Button, Input, Select, StatusBadge } from "@/components/ui";
+import { Button, Select, StatusBadge } from "@/components/ui";
 import { balanceMovementApi } from "@/features/balance-movements/api";
 import { processErrorLabelKey } from "@/features/balance-movements/process-error";
 import {
@@ -34,8 +48,13 @@ import {
   type BalanceMovementListItem,
 } from "@/features/balance-movements/types";
 import { useI18n } from "@/i18n/use-i18n";
+import {
+  useAutoRefresh,
+  type AutoRefreshSeconds,
+} from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
+import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -43,7 +62,22 @@ import { useSearchParams } from "next/navigation";
 const EMPTY_LIST = {
   rows: [] as BalanceMovementListItem[],
   total: 0,
+  sumAmount: 0,
 };
+
+const COL_MIN = {
+  stt: 52,
+  created: 152,
+  direction: 88,
+  amount: 128,
+  content: 200,
+  account: 176,
+  status: 144,
+  device: 136,
+  payin: 160,
+} as const;
+
+const TABLE_MIN_WIDTH = Object.values(COL_MIN).reduce((a, b) => a + b, 0);
 
 export function BalanceMovementsPage() {
   const { t } = useI18n();
@@ -52,15 +86,15 @@ export function BalanceMovementsPage() {
 
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
 
   const [qDraft, setQDraft] = useState(qFromUrl);
-  const [deviceDraft, setDeviceDraft] = useState("");
   const [statusDraft, setStatusDraft] = useState<string | null>(null);
   const [rangeDraft, setRangeDraft] = useState<DateRangeValue>(null);
 
   const [filters, setFilters] = useState<{
     q?: string;
-    deviceId?: string;
     processStatus?: string;
     from?: string;
     to?: string;
@@ -88,6 +122,7 @@ export function BalanceMovementsPage() {
       return {
         rows: data.items ?? [],
         total: data.totalElements ?? 0,
+        sumAmount: data.sumAmount ?? 0,
       };
     },
     [filters, page, size],
@@ -105,40 +140,37 @@ export function BalanceMovementsPage() {
     [t],
   );
 
-  const { loading, error, rows, total, refresh } = usePagedList({
+  const { loading, error, rows, total, data, refresh } = usePagedList({
     load: loadList,
     empty: EMPTY_LIST,
     mapError,
   });
 
-  /** Show Hướng only when page has OUT (PAYOUT) — today ingest is PAYIN-only. */
-  const showDirection = rows.some((r) => r.direction === "OUT");
-  const colSpan = showDirection ? 8 : 7;
+  useAutoRefresh(refresh, { enabled: autoRefresh, intervalSec: autoRefreshSec });
+
+  const colSpan = 9;
+  const sumAmount = data.sumAmount ?? 0;
 
   const hasFilters = Boolean(
-    filters.q || filters.deviceId || filters.processStatus || filters.from || filters.to,
+    filters.q || filters.processStatus || filters.from || filters.to,
   );
   const draftsDirty =
     Boolean(qDraft) ||
-    Boolean(deviceDraft) ||
     Boolean(statusDraft) ||
     Boolean(rangeDraft?.[0] || rangeDraft?.[1]);
   const canReset = hasFilters || draftsDirty;
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
 
-  function applyFilters(overrides?: Partial<{ status: string | null }>) {
+  function applyFilters() {
     const bounds = dateRangeToIsoBounds(rangeDraft);
-    const nextStatus = overrides?.status !== undefined ? overrides.status : statusDraft;
-    const next = {
+    setPage(0);
+    setFilters({
       q: qDraft.trim() || undefined,
-      deviceId: deviceDraft.trim() || undefined,
-      processStatus: nextStatus || undefined,
+      processStatus: statusDraft || undefined,
       from: bounds.from,
       to: bounds.to,
-    };
-    setPage(0);
-    setFilters(next);
+    });
   }
 
   function onSearch(e: FormEvent) {
@@ -148,7 +180,6 @@ export function BalanceMovementsPage() {
 
   function onReset() {
     setQDraft("");
-    setDeviceDraft("");
     setStatusDraft(null);
     setRangeDraft(null);
     setPage(0);
@@ -165,24 +196,25 @@ export function BalanceMovementsPage() {
           { label: t("balanceMovements.breadcrumbCurrent"), icon: <IconActivity /> },
         ]}
         actions={
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            className="w-full sm:w-auto"
-            leftIcon={<IconRefresh width={16} height={16} />}
-            onClick={() => void refresh()}
-            disabled={loading}
-          >
-            {t("balanceMovements.refresh")}
-          </Button>
+          <AutoRefreshControl
+            enabled={autoRefresh}
+            intervalSec={autoRefreshSec}
+            onEnabledChange={setAutoRefresh}
+            onIntervalChange={setAutoRefreshSec}
+            size="sm"
+          />
         }
       />
 
       <p className="text-sm text-muted">{t("balanceMovements.listHint")}</p>
 
-      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-1 sm:max-w-xs">
+      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4">
         <StatCard label={t("balanceMovements.statTotal")} value={String(total)} />
+        <StatCard
+          label={t("balanceMovements.statSumAmount")}
+          value={formatMoney(sumAmount)}
+          tone="success"
+        />
       </div>
 
       <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
@@ -193,48 +225,18 @@ export function BalanceMovementsPage() {
           loading={loading}
           searchLabel={t("balanceMovements.search")}
           resetLabel={t("balanceMovements.reset")}
-          fieldsClassName="lg:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(8rem,10rem)_minmax(0,1.2fr)]"
+          fieldsClassName="lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(13rem,16rem)_minmax(8.5rem,10.5rem)]"
         >
           <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-            <Input
-              id="bm-filter-q"
-              size="md"
+            <SearchInput
+              id="bm-search"
               value={qDraft}
-              onChange={(e) => setQDraft(e.target.value)}
+              onChange={setQDraft}
               placeholder={t("balanceMovements.filterQPlaceholder")}
-              aria-label={t("balanceMovements.filterQ")}
-              className="!border-edge bg-surface/80 hover:!border-edge-strong"
-              leftAddon={<IconSearch width={15} height={15} />}
+              label={t("balanceMovements.filterQ")}
             />
           </div>
-          <div className="min-w-0">
-            <Input
-              id="bm-filter-device"
-              size="md"
-              value={deviceDraft}
-              onChange={(e) => setDeviceDraft(e.target.value)}
-              placeholder={t("balanceMovements.filterDevicePlaceholder")}
-              aria-label={t("balanceMovements.filterDevice")}
-              className="!border-edge bg-surface/80 hover:!border-edge-strong"
-            />
-          </div>
-          <div className="min-w-0">
-            <Select
-              id="bm-filter-status"
-              size="md"
-              options={statusOptions}
-              value={statusDraft}
-              onChange={(v) => {
-                setStatusDraft(v);
-                applyFilters({ status: v });
-              }}
-              placeholder={t("balanceMovements.filterStatusAll")}
-              clearable
-              aria-label={t("balanceMovements.filterStatus")}
-              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-            />
-          </div>
-          <div className="min-w-0">
+          <div className="min-w-0 sm:col-span-2 lg:col-span-1 xl:col-span-1">
             <DateRangeFilter
               id="bm-filter-range"
               value={rangeDraft}
@@ -246,6 +248,19 @@ export function BalanceMovementsPage() {
               aria-label={t("balanceMovements.filterCreated")}
             />
           </div>
+          <div className="min-w-0">
+            <Select
+              id="bm-filter-status"
+              size="md"
+              options={statusOptions}
+              value={statusDraft}
+              onChange={setStatusDraft}
+              placeholder={t("balanceMovements.filterStatusAll")}
+              clearable
+              aria-label={t("balanceMovements.filterStatus")}
+              triggerClassName={filterControlClass}
+            />
+          </div>
         </FilterBar>
       </div>
 
@@ -253,85 +268,134 @@ export function BalanceMovementsPage() {
         loading={loading}
         error={error}
         onRetry={() => void refresh()}
+        retryLabel={t("balanceMovements.refresh")}
         pagination={
-          total > 0 || loading ? (
-            <Pagination
-              page={page}
-              pageSize={size}
-              total={total}
-              loading={loading}
-              onPageChange={setPage}
-              onPageSizeChange={(next: number) => {
-                setSize(next);
-                setPage(0);
-              }}
-              rangeLabel={t("balanceMovements.range", {
-                from,
-                to,
-                total,
-              })}
-            />
-          ) : null
+          <Pagination
+            page={page}
+            pageSize={size}
+            total={total}
+            loading={loading}
+            onPageChange={setPage}
+            onPageSizeChange={(next: number) => {
+              setSize(next);
+              setPage(0);
+            }}
+            rangeLabel={t("balanceMovements.range", {
+              from,
+              to,
+              total,
+            })}
+          />
         }
       >
         <table
-          className="w-full table-fixed border-collapse text-left text-sm"
-          style={{ minWidth: showDirection ? 1040 : 960 }}
+          className="w-full table-fixed border-collapse text-left"
+          style={{ minWidth: TABLE_MIN_WIDTH }}
         >
+          <colgroup>
+            <col style={{ width: `${COL_MIN.stt}px` }} />
+            <col style={{ width: `${COL_MIN.created}px` }} />
+            <col style={{ width: `${COL_MIN.direction}px` }} />
+            <col style={{ width: `${COL_MIN.amount}px` }} />
+            <col />
+            <col style={{ width: `${COL_MIN.account}px` }} />
+            <col style={{ width: `${COL_MIN.status}px` }} />
+            <col style={{ width: `${COL_MIN.device}px` }} />
+            <col style={{ width: `${COL_MIN.payin}px` }} />
+          </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className="w-[9.5rem] px-3 py-3">
-                <ColumnHeader>{t("balanceMovements.colCreatedAt")}</ColumnHeader>
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className="px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("balanceMovements.colStt")}
+                </ColumnHeader>
               </th>
-              {showDirection ? (
-                <th className="w-[4.5rem] px-3 py-3 text-center">
+              <th className="px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
+                  {t("balanceMovements.colCreatedAt")}
+                </ColumnHeader>
+              </th>
+              <th className="px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
                   {t("balanceMovements.colDirection")}
-                </th>
-              ) : null}
-              <th className="w-[8rem] px-3 py-3 text-right">
-                <ColumnHeader align="right">{t("balanceMovements.colAmount")}</ColumnHeader>
+                </ColumnHeader>
               </th>
-              <th className="min-w-[12rem] px-3 py-3">
-                {t("balanceMovements.colContent")}
+              <th className="px-3 py-2.5 text-right">
+                <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                  {t("balanceMovements.colAmount")}
+                </ColumnHeader>
               </th>
-              <th className="w-[11rem] px-3 py-3">
-                {t("balanceMovements.colAccount")}
+              <th className="min-w-0 px-3 py-2.5">
+                <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                  {t("balanceMovements.colContent")}
+                </ColumnHeader>
               </th>
-              <th className="w-[9rem] px-3 py-3 text-center">
-                {t("balanceMovements.colStatus")}
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconBank width={14} height={14} />}>
+                  {t("balanceMovements.colAccount")}
+                </ColumnHeader>
               </th>
-              <th className="w-[8rem] px-3 py-3">
-                {t("balanceMovements.colDevice")}
+              <th className="px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
+                  {t("balanceMovements.colStatus")}
+                </ColumnHeader>
               </th>
-              <th className="w-[9rem] px-3 py-3">
-                {t("balanceMovements.colPayin")}
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconSmartphone width={14} height={14} />}>
+                  {t("balanceMovements.colDevice")}
+                </ColumnHeader>
+              </th>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                  {t("balanceMovements.colPayin")}
+                </ColumnHeader>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-edge">
+          <tbody>
             {loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-3 py-10 text-center text-muted">
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
                   {t("balanceMovements.loading")}
                 </td>
               </tr>
             ) : null}
-            {!loading && rows.length === 0 && !error ? (
+
+            {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-3 py-10 text-center text-muted">
-                  <p>
-                    {hasFilters
-                      ? t("balanceMovements.emptyFiltered")
-                      : t("balanceMovements.empty")}
-                  </p>
-                  {!hasFilters ? (
-                    <p className="mt-1 text-caption">{t("balanceMovements.emptyHint")}</p>
-                  ) : null}
+                <td colSpan={colSpan} className="px-3 py-16">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
+                    >
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {error
+                        ? t("balanceMovements.loadError")
+                        : hasFilters
+                          ? t("balanceMovements.emptyFiltered")
+                          : t("balanceMovements.empty")}
+                    </p>
+                    {!error && hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("balanceMovements.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : null}
-            {rows.map((row) => (
-              <MovementRow key={row.id} row={row} showDirection={showDirection} />
+
+            {rows.map((row, idx) => (
+              <MovementRow key={row.id} row={row} index={page * size + idx + 1} />
             ))}
           </tbody>
         </table>
@@ -342,72 +406,92 @@ export function BalanceMovementsPage() {
 
 function MovementRow({
   row,
-  showDirection,
+  index,
 }: {
   row: BalanceMovementListItem;
-  showDirection: boolean;
+  index: number;
 }) {
   const { t } = useI18n();
-  const accountLabel =
-    row.bankCode && row.bankAccountNumber
-      ? `${row.bankCode} · ${row.bankAccountNumber}`
-      : row.bankAccountNumber || "—";
+  const isOut = row.direction === "OUT";
 
   return (
-    <tr className="hover:bg-panel-2/60">
-      <td className="whitespace-nowrap px-3 py-3 align-top text-ink-secondary">
+    <tr className="border-b border-edge hover:bg-surface/70">
+      <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
+        {index}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
         <DateTimeText value={row.createdAt} />
       </td>
-      {showDirection ? (
-        <td className="px-3 py-3 text-center align-top">
-          <StatusBadge tone={row.direction === "OUT" ? "danger" : "info"}>
-            {row.direction === "OUT"
-              ? t("balanceMovements.directionOut")
-              : t("balanceMovements.directionIn")}
-          </StatusBadge>
-        </td>
-      ) : null}
-      <td className="px-3 py-3 text-right align-top">
-        <MoneyAmount
-          value={row.amount}
-          amountClassName={
-            row.direction === "OUT" ? "font-medium text-ink" : "font-medium text-success"
-          }
-        />
+      <td className="px-3 py-2.5 text-center">
+        <StatusBadge tone={isOut ? "danger" : "info"}>
+          {isOut ? t("balanceMovements.directionOut") : t("balanceMovements.directionIn")}
+        </StatusBadge>
       </td>
-      <td className="px-3 py-3 align-top" title={row.transferContent ?? undefined}>
+      <td className="px-3 py-2.5 text-right">
+        <MoneyAmount value={row.amount} />
+      </td>
+      <td className="px-3 py-2.5">
         {row.transferContent ? (
-          <span className="inline-flex max-w-full items-center gap-1">
-            <span className="truncate font-mono text-caption">{row.transferContent}</span>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span
+              className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption text-ink ring-1 ring-inset ring-edge"
+              title={row.transferContent}
+            >
+              {row.transferContent}
+            </span>
             <CopyButton value={row.transferContent} label={t("balanceMovements.copyContent")} />
-          </span>
+          </div>
         ) : (
-          "—"
+          <span className="text-label text-muted">—</span>
         )}
       </td>
-      <td className="truncate px-3 py-3 align-top font-mono text-caption" title={accountLabel}>
-        {accountLabel}
+      <td className="px-3 py-2.5">
+        {row.bankCode || row.bankAccountNumber ? (
+          <div
+            className="flex min-w-0 items-center gap-1.5"
+            title={[row.bankCode, row.bankAccountNumber].filter(Boolean).join(" · ")}
+          >
+            {row.bankCode ? (
+              <span className="inline-flex shrink-0 rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge">
+                {row.bankCode}
+              </span>
+            ) : null}
+            {row.bankAccountNumber ? (
+              <span className="truncate font-mono text-caption text-muted">
+                {row.bankAccountNumber}
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          <span className="text-label text-muted">—</span>
+        )}
       </td>
-      <td className="px-3 py-3 text-center align-top">
+      <td className="px-3 py-2.5 text-center">
         <ProcessStatusCell row={row} />
       </td>
-      <td
-        className="truncate px-3 py-3 align-top font-mono text-caption"
-        title={row.deviceId ?? undefined}
-      >
-        {row.deviceId || "—"}
+      <td className="px-3 py-2.5">
+        {row.deviceId ? (
+          <span
+            className="block truncate font-mono text-caption text-muted"
+            title={row.deviceId}
+          >
+            {row.deviceId}
+          </span>
+        ) : (
+          <span className="text-label text-muted">—</span>
+        )}
       </td>
-      <td className="truncate px-3 py-3 align-top font-mono text-caption">
+      <td className="px-3 py-2.5">
         {row.payinRequestId ? (
           <Link
             href={`${ROUTES.payin}?q=${encodeURIComponent(row.payinRequestId)}`}
-            className="text-nav-active-fg underline-offset-2 hover:underline"
-            title={row.payinOrderId ?? undefined}
+            className="block truncate font-mono text-caption text-ink transition hover:text-link-hover hover:underline"
+            title={row.payinOrderId ?? row.payinRequestId}
           >
             {row.payinRequestId}
           </Link>
         ) : (
-          "—"
+          <span className="text-label text-muted">—</span>
         )}
       </td>
     </tr>
@@ -421,61 +505,73 @@ function ProcessStatusCell({ row }: { row: BalanceMovementListItem }) {
   const isDuplicate = status === "duplicate";
   const bankTxnId = row.bankTxnId?.trim() || "";
   const payinRequestId = row.payinRequestId?.trim() || "";
+  const hasErrorDetail = Boolean(errorKey && row.processError);
   const showDuplicateTooltip =
-    isDuplicate && (Boolean(bankTxnId) || Boolean(payinRequestId) || Boolean(errorKey));
+    isDuplicate && (Boolean(bankTxnId) || Boolean(payinRequestId) || hasErrorDetail);
+  const showErrorTooltip = !isDuplicate && hasErrorDetail;
+  const showTooltip = showDuplicateTooltip || showErrorTooltip;
 
   const badge = (
-    <StatusBadge tone={statusTone(status)} className={showDuplicateTooltip ? "cursor-help" : undefined}>
+    <StatusBadge tone={statusTone(status)} className={showTooltip ? "cursor-help" : undefined}>
       {t(statusLabelKey(status))}
     </StatusBadge>
   );
 
-  if (showDuplicateTooltip) {
-    const txnHref = bankTxnId
-      ? `${ROUTES.balanceMovements}?q=${encodeURIComponent(bankTxnId)}`
-      : null;
-    return (
-      <div className="group relative inline-flex justify-center" tabIndex={0}>
-        {badge}
-        <div
-          role="tooltip"
-          className="invisible absolute left-1/2 top-full z-30 mt-1.5 w-max max-w-[18rem] -translate-x-1/2 rounded-md border border-edge bg-elevated px-2.5 py-2 text-left shadow-md group-hover:visible group-focus-within:visible"
-        >
-          <p className="text-caption text-muted">{t("balanceMovements.duplicateTooltipHint")}</p>
-          <div className="mt-1.5 flex flex-col gap-1">
-            {txnHref ? (
-              <Link
-                href={txnHref}
-                className="font-mono text-caption text-nav-active-fg underline-offset-2 hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {t("balanceMovements.duplicateLinkTxn", { id: bankTxnId })}
-              </Link>
-            ) : null}
-            {payinRequestId ? (
-              <Link
-                href={`${ROUTES.payin}?q=${encodeURIComponent(payinRequestId)}`}
-                className="font-mono text-caption text-nav-active-fg underline-offset-2 hover:underline"
-                title={row.payinOrderId ?? undefined}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {t("balanceMovements.duplicateLinkPayin", { id: payinRequestId })}
-              </Link>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    );
+  if (!showTooltip) {
+    return <div className="inline-flex justify-center">{badge}</div>;
   }
 
+  const txnHref = bankTxnId
+    ? `${ROUTES.balanceMovements}?q=${encodeURIComponent(bankTxnId)}`
+    : null;
+
   return (
-    <div className="inline-flex flex-col items-center gap-1">
+    <div className="group relative inline-flex justify-center" tabIndex={0}>
       {badge}
-      {errorKey && row.processError ? (
-        <p className="max-w-[10rem] truncate text-caption text-muted" title={row.processError}>
-          {t(errorKey)}
-        </p>
-      ) : null}
+      <div
+        role="tooltip"
+        className="invisible absolute left-1/2 top-full z-30 mt-1.5 w-max max-w-[18rem] -translate-x-1/2 rounded-md border border-edge bg-elevated px-2.5 py-2 text-left shadow-md group-hover:visible group-focus-within:visible"
+      >
+        {showDuplicateTooltip ? (
+          <>
+            <p className="text-caption text-muted">{t("balanceMovements.duplicateTooltipHint")}</p>
+            <div className="mt-1.5 flex flex-col gap-1">
+              {txnHref ? (
+                <Link
+                  href={txnHref}
+                  className="font-mono text-caption text-nav-active-fg underline-offset-2 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {t("balanceMovements.duplicateLinkTxn", { id: bankTxnId })}
+                </Link>
+              ) : null}
+              {payinRequestId ? (
+                <Link
+                  href={`${ROUTES.payin}?q=${encodeURIComponent(payinRequestId)}`}
+                  className="font-mono text-caption text-nav-active-fg underline-offset-2 hover:underline"
+                  title={row.payinOrderId ?? undefined}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {t("balanceMovements.duplicateLinkPayin", { id: payinRequestId })}
+                </Link>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+        {hasErrorDetail && errorKey ? (
+          <p
+            className={`text-caption text-ink ${showDuplicateTooltip ? "mt-1.5 border-t border-edge pt-1.5 text-muted" : ""}`}
+            title={row.processError ?? undefined}
+          >
+            {t(errorKey)}
+          </p>
+        ) : null}
+        {row.processError && errorKey === "balanceMovements.errorGeneric" ? (
+          <p className="mt-1 break-words font-mono text-caption text-muted" title={row.processError}>
+            {row.processError}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

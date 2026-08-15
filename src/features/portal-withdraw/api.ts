@@ -43,10 +43,6 @@ export const portalWithdrawApi = {
     );
   },
 
-  get(isAgent: boolean, id: string): Promise<WithdrawOrderListItem> {
-    return unwrap(apiClient.get(`${basePath(isAgent)}/${id}`));
-  },
-
   async export(
     isAgent: boolean,
     params: Omit<WithdrawOrderListParams, "page" | "size"> = {},

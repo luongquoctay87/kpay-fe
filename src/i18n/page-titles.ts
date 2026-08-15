@@ -18,6 +18,7 @@ export function getPageTitleKey(pathname: string): MessageKey {
   if (pathname.startsWith(ROUTES.callbackLogs)) return "pages.callback";
   if (pathname.startsWith(ROUTES.auditLogs)) return "pages.auditLogs";
   if (pathname.startsWith(ROUTES.moneyFlowLogs)) return "pages.moneyFlowLogs";
+  if (pathname.startsWith(`${ROUTES.bankAccounts}/`)) return "pages.bankAccountDetail";
   if (pathname.startsWith(ROUTES.bankAccounts)) return "pages.bankAccounts";
   if (pathname.startsWith(ROUTES.bankReconciliations)) {
     return "pages.bankReconciliation";
@@ -30,6 +31,7 @@ export function getPageTitleKey(pathname: string): MessageKey {
   }
   if (pathname.startsWith(ROUTES.settingsUsers + "/")) return "pages.settingsUserDetail";
   if (pathname.startsWith(ROUTES.settingsUsers)) return "pages.settingsUsers";
+  if (pathname.startsWith(ROUTES.settingsRoles + "/")) return "pages.settingsRoleDetail";
   if (pathname.startsWith(ROUTES.settingsRoles)) return "pages.settingsRoles";
   if (pathname.startsWith(ROUTES.profile)) return "pages.profile";
   return "pages.fallback";

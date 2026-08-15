@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { IconPlus, IconRefresh, IconUsers } from "@/components/icons/NavIcons";
-import { PageHeader } from "@/components/common";
+import { IconLayers, IconPlus, IconRefresh, IconUsers, IconWallet } from "@/components/icons/NavIcons";
+import { ColumnHeader, PageHeader } from "@/components/common";
 import { Button, Field, Input, toast } from "@/components/ui";
 import { merchantApi } from "@/features/merchants/api";
 import { MerchantCredentialsModal } from "@/features/merchants/components/MerchantCredentialsModal";
@@ -359,9 +359,15 @@ export function MerchantCreatePage() {
                   <table className="w-full min-w-[260px] border-collapse text-left">
                     <thead>
                       <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-                        <th className="px-3 py-2 font-medium">{t("merchantNew.colChannel")}</th>
-                        <th className="w-[110px] px-3 py-2 font-medium sm:w-[140px]">
-                          {t("merchantNew.colFeeRate")}
+                        <th className="px-3 py-2.5">
+                          <ColumnHeader icon={<IconLayers width={14} height={14} />}>
+                            {t("merchantNew.colChannel")}
+                          </ColumnHeader>
+                        </th>
+                        <th className="w-[110px] px-3 py-2.5 sm:w-[140px]">
+                          <ColumnHeader icon={<IconWallet width={14} height={14} />}>
+                            {t("merchantNew.colFeeRate")}
+                          </ColumnHeader>
                         </th>
                       </tr>
                     </thead>

@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type FormEvent,
@@ -35,8 +36,10 @@ import {
   IconFileText,
   IconHash,
   IconHeadset,
+  IconInbox,
   IconRefresh,
   IconSearch,
+  IconSettings,
   IconStore,
   IconUser,
   IconWithdraw,
@@ -53,6 +56,20 @@ import {
   WITHDRAW_STATUS_OPTIONS,
 } from "@/features/portal-withdraw/types";
 import { withdrawApi } from "@/features/withdraw/api";
+import {
+  WITHDRAW_COLUMN_ALIGN,
+  WITHDRAW_COLUMN_MIN_PX,
+  WITHDRAW_COLUMN_WIDTH,
+  WITHDRAW_COLUMNS,
+  defaultColumnVisibility,
+  loadColumnVisibility,
+  saveColumnVisibility,
+  visibleColumnCount,
+  withdrawTableMinWidth,
+  type ColumnVisibility,
+  type WithdrawColumn,
+} from "@/features/withdraw/columns";
+import { ColumnPicker } from "@/features/withdraw/components/ColumnPicker";
 import { CUSTOMER_OWNER_TONE } from "@/features/customers/status";
 import { ApproveWithdrawModal } from "@/features/withdraw/components/ApproveWithdrawModal";
 import { FinalizeWithdrawModal } from "@/features/withdraw/components/FinalizeWithdrawModal";
@@ -66,9 +83,6 @@ import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
-
-const TABLE_MIN_WIDTH = 1120;
-const ACTION_COL_WIDTH = 108;
 
 const EMPTY_LIST = {
   rows: [] as WithdrawOrderListItem[],
@@ -91,6 +105,28 @@ export function AdminWithdrawPage() {
   const [approveRow, setApproveRow] = useState<WithdrawOrderListItem | null>(null);
   const [rejectRow, setRejectRow] = useState<WithdrawOrderListItem | null>(null);
   const [finalizeRow, setFinalizeRow] = useState<WithdrawOrderListItem | null>(null);
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
+    defaultColumnVisibility,
+  );
+
+  useEffect(() => {
+    setColumnVisibility(loadColumnVisibility());
+  }, []);
+
+  function onColumnVisibilityChange(next: ColumnVisibility) {
+    setColumnVisibility(next);
+    saveColumnVisibility(next);
+  }
+
+  const show = columnVisibility;
+
+  function colWidth(col: WithdrawColumn | "stt" | "actions"): string {
+    return `${WITHDRAW_COLUMN_MIN_PX[col]}px`;
+  }
+
+  function thClass(col: WithdrawColumn | "stt" | "actions"): string {
+    return `${WITHDRAW_COLUMN_WIDTH[col]} ${WITHDRAW_COLUMN_ALIGN[col]} whitespace-nowrap px-3 py-2.5`;
+  }
 
   const [qDraft, setQDraft] = useState("");
   const [statusDraft, setStatusDraft] = useState<WithdrawStatus | null>(null);
@@ -158,7 +194,7 @@ export function AdminWithdrawPage() {
 
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
-  const colSpan = canWrite ? 10 : 9;
+  const colSpan = visibleColumnCount(columnVisibility) + (canWrite ? 1 : 0);
 
   const pageTotals = useMemo(() => {
     let amount = 0;
@@ -229,10 +265,28 @@ export function AdminWithdrawPage() {
     return row.merchantName ?? row.merchantCode ?? t("withdraw.ownerMerchant");
   }
 
+  function ownerCode(row: WithdrawOrderListItem) {
+    if (row.ownerType === "merchant") return row.merchantCode ?? null;
+    return null;
+  }
+
   function ownerHref(row: WithdrawOrderListItem) {
     if (row.ownerType === "agent" && row.agentId) return ROUTES.agentDetail(row.agentId);
     if (row.ownerType === "merchant" && row.merchantId) {
       return ROUTES.merchantDetail(row.merchantId);
+    }
+    return null;
+  }
+
+  function actionMeta(row: WithdrawOrderListItem): string | null {
+    if (row.status === "processing") {
+      return row.realStatus ?? row.bankErrorCode ?? null;
+    }
+    if (row.status === "rejected" || row.status === "failed") {
+      return row.rejectReason ?? row.processedByUsername ?? null;
+    }
+    if (row.status === "success") {
+      return row.processedByUsername ?? null;
     }
     return null;
   }
@@ -412,16 +466,19 @@ export function AdminWithdrawPage() {
 
       <TableCard
         toolbar={
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            loading={exporting}
-            onClick={() => void onExport()}
-            leftIcon={<IconDownload width={15} height={15} />}
-          >
-            {t("withdraw.export")}
-          </Button>
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              loading={exporting}
+              onClick={() => void onExport()}
+              leftIcon={<IconDownload width={15} height={15} />}
+            >
+              {t("withdraw.export")}
+            </Button>
+            <ColumnPicker visibility={columnVisibility} onChange={onColumnVisibilityChange} />
+          </div>
         }
         error={error}
         onRetry={refresh}
@@ -446,57 +503,83 @@ export function AdminWithdrawPage() {
       >
         <table
           className="w-full table-fixed border-collapse text-left"
-          style={{ minWidth: TABLE_MIN_WIDTH + (canWrite ? ACTION_COL_WIDTH : 0) }}
+          style={{ minWidth: withdrawTableMinWidth(columnVisibility, canWrite) }}
         >
+          <colgroup>
+            <col style={{ width: colWidth("stt") }} />
+            {WITHDRAW_COLUMNS.map((col) =>
+              show[col] ? <col key={col} style={{ width: colWidth(col) }} /> : null,
+            )}
+            {canWrite ? <col style={{ width: colWidth("actions") }} /> : null}
+          </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className="w-12 px-3 py-3 text-center">{t("withdraw.colStt")}</th>
-              <th className="w-[148px] px-3 py-3">
-                <ColumnHeader icon={<IconUser width={13} height={13} />}>
-                  {t("withdraw.colOwner")}
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className={thClass("stt")}>
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("withdraw.colStt")}
                 </ColumnHeader>
               </th>
-              <th className="w-[108px] px-3 py-3 text-center">
-                <ColumnHeader align="center" icon={<IconActivity width={13} height={13} />}>
-                  {t("withdraw.colStatus")}
-                </ColumnHeader>
-              </th>
-              <th className="w-[120px] px-3 py-3 text-right">
-                <ColumnHeader align="right" icon={<IconWithdraw width={13} height={13} />}>
-                  {t("withdraw.colAmount")}
-                </ColumnHeader>
-              </th>
-              <th className="w-[88px] px-3 py-3 text-center">
-                <ColumnHeader align="center" icon={<IconBank width={13} height={13} />}>
-                  {t("withdraw.colBank")}
-                </ColumnHeader>
-              </th>
-              <th className="w-[132px] px-3 py-3">
-                <ColumnHeader icon={<IconUser width={13} height={13} />}>
-                  {t("withdraw.colBeneficiaryName")}
-                </ColumnHeader>
-              </th>
-              <th className="w-[140px] px-3 py-3">
-                <ColumnHeader icon={<IconHash width={13} height={13} />}>
-                  {t("withdraw.colAccountNumber")}
-                </ColumnHeader>
-              </th>
-              <th className="min-w-[140px] px-3 py-3">
-                <ColumnHeader icon={<IconFileText width={13} height={13} />}>
-                  {t("withdraw.colTransferContent")}
-                </ColumnHeader>
-              </th>
-              <th className="w-[152px] px-3 py-3 text-center">
-                <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
-                  {t("withdraw.colCreatedAt")}
-                </ColumnHeader>
-              </th>
+              {show.owner ? (
+                <th className={thClass("owner")}>
+                  <ColumnHeader icon={<IconUser width={14} height={14} />}>
+                    {t("withdraw.colOwner")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.status ? (
+                <th className={thClass("status")}>
+                  <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
+                    {t("withdraw.colStatus")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.amount ? (
+                <th className={thClass("amount")}>
+                  <ColumnHeader align="right" icon={<IconWithdraw width={14} height={14} />}>
+                    {t("withdraw.colAmount")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.bank ? (
+                <th className={thClass("bank")}>
+                  <ColumnHeader align="center" icon={<IconBank width={14} height={14} />}>
+                    {t("withdraw.colBank")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.beneficiary ? (
+                <th className={thClass("beneficiary")}>
+                  <ColumnHeader icon={<IconUser width={14} height={14} />}>
+                    {t("withdraw.colBeneficiaryName")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.account ? (
+                <th className={thClass("account")}>
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                    {t("withdraw.colAccountNumber")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.transferContent ? (
+                <th className={thClass("transferContent")}>
+                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                    {t("withdraw.colTransferContent")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.created ? (
+                <th className={thClass("created")}>
+                  <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
+                    {t("withdraw.colCreatedAt")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
               {canWrite ? (
-                <th
-                  className="px-3 py-3 text-center"
-                  style={{ width: ACTION_COL_WIDTH }}
-                >
-                  {t("withdraw.colActions")}
+                <th className={thClass("actions")}>
+                  <ColumnHeader align="center" icon={<IconSettings width={14} height={14} />}>
+                    {t("withdraw.colActions")}
+                  </ColumnHeader>
                 </th>
               ) : null}
             </tr>
@@ -512,127 +595,172 @@ export function AdminWithdrawPage() {
 
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
-                  {error
-                    ? t("withdraw.loadError")
-                    : hasFilters
-                      ? t("withdraw.emptyFiltered")
-                      : t("withdraw.empty")}
+                <td colSpan={colSpan} className="px-3 py-16">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
+                    >
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {error
+                        ? t("withdraw.loadError")
+                        : hasFilters
+                          ? t("withdraw.emptyFiltered")
+                          : t("withdraw.empty")}
+                    </p>
+                    {!error && hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("common.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : null}
 
             {rows.map((row, idx) => {
               const href = ownerHref(row);
-              const bankLabel = row.bankCode ?? row.bankName;
+              const code = ownerCode(row);
+              const name = ownerLabel(row);
+              const meta = actionMeta(row);
 
               return (
                 <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
-                  <td className="px-3 py-3 text-center font-mono text-label tabular-nums text-muted">
+                  <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                     {page * size + idx + 1}
                   </td>
-                  <td className="px-3 py-3">
-                    <div className="flex min-w-0 flex-col gap-1">
-                      <StatusBadge
-                        tone={CUSTOMER_OWNER_TONE[row.ownerType]}
-                        className="gap-1"
-                      >
-                        {row.ownerType === "agent" ? (
-                          <IconHeadset width={11} height={11} />
+                  {show.owner ? (
+                    <td className="min-w-0 overflow-hidden px-3 py-2.5">
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <StatusBadge
+                          tone={CUSTOMER_OWNER_TONE[row.ownerType]}
+                          className="w-fit gap-1"
+                        >
+                          {row.ownerType === "agent" ? (
+                            <IconHeadset width={11} height={11} />
+                          ) : (
+                            <IconStore width={11} height={11} />
+                          )}
+                          {row.ownerType === "agent"
+                            ? t("withdraw.ownerAgent")
+                            : t("withdraw.ownerMerchant")}
+                        </StatusBadge>
+                        {href ? (
+                          <Link
+                            href={href}
+                            className="block max-w-full truncate text-label font-medium text-ink transition hover:text-link-hover hover:underline"
+                            title={name}
+                          >
+                            {code ?? name}
+                          </Link>
                         ) : (
-                          <IconStore width={11} height={11} />
+                          <span className="block truncate text-label font-medium text-ink" title={name}>
+                            {code ?? name}
+                          </span>
                         )}
-                        {row.ownerType === "agent"
-                          ? t("withdraw.ownerAgent")
-                          : t("withdraw.ownerMerchant")}
+                        {code && name !== code ? (
+                          <p className="truncate text-caption text-muted" title={name}>
+                            {name}
+                          </p>
+                        ) : null}
+                      </div>
+                    </td>
+                  ) : null}
+                  {show.status ? (
+                    <td className="whitespace-nowrap px-3 py-2.5 text-center">
+                      <StatusBadge tone={WITHDRAW_STATUS_TONE[row.status]}>
+                        {t(WITHDRAW_STATUS_LABEL_KEY[row.status])}
                       </StatusBadge>
-                      {href ? (
-                        <Link
-                          href={href}
-                          className="truncate text-label font-medium text-ink transition hover:text-link-hover hover:underline"
-                          title={ownerLabel(row)}
+                    </td>
+                  ) : null}
+                  {show.amount ? (
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
+                      {formatMoney(row.amount)}
+                    </td>
+                  ) : null}
+                  {show.bank ? (
+                    <td className="whitespace-nowrap px-3 py-2.5 text-center">
+                      {row.bankCode ? (
+                        <span
+                          className="inline-flex rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
+                          title={row.bankName ?? row.bankCode}
                         >
-                          {ownerLabel(row)}
-                        </Link>
+                          {row.bankCode}
+                        </span>
                       ) : (
-                        <span
-                          className="truncate text-label font-medium text-ink"
-                          title={ownerLabel(row)}
-                        >
-                          {ownerLabel(row)}
-                        </span>
+                        <span className="text-label text-muted">—</span>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <StatusBadge tone={WITHDRAW_STATUS_TONE[row.status]}>
-                      {t(WITHDRAW_STATUS_LABEL_KEY[row.status])}
-                    </StatusBadge>
-                  </td>
-                  <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
-                    {formatMoney(row.amount)}
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    {bankLabel ? (
+                    </td>
+                  ) : null}
+                  {show.beneficiary ? (
+                    <td className="min-w-0 overflow-hidden px-3 py-2.5">
                       <span
-                        className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
-                        title={row.bankName ?? row.bankCode ?? undefined}
+                        className="block truncate text-label text-ink"
+                        title={row.beneficiaryName ?? undefined}
                       >
-                        {bankLabel}
+                        {row.beneficiaryName ?? "—"}
                       </span>
-                    ) : (
-                      <span className="text-label text-muted">—</span>
-                    )}
-                  </td>
-                  <td
-                    className="truncate px-3 py-3 text-label text-ink"
-                    title={row.beneficiaryName ?? undefined}
-                  >
-                    {row.beneficiaryName ?? "—"}
-                  </td>
-                  <td className="px-3 py-3">
-                    {row.accountNumber ? (
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <span
-                          className="truncate font-mono text-label text-ink"
-                          title={row.accountNumber}
-                        >
-                          {row.accountNumber}
-                        </span>
-                        <CopyButton
-                          value={row.accountNumber}
-                          label={t("withdraw.copyAccount")}
-                        />
-                      </div>
-                    ) : (
-                      <span className="text-label text-muted">—</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3">
-                    {row.transferContent ? (
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <span
-                          className="truncate text-label text-ink-secondary"
-                          title={row.transferContent}
-                        >
-                          {row.transferContent}
-                        </span>
-                        <CopyButton
-                          value={row.transferContent}
-                          label={t("withdraw.copyTransferContent")}
-                        />
-                      </div>
-                    ) : (
-                      <span className="text-label text-muted">—</span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
-                    <DateTimeText value={row.createdAt} />
-                  </td>
+                    </td>
+                  ) : null}
+                  {show.account ? (
+                    <td className="whitespace-nowrap px-3 py-2.5">
+                      {row.accountNumber ? (
+                        <div className="inline-flex items-center gap-0.5">
+                          <span
+                            className="font-mono text-caption font-medium tabular-nums text-ink"
+                            title={row.accountNumber}
+                          >
+                            {row.accountNumber}
+                          </span>
+                          <CopyButton
+                            value={row.accountNumber}
+                            label={t("withdraw.copyAccount")}
+                            className="h-7 w-7"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-label text-muted">—</span>
+                      )}
+                    </td>
+                  ) : null}
+                  {show.transferContent ? (
+                    <td className="min-w-0 overflow-hidden px-3 py-2.5">
+                      {row.transferContent ? (
+                        <div className="flex min-w-0 items-center gap-0.5">
+                          <span
+                            className="truncate font-mono text-caption text-muted"
+                            title={row.transferContent}
+                          >
+                            {row.transferContent}
+                          </span>
+                          <CopyButton
+                            value={row.transferContent}
+                            label={t("withdraw.copyTransferContent")}
+                            className="h-7 w-7"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-label text-muted">—</span>
+                      )}
+                    </td>
+                  ) : null}
+                  {show.created ? (
+                    <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
+                      <DateTimeText value={row.createdAt} />
+                    </td>
+                  ) : null}
                   {canWrite ? (
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-3 py-2.5 text-center">
                       {row.status === "pending" ? (
-                        <div className="flex items-center justify-center gap-0.5">
+                        <div className="inline-flex items-center justify-center gap-0.5">
                           <ActionTooltip label={t("withdraw.btnApprove")}>
                             <Button
                               type="button"
@@ -657,43 +785,28 @@ export function AdminWithdrawPage() {
                           </ActionTooltip>
                         </div>
                       ) : row.status === "processing" ? (
-                        <div className="flex flex-col items-center gap-1">
-                          {row.realStatus || row.bankErrorCode ? (
-                            <span
-                              className="max-w-full truncate font-mono text-caption text-muted"
-                              title={row.realStatus ?? row.bankErrorCode ?? undefined}
-                            >
-                              {row.realStatus ?? row.bankErrorCode}
-                            </span>
-                          ) : null}
-                          <ActionTooltip label={t("withdraw.btnFinalize")}>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              iconOnly
-                              aria-label={t("withdraw.btnFinalize")}
-                              leftIcon={<IconCheckCircle width={15} height={15} />}
-                              onClick={() => setFinalizeRow(row)}
-                            />
-                          </ActionTooltip>
-                        </div>
-                      ) : row.rejectReason ? (
-                        <span
-                          className="line-clamp-2 text-caption text-danger"
-                          title={row.rejectReason}
+                        <ActionTooltip
+                          label={
+                            meta
+                              ? `${t("withdraw.btnFinalize")} · ${meta}`
+                              : t("withdraw.btnFinalize")
+                          }
                         >
-                          {row.rejectReason}
-                        </span>
-                      ) : row.processedByUsername ? (
-                        <span
-                          className="truncate text-caption text-muted"
-                          title={row.processedByUsername}
-                        >
-                          {row.processedByUsername}
-                        </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            iconOnly
+                            aria-label={t("withdraw.btnFinalize")}
+                            title={meta ?? undefined}
+                            leftIcon={<IconCheckCircle width={15} height={15} />}
+                            onClick={() => setFinalizeRow(row)}
+                          />
+                        </ActionTooltip>
                       ) : (
-                        <span className="text-caption text-subtle">—</span>
+                        <span className="text-caption text-muted" title={meta ?? undefined}>
+                          —
+                        </span>
                       )}
                     </td>
                   ) : null}
@@ -703,12 +816,22 @@ export function AdminWithdrawPage() {
 
             {!loading && rows.length > 0 ? (
               <tr className="border-t border-edge bg-surface/50">
-                <td className="px-3 py-3 text-label font-semibold text-ink">{t("withdraw.totalRow")}</td>
-                <td colSpan={2} />
-                <td className="px-3 py-3 text-right font-mono text-label font-semibold tabular-nums text-ink">
-                  {formatMoney(pageTotals.amount)}
+                <td
+                  colSpan={1 + Number(show.owner) + Number(show.status)}
+                  className="px-3 py-2.5 text-label font-semibold text-ink"
+                >
+                  {t("withdraw.totalRow")}
                 </td>
-                <td colSpan={canWrite ? 5 : 4} />
+                {show.amount ? (
+                  <td className="whitespace-nowrap px-3 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink">
+                    {formatMoney(pageTotals.amount)}
+                  </td>
+                ) : null}
+                {show.bank ? <td /> : null}
+                {show.beneficiary ? <td /> : null}
+                {show.account ? <td /> : null}
+                {show.transferContent ? <td /> : null}
+                {show.created ? <td /> : null}
                 {canWrite ? <td /> : null}
               </tr>
             ) : null}

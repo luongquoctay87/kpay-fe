@@ -213,6 +213,16 @@ export function IconBan(props: IconProps) {
   );
 }
 
+/** Inbox rỗng — empty state */
+export function IconInbox(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+    </svg>
+  );
+}
+
 export function IconCheckCircle(props: IconProps) {
   return (
     <svg {...base(props)}>
@@ -241,7 +251,7 @@ export function IconSave(props: IconProps) {
   );
 }
 
-/** Reset / khóa mật khẩu */
+/** Reset / khóa mật khẩu / AccountKeys */
 export function IconKey(props: IconProps) {
   return (
     <svg {...base(props)}>
@@ -249,6 +259,19 @@ export function IconKey(props: IconProps) {
       <path d="M10.8 12.2 20 3" />
       <path d="M16 7l3 3" />
       <path d="M18.5 4.5 21 7" />
+    </svg>
+  );
+}
+
+/** Chưa có AccountKeys */
+export function IconKeyOff(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="8" cy="15" r="4" />
+      <path d="M10.8 12.2 20 3" />
+      <path d="M16 7l3 3" />
+      <path d="M18.5 4.5 21 7" />
+      <path d="M4 4l16 16" />
     </svg>
   );
 }

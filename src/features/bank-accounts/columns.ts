@@ -55,7 +55,7 @@ export const BANK_ACCOUNT_COLUMN_WIDTH: Record<BankAccountColumn, string> = {
 
 /** Pixel mins — drives horizontal scroll when the table is wider than the viewport. */
 export const BANK_ACCOUNT_COLUMN_MIN_PX: Record<BankAccountColumn, number> = {
-  account: 168,
+  account: 200,
   holder: 160,
   bank: 88,
   accountType: 104,

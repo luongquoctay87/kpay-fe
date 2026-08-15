@@ -119,99 +119,120 @@ export function CreateBlockedAccountModal({ onClose, onCreated }: CreateBlockedA
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !submitting) onClose();
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="blocked-account-create-title"
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-panel shadow-xl ring-1 ring-edge"
+        className="flex max-h-[min(100dvh-1.5rem,90vh)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
       >
-        <div className="flex items-start justify-between gap-3 border-b border-edge px-5 py-4">
-          <div>
-            <h2 id="blocked-account-create-title" className="text-base font-semibold text-ink">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-edge px-4 py-4 sm:px-5">
+          <div className="min-w-0">
+            <h2 id="blocked-account-create-title" className="kpay-text-title font-semibold text-ink">
               {t("blockedAccounts.modalCreateTitle")}
             </h2>
-            <p className="mt-1 text-sm text-muted">{t("blockedAccounts.modalHint")}</p>
+            <p className="mt-1 text-label text-muted">{t("blockedAccounts.modalHint")}</p>
           </div>
           <button
             type="button"
-            className="rounded-lg p-1.5 text-muted hover:bg-panel-2 hover:text-ink"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
             onClick={onClose}
             disabled={submitting}
             aria-label={t("blockedAccounts.btnCancel")}
           >
-            <IconX className="h-4 w-4" />
+            <IconX width={16} height={16} />
           </button>
         </div>
 
-        <form noValidate onSubmit={onSubmit} className="space-y-4 px-5 py-4">
-          <Field
-            label={t("blockedAccounts.labelBank")}
-            required
-            error={required.errorOf("bankCode")}
-          >
-            <Select
-              value={bankCode}
-              onChange={setBankCode}
-              options={bankOptions}
-              placeholder={
-                banksLoading ? t("common.loading") : t("blockedAccounts.placeholderBank")
-              }
-              searchable
-              searchPlaceholder={t("blockedAccounts.placeholderBankSearch")}
-              disabled={banksLoading || submitting}
-              invalid={Boolean(required.errorOf("bankCode"))}
-            />
-          </Field>
-          {banksError ? <p className="text-sm text-danger">{banksError}</p> : null}
+        <form noValidate onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
+            <Field
+              label={t("blockedAccounts.labelBank")}
+              required
+              error={required.errorOf("bankCode")}
+            >
+              <Select
+                value={bankCode}
+                onChange={setBankCode}
+                options={bankOptions}
+                placeholder={
+                  banksLoading ? t("common.loading") : t("blockedAccounts.placeholderBank")
+                }
+                searchable
+                searchPlaceholder={t("blockedAccounts.placeholderBankSearch")}
+                disabled={banksLoading || submitting}
+                invalid={Boolean(required.errorOf("bankCode"))}
+              />
+            </Field>
+            {banksError ? <p className="text-label text-danger">{banksError}</p> : null}
 
-          <Field
-            label={t("blockedAccounts.labelAccountNumber")}
-            required
-            error={required.errorOf("accountNumber")}
-          >
-            <Input
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              placeholder={t("blockedAccounts.placeholderAccountNumber")}
+            <Field
+              label={t("blockedAccounts.labelAccountNumber")}
+              required
+              error={required.errorOf("accountNumber")}
+            >
+              <Input
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                placeholder={t("blockedAccounts.placeholderAccountNumber")}
+                disabled={submitting}
+                invalid={Boolean(required.errorOf("accountNumber"))}
+                inputMode="numeric"
+                autoComplete="off"
+              />
+            </Field>
+
+            <Field
+              label={t("blockedAccounts.labelAccountName")}
+              required
+              error={required.errorOf("accountName")}
+            >
+              <Input
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
+                placeholder={t("blockedAccounts.placeholderAccountName")}
+                disabled={submitting}
+                invalid={Boolean(required.errorOf("accountName"))}
+              />
+            </Field>
+
+            <Field label={t("blockedAccounts.labelNote")}>
+              <Textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={t("blockedAccounts.placeholderNote")}
+                disabled={submitting}
+                rows={3}
+              />
+            </Field>
+
+            {error ? <p className="text-label text-danger">{error}</p> : null}
+          </div>
+
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              className="w-full sm:w-auto"
+              leftIcon={<IconX width={15} height={15} />}
+              onClick={onClose}
               disabled={submitting}
-              invalid={Boolean(required.errorOf("accountNumber"))}
-              inputMode="numeric"
-              autoComplete="off"
-            />
-          </Field>
-
-          <Field
-            label={t("blockedAccounts.labelAccountName")}
-            required
-            error={required.errorOf("accountName")}
-          >
-            <Input
-              value={accountName}
-              onChange={(e) => setAccountName(e.target.value)}
-              placeholder={t("blockedAccounts.placeholderAccountName")}
-              disabled={submitting}
-              invalid={Boolean(required.errorOf("accountName"))}
-            />
-          </Field>
-
-          <Field label={t("blockedAccounts.labelNote")}>
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={t("blockedAccounts.placeholderNote")}
-              disabled={submitting}
-              rows={3}
-            />
-          </Field>
-
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
-
-          <div className="flex justify-end gap-2 border-t border-edge pt-4">
-            <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
+            >
               {t("blockedAccounts.btnCancel")}
             </Button>
-            <Button type="submit" loading={submitting} leftIcon={<IconSave className="h-4 w-4" />}>
+            <Button
+              type="submit"
+              size="md"
+              className="w-full sm:w-auto"
+              loading={submitting}
+              leftIcon={<IconSave width={15} height={15} />}
+            >
               {t("blockedAccounts.btnCreate")}
             </Button>
           </div>

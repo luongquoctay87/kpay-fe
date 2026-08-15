@@ -86,7 +86,7 @@ export function AdjustBalanceModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="adj-balance-title"
-        className="flex w-full max-w-md flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
+        className="flex max-h-[min(100dvh-1.5rem,90vh)] w-full max-w-md flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl"
       >
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-edge px-4 py-4 sm:px-5">
           <p id="adj-balance-title" className="kpay-text-title font-semibold">
@@ -96,7 +96,7 @@ export function AdjustBalanceModal({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="rounded p-1 text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
             aria-label={labels.cancel}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
@@ -106,7 +106,7 @@ export function AdjustBalanceModal({
           </button>
         </div>
 
-        <div className="flex flex-col gap-4 p-4 sm:p-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-5">
           {currentBalance != null && labels.currentBalance ? (
             <p className="text-label text-ink">
               {labels.currentBalance}{" "}

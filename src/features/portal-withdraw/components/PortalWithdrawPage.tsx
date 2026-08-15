@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  ColumnHeader,
   DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
@@ -15,7 +16,18 @@ import {
   type DateRangeValue,
 } from "@/components/common";
 import { Button, Field, Input, Select, StatusBadge, toast } from "@/components/ui";
-import { IconDownload, IconRefresh, IconSearch } from "@/components/icons/NavIcons";
+import {
+  IconActivity,
+  IconBank,
+  IconClock,
+  IconDownload,
+  IconFileText,
+  IconHash,
+  IconRefresh,
+  IconSearch,
+  IconUser,
+  IconWithdraw,
+} from "@/components/icons/NavIcons";
 import { isAgentUser } from "@/features/auth/portal-role";
 import { useAuthStore } from "@/features/auth/store";
 import type { BankOption } from "@/features/bank-accounts/types";
@@ -216,13 +228,23 @@ export function PortalWithdrawPage() {
         title={t("pages.portalWithdraw")}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" size="sm" onClick={() => void refresh()}>
-              <IconRefresh width={14} height={14} />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              leftIcon={<IconRefresh width={14} height={14} />}
+              onClick={() => void refresh()}
+            >
               {t("withdraw.refresh")}
             </Button>
             {canCreate ? (
-              <Button type="button" variant="secondary" size="sm" onClick={() => void onExport()}>
-                <IconDownload width={14} height={14} />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                leftIcon={<IconDownload width={14} height={14} />}
+                onClick={() => void onExport()}
+              >
                 {t("withdraw.export")}
               </Button>
             ) : null}
@@ -315,7 +337,14 @@ export function PortalWithdrawPage() {
             />
           </Field>
           <div className="flex items-end">
-            <Button type="submit" variant="primary" size="md" loading={creating} className="w-full">
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              loading={creating}
+              className="w-full"
+              leftIcon={<IconWithdraw width={15} height={15} />}
+            >
               {t("withdraw.createSubmit")}
             </Button>
           </div>
@@ -362,11 +391,21 @@ export function PortalWithdrawPage() {
           <DateRangeFilter value={createdRangeDraft} onChange={setCreatedRangeDraft} />
         </FilterField>
         <div className="flex items-end gap-2">
-          <Button type="submit" variant="primary" size="sm">
-            <IconSearch width={14} height={14} />
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            leftIcon={<IconSearch width={14} height={14} />}
+          >
             {t("withdraw.search")}
           </Button>
-          <Button type="button" variant="secondary" size="sm" onClick={onReset}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            leftIcon={<IconRefresh width={14} height={14} />}
+            onClick={onReset}
+          >
             {t("withdraw.reset")}
           </Button>
         </div>
@@ -396,17 +435,53 @@ export function PortalWithdrawPage() {
       >
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-body">
-            <thead className="border-b border-edge bg-panel text-caption text-muted">
-              <tr>
-                <th className="px-3 py-2">{t("withdraw.colStt")}</th>
-                <th className="px-3 py-2">{t("withdraw.colStatus")}</th>
-                <th className="px-3 py-2">{t("withdraw.colAmount")}</th>
-                <th className="px-3 py-2">{t("withdraw.colBank")}</th>
-                <th className="px-3 py-2">{t("withdraw.colBeneficiaryName")}</th>
-                <th className="px-3 py-2">{t("withdraw.colAccountNumber")}</th>
-                <th className="px-3 py-2">{t("withdraw.colTransferContent")}</th>
-                <th className="px-3 py-2">{t("withdraw.colRejectReason")}</th>
-                <th className="px-3 py-2">{t("withdraw.colCreatedAt")}</th>
+            <thead>
+              <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                    {t("withdraw.colStt")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconActivity width={14} height={14} />}>
+                    {t("withdraw.colStatus")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconWithdraw width={14} height={14} />}>
+                    {t("withdraw.colAmount")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconBank width={14} height={14} />}>
+                    {t("withdraw.colBank")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconUser width={14} height={14} />}>
+                    {t("withdraw.colBeneficiaryName")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                    {t("withdraw.colAccountNumber")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                    {t("withdraw.colTransferContent")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                    {t("withdraw.colRejectReason")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconClock width={14} height={14} />}>
+                    {t("withdraw.colCreatedAt")}
+                  </ColumnHeader>
+                </th>
               </tr>
             </thead>
             <tbody>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
+  ColumnHeader,
   DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
@@ -15,7 +16,15 @@ import {
   type DateRangeValue,
 } from "@/components/common";
 import { Button, Select, StatusBadge } from "@/components/ui";
-import { IconRefresh, IconSearch } from "@/components/icons/NavIcons";
+import {
+  IconClock,
+  IconFileText,
+  IconHash,
+  IconLayers,
+  IconRefresh,
+  IconSearch,
+  IconWallet,
+} from "@/components/icons/NavIcons";
 import {
   AGENT_LEDGER_ENTRY_TYPES,
   agentBalanceApi,
@@ -293,25 +302,41 @@ export function AgentBalancePage() {
           <div className="min-w-0 overflow-x-auto">
             <table className="w-full min-w-[520px] border-collapse text-left text-label">
               <thead>
-                <tr className="border-b border-edge text-caption text-muted">
-                  <th className="whitespace-nowrap px-3 py-2 font-medium">
-                    {t("agentPortal.colCreatedAt")}
+                <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+                  <th className="whitespace-nowrap px-3 py-2.5">
+                    <ColumnHeader icon={<IconClock width={14} height={14} />}>
+                      {t("agentPortal.colCreatedAt")}
+                    </ColumnHeader>
                   </th>
-                  <th className="px-3 py-2 font-medium">{t("agentPortal.colEntryType")}</th>
-                  <th className="whitespace-nowrap px-3 py-2 text-right font-medium">
-                    {t("agentPortal.colAmount")}
+                  <th className="px-3 py-2.5">
+                    <ColumnHeader icon={<IconLayers width={14} height={14} />}>
+                      {t("agentPortal.colEntryType")}
+                    </ColumnHeader>
                   </th>
-                  <th className="hidden px-3 py-2 font-medium md:table-cell">
-                    {t("agentPortal.colMovementNote")}
+                  <th className="whitespace-nowrap px-3 py-2.5 text-right">
+                    <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                      {t("agentPortal.colAmount")}
+                    </ColumnHeader>
                   </th>
-                  <th className="hidden whitespace-nowrap px-3 py-2 text-right font-medium sm:table-cell">
-                    {t("agentPortal.colBalanceAfter")}
+                  <th className="hidden px-3 py-2.5 md:table-cell">
+                    <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                      {t("agentPortal.colMovementNote")}
+                    </ColumnHeader>
                   </th>
-                  <th className="hidden whitespace-nowrap px-3 py-2 text-right font-medium md:table-cell">
-                    {t("agentPortal.reservedBalance")}
+                  <th className="hidden whitespace-nowrap px-3 py-2.5 text-right sm:table-cell">
+                    <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                      {t("agentPortal.colBalanceAfter")}
+                    </ColumnHeader>
                   </th>
-                  <th className="hidden px-3 py-2 font-medium lg:table-cell">
-                    {t("agentPortal.colRef")}
+                  <th className="hidden whitespace-nowrap px-3 py-2.5 text-right md:table-cell">
+                    <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                      {t("agentPortal.reservedBalance")}
+                    </ColumnHeader>
+                  </th>
+                  <th className="hidden px-3 py-2.5 lg:table-cell">
+                    <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                      {t("agentPortal.colRef")}
+                    </ColumnHeader>
                   </th>
                 </tr>
               </thead>

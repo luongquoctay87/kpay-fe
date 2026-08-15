@@ -1,27 +1,49 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
+import { useRouter } from "next/navigation";
 import {
   IconActivity,
   IconArrowIn,
   IconArrowOut,
   IconBank,
   IconBell,
+  IconChevron,
   IconGlobe,
   IconHash,
+  IconKey,
+  IconKeyOff,
   IconLayers,
   IconPlus,
   IconRefresh,
+  IconResource,
   IconSearch,
   IconSmartphone,
   IconUser,
 } from "@/components/icons/NavIcons";
-import { ColumnHeader, CopyButton, FilterBar, PageHeader, Pagination, StatCard, TableCard } from "@/components/common";
-import { Button, Input, Select, StatusBadge } from "@/components/ui";
+import {
+  ColumnHeader,
+  CopyButton,
+  FilterField,
+  PageHeader,
+  Pagination,
+  SearchInput,
+  StatCard,
+  TableCard,
+  filterControlClass,
+} from "@/components/common";
+import { Button, Select, StatusBadge, Switch, toast } from "@/components/ui";
+import { useAuthStore } from "@/features/auth/store";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import { ColumnPicker } from "@/features/bank-accounts/components/ColumnPicker";
 import { CreateBankAccountModal } from "@/features/bank-accounts/components/CreateBankAccountModal";
-import { EditBankAccountModal } from "@/features/bank-accounts/components/EditBankAccountModal";
 import {
   BANK_ACCOUNT_COLUMN_ALIGN,
   BANK_ACCOUNT_COLUMN_WIDTH,
@@ -48,6 +70,7 @@ import {
 } from "@/features/bank-accounts/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
+import { ROUTES } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
 
 const EMPTY_STATS: BankAccountStats = {
@@ -64,7 +87,11 @@ const EMPTY_BANK_ACCOUNT_LIST = {
   stats: EMPTY_STATS,
 };
 
-function SourceMark({ configured, configuredLabel, notConfiguredLabel }: {
+function SourceMark({
+  configured,
+  configuredLabel,
+  notConfiguredLabel,
+}: {
   configured: boolean;
   configuredLabel: string;
   notConfiguredLabel: string;
@@ -86,19 +113,33 @@ function SourceMark({ configured, configuredLabel, notConfiguredLabel }: {
   );
 }
 
-function BoolBadge({
-  value,
-  trueLabel,
-  falseLabel,
+function AcbKeyMark({
+  configured,
+  configuredLabel,
+  notConfiguredLabel,
+  hint,
 }: {
-  value: boolean;
-  trueLabel: string;
-  falseLabel: string;
+  configured: boolean;
+  configuredLabel: string;
+  notConfiguredLabel: string;
+  hint: string;
 }) {
+  const label = configured ? configuredLabel : notConfiguredLabel;
   return (
-    <StatusBadge tone={value ? "active" : "disabled"}>
-      {value ? trueLabel : falseLabel}
-    </StatusBadge>
+    <span
+      className={[
+        "inline-flex h-5 w-5 shrink-0 items-center justify-center",
+        configured ? "text-success" : "text-muted",
+      ].join(" ")}
+      title={`${label} — ${hint}`}
+      aria-label={label}
+    >
+      {configured ? (
+        <IconKey width={14} height={14} />
+      ) : (
+        <IconKeyOff width={14} height={14} />
+      )}
+    </span>
   );
 }
 
@@ -111,21 +152,28 @@ function coverageClass(count: number): string {
 
 export function BankAccountsPage() {
   const { t } = useI18n();
+  const router = useRouter();
+  const permissions = useAuthStore((s) => s.user?.permissions);
+  /** Fail-open when permissions not loaded yet. */
+  const canWrite =
+    permissions == null ||
+    permissions.length === 0 ||
+    permissions.includes("bank_accounts:write");
+
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
   const [showCreate, setShowCreate] = useState(false);
-  const [editing, setEditing] = useState<BankAccountListItem | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [togglingKey, setTogglingKey] = useState<string | null>(null);
 
-  const [accountDraft, setAccountDraft] = useState("");
-  const [bankDraft, setBankDraft] = useState("");
+  const [qDraft, setQDraft] = useState("");
   const [statusDraft, setStatusDraft] = useState<BankAccountStatus | null>(null);
   const [typeDraft, setTypeDraft] = useState<BankAccountType | null>(null);
   const [collectDraft, setCollectDraft] = useState<string | null>(null);
   const [disburseDraft, setDisburseDraft] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<{
-    accountNumber?: string;
-    bankName?: string;
+    q?: string;
     status?: BankAccountStatus;
     accountType?: BankAccountType;
     canCollect?: boolean;
@@ -174,14 +222,17 @@ export function BankAccountsPage() {
     [t],
   );
 
-  const loadList = useCallback(async () => {
-    const data = await bankAccountApi.list({ ...filters, page, size });
-    return {
-      rows: data.items ?? [],
-      total: data.totalElements ?? 0,
-      stats: data.stats ?? EMPTY_STATS,
-    };
-  }, [filters, page, size]);
+  const loadList = useCallback(
+    async (signal?: AbortSignal) => {
+      const data = await bankAccountApi.list({ ...filters, page, size, signal });
+      return {
+        rows: data.items ?? [],
+        total: data.totalElements ?? 0,
+        stats: data.stats ?? EMPTY_STATS,
+      };
+    },
+    [filters, page, size],
+  );
 
   const mapError = useCallback(
     (e: unknown) => (e instanceof ApiError ? e.message : t("bankAccounts.loadError")),
@@ -196,51 +247,30 @@ export function BankAccountsPage() {
   const stats = data.stats;
 
   const hasFilters = Boolean(
-    filters.accountNumber ||
-      filters.bankName ||
+    filters.q ||
       filters.status ||
       filters.accountType ||
       filters.canCollect != null ||
       filters.canDisburse != null,
   );
-  const canReset =
-    hasFilters ||
-    Boolean(accountDraft) ||
-    Boolean(bankDraft) ||
+  const draftsDirty =
+    Boolean(qDraft) ||
     statusDraft != null ||
     typeDraft != null ||
     collectDraft != null ||
     disburseDraft != null;
+  const canReset = hasFilters || draftsDirty;
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
 
-  /**
-   * Selects search on change, so they pass their new value here — reading the draft
-   * state instead would still see the previous render's value.
-   */
-  function applyFilters(
-    overrides?: Partial<{
-      status: BankAccountStatus | null;
-      accountType: BankAccountType | null;
-      collect: string | null;
-      disburse: string | null;
-    }>,
-  ) {
-    const next = {
-      status: statusDraft,
-      accountType: typeDraft,
-      collect: collectDraft,
-      disburse: disburseDraft,
-      ...overrides,
-    };
+  function applyFilters() {
     setPage(0);
     setFilters({
-      accountNumber: accountDraft.trim() || undefined,
-      bankName: bankDraft.trim() || undefined,
-      status: next.status ?? undefined,
-      accountType: next.accountType ?? undefined,
-      canCollect: next.collect != null ? next.collect === "true" : undefined,
-      canDisburse: next.disburse != null ? next.disburse === "true" : undefined,
+      q: qDraft.trim() || undefined,
+      status: statusDraft ?? undefined,
+      accountType: typeDraft ?? undefined,
+      canCollect: collectDraft != null ? collectDraft === "true" : undefined,
+      canDisburse: disburseDraft != null ? disburseDraft === "true" : undefined,
     });
   }
 
@@ -249,9 +279,15 @@ export function BankAccountsPage() {
     applyFilters();
   }
 
+  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      applyFilters();
+    }
+  }
+
   function onReset() {
-    setAccountDraft("");
-    setBankDraft("");
+    setQDraft("");
     setStatusDraft(null);
     setTypeDraft(null);
     setCollectDraft(null);
@@ -260,14 +296,35 @@ export function BankAccountsPage() {
     setPage(0);
   }
 
+  async function onToggleFlag(
+    row: BankAccountListItem,
+    field: "canCollect" | "canDisburse",
+    next: boolean,
+  ) {
+    if (!canWrite || togglingKey) return;
+    const key = `${row.id}:${field}`;
+    setTogglingKey(key);
+    try {
+      await bankAccountApi.update(row.id, { [field]: next });
+      toast.success(t("bankAccounts.successUpdated"));
+      await refresh();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : t("bankAccounts.errorUpdateFailed"),
+      );
+    } finally {
+      setTogglingKey(null);
+    }
+  }
+
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader
         title={t("bankAccounts.listTitle")}
         breadcrumbs={[
-          { label: t("bankAccounts.breadcrumbRoot"), icon: <IconLayers /> },
-          { label: t("bankAccounts.breadcrumbParent"), icon: <IconBank /> },
-          { label: t("bankAccounts.breadcrumbCurrent") },
+          { label: t("nav.resources"), icon: <IconResource /> },
+          { label: t("nav.banking"), icon: <IconBank /> },
+          { label: t("nav.bankAccounts") },
         ]}
         actions={
           <Button
@@ -283,138 +340,189 @@ export function BankAccountsPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-5">
-        <StatCard label={t("bankAccounts.statTotal")} value={String(stats.total)} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        <StatCard label={t("bankAccounts.statTotal")} value={String(stats.total)} tone="info" />
         <StatCard label={t("bankAccounts.stat3")} value={String(stats.with3Sources)} tone="success" />
         <StatCard label={t("bankAccounts.stat2")} value={String(stats.with2Sources)} tone="info" />
         <StatCard label={t("bankAccounts.stat1")} value={String(stats.with1Source)} tone="warning" />
-        <StatCard label={t("bankAccounts.stat0")} value={String(stats.with0Sources)} tone="danger" />
+        <div className="col-span-2 sm:col-span-1">
+          <StatCard
+            label={t("bankAccounts.stat0")}
+            value={String(stats.with0Sources)}
+            tone="danger"
+          />
+        </div>
       </div>
 
-      <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
-        <FilterBar
-          onSearch={onSearch}
-          onReset={onReset}
-          canReset={canReset}
-          searchLabel={t("bankAccounts.search")}
-          resetLabel={t("bankAccounts.reset")}
-          fieldsClassName="lg:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_repeat(4,minmax(7.5rem,8.5rem))]"
-        >
-          <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-            <Input
-              id="ba-filter-account"
-              size="md"
-              value={accountDraft}
-              onChange={(e) => setAccountDraft(e.target.value)}
-              placeholder={t("bankAccounts.filterAccountPlaceholder")}
-              aria-label={t("bankAccounts.filterAccount")}
-              className="!border-edge bg-surface/80 hover:!border-edge-strong"
-              leftAddon={<IconSearch width={15} height={15} />}
-            />
+      <form
+        onSubmit={onSearch}
+        className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5"
+      >
+        {expanded ? (
+          <div className="flex flex-col gap-3.5">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-4">
+              <FilterField label={t("bankAccounts.filterStatus")} htmlFor="ba-filter-status">
+                <Select
+                  id="ba-filter-status"
+                  size="md"
+                  options={statusOptions}
+                  value={statusDraft}
+                  onChange={setStatusDraft}
+                  placeholder={t("bankAccounts.filterStatusAll")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("bankAccounts.filterAccountType")} htmlFor="ba-filter-type">
+                <Select
+                  id="ba-filter-type"
+                  size="md"
+                  options={typeOptions}
+                  value={typeDraft}
+                  onChange={setTypeDraft}
+                  placeholder={t("bankAccounts.filterAccountTypeAll")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("bankAccounts.filterPayin")} htmlFor="ba-filter-collect">
+                <Select
+                  id="ba-filter-collect"
+                  size="md"
+                  options={boolOptions}
+                  value={collectDraft}
+                  onChange={setCollectDraft}
+                  placeholder={t("bankAccounts.filterPayinAll")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("bankAccounts.filterPayout")} htmlFor="ba-filter-disburse">
+                <Select
+                  id="ba-filter-disburse"
+                  size="md"
+                  options={boolOptions}
+                  value={disburseDraft}
+                  onChange={setDisburseDraft}
+                  placeholder={t("bankAccounts.filterPayoutAll")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+            </div>
+
+            <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
+              <div className="min-w-0 w-full flex-1">
+                <SearchInput
+                  id="ba-filter-q"
+                  value={qDraft}
+                  onChange={setQDraft}
+                  onKeyDown={onSearchKeyDown}
+                  placeholder={t("bankAccounts.filterQPlaceholder")}
+                  label={t("bankAccounts.filterQ")}
+                />
+              </div>
+              <div className="flex w-full shrink-0 items-center gap-1.5 md:w-auto">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  className="min-w-0 flex-1 md:flex-none md:min-w-[6.5rem]"
+                  onClick={onReset}
+                  disabled={!canReset}
+                  leftIcon={<IconRefresh width={15} height={15} />}
+                >
+                  {t("common.reset")}
+                </Button>
+                <Button
+                  type="submit"
+                  variant="soft"
+                  size="md"
+                  className="min-h-9 min-w-0 flex-1 gap-2 px-3 md:flex-none md:min-w-[8.75rem] md:px-4"
+                  leftIcon={<IconSearch width={16} height={16} />}
+                >
+                  {t("common.search")}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(false)}
+                  aria-label={t("bankAccounts.collapse")}
+                  title={t("bankAccounts.collapse")}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink"
+                >
+                  <IconChevron className="rotate-180" width={16} height={16} />
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-            <Input
-              id="ba-filter-bank"
-              size="md"
-              value={bankDraft}
-              onChange={(e) => setBankDraft(e.target.value)}
-              placeholder={t("bankAccounts.filterBankPlaceholder")}
-              aria-label={t("bankAccounts.filterBank")}
-              className="!border-edge bg-surface/80 hover:!border-edge-strong"
-            />
+        ) : (
+          <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
+            <div className="min-w-0 w-full flex-1">
+              <SearchInput
+                id="ba-filter-q-compact"
+                value={qDraft}
+                onChange={setQDraft}
+                onKeyDown={onSearchKeyDown}
+                placeholder={t("bankAccounts.filterQPlaceholder")}
+                label={t("bankAccounts.filterQ")}
+              />
+            </div>
+            <div className="flex w-full shrink-0 items-center gap-1.5 md:w-auto">
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                className="min-w-0 flex-1 md:flex-none md:min-w-[6.5rem]"
+                onClick={onReset}
+                disabled={!canReset}
+                leftIcon={<IconRefresh width={15} height={15} />}
+              >
+                {t("common.reset")}
+              </Button>
+              <Button
+                type="submit"
+                variant="soft"
+                size="md"
+                className="min-h-9 min-w-0 flex-1 gap-2 px-3 md:flex-none md:min-w-[8.75rem] md:px-4"
+                leftIcon={<IconSearch width={16} height={16} />}
+              >
+                {t("common.search")}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setExpanded(true)}
+                aria-label={t("bankAccounts.expand")}
+                title={t("bankAccounts.expand")}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink"
+              >
+                <IconChevron width={16} height={16} />
+              </button>
+            </div>
           </div>
-          <div className="min-w-0">
-            <Select
-              id="ba-filter-status"
-              size="md"
-              options={statusOptions}
-              value={statusDraft}
-              onChange={(v) => {
-                setStatusDraft(v);
-                applyFilters({ status: v });
-              }}
-              placeholder={t("bankAccounts.filterStatus")}
-              clearable
-              aria-label={t("bankAccounts.filterStatus")}
-              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-            />
-          </div>
-          <div className="min-w-0">
-            <Select
-              id="ba-filter-type"
-              size="md"
-              options={typeOptions}
-              value={typeDraft}
-              onChange={(v) => {
-                setTypeDraft(v);
-                applyFilters({ accountType: v });
-              }}
-              placeholder={t("bankAccounts.filterAccountType")}
-              clearable
-              aria-label={t("bankAccounts.filterAccountType")}
-              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-            />
-          </div>
-          <div className="min-w-0">
-            <Select
-              id="ba-filter-collect"
-              size="md"
-              options={boolOptions}
-              value={collectDraft}
-              onChange={(v) => {
-                setCollectDraft(v);
-                applyFilters({ collect: v });
-              }}
-              placeholder={t("bankAccounts.filterPayinPlaceholder")}
-              clearable
-              aria-label={t("bankAccounts.filterPayin")}
-              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-            />
-          </div>
-          <div className="min-w-0">
-            <Select
-              id="ba-filter-disburse"
-              size="md"
-              options={boolOptions}
-              value={disburseDraft}
-              onChange={(v) => {
-                setDisburseDraft(v);
-                applyFilters({ disburse: v });
-              }}
-              placeholder={t("bankAccounts.filterPayoutPlaceholder")}
-              clearable
-              aria-label={t("bankAccounts.filterPayout")}
-              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
-            />
-          </div>
-        </FilterBar>
-      </div>
+        )}
+      </form>
 
       <TableCard
         toolbar={
-          <ColumnPicker
-            visibility={columnVisibility}
-            onChange={onColumnVisibilityChange}
-          />
+          <ColumnPicker visibility={columnVisibility} onChange={onColumnVisibilityChange} />
         }
         error={error}
-        onRetry={refresh}
+        onRetry={() => void refresh()}
+        loading={loading}
         retryLabel={t("bankAccounts.refresh")}
         pagination={
-          total > 0 || loading ? (
-            <Pagination
-              page={page}
-              pageSize={size}
-              total={total}
-              loading={loading}
-              onPageChange={setPage}
-              onPageSizeChange={(s) => {
-                setSize(s);
-                setPage(0);
-              }}
-              rangeLabel={t("bankAccounts.range", { from, to, total })}
-            />
-          ) : null
+          <Pagination
+            page={page}
+            pageSize={size}
+            total={total}
+            loading={loading}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setSize(s);
+              setPage(0);
+            }}
+            rangeLabel={t("bankAccounts.range", { from, to, total })}
+          />
         }
       >
         <table
@@ -422,91 +530,111 @@ export function BankAccountsPage() {
           style={{ minWidth: bankAccountsTableMinWidth(columnVisibility) }}
         >
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
               {show.account ? (
                 <th
-                  className={`sticky left-0 z-[2] bg-surface ${BANK_ACCOUNT_COLUMN_WIDTH.account} ${BANK_ACCOUNT_COLUMN_ALIGN.account} px-3 py-3`}
+                  className={`sticky left-0 z-[2] border-r border-edge bg-surface shadow-[2px_0_6px_-2px_rgba(24,24,27,0.12)] ${BANK_ACCOUNT_COLUMN_WIDTH.account} ${BANK_ACCOUNT_COLUMN_ALIGN.account} px-3 py-1.5`}
                 >
-                  <ColumnHeader icon={<IconHash width={13} height={13} />}>
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
                     {t("bankAccounts.colAccount")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.holder ? (
-                <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.holder} ${BANK_ACCOUNT_COLUMN_ALIGN.holder} px-3 py-3`}>
-                  <ColumnHeader icon={<IconUser width={13} height={13} />}>
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.holder} ${BANK_ACCOUNT_COLUMN_ALIGN.holder} px-3 py-1.5`}
+                >
+                  <ColumnHeader icon={<IconUser width={14} height={14} />}>
                     {t("bankAccounts.colHolder")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.bank ? (
-                <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.bank} ${BANK_ACCOUNT_COLUMN_ALIGN.bank} px-3 py-3`}>
-                  <ColumnHeader icon={<IconBank width={13} height={13} />}>
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.bank} ${BANK_ACCOUNT_COLUMN_ALIGN.bank} px-3 py-1.5`}
+                >
+                  <ColumnHeader icon={<IconBank width={14} height={14} />}>
                     {t("bankAccounts.colBank")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.accountType ? (
                 <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.accountType} ${BANK_ACCOUNT_COLUMN_ALIGN.accountType} px-3 py-3`}
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.accountType} ${BANK_ACCOUNT_COLUMN_ALIGN.accountType} px-3 py-1.5`}
                 >
-                  <ColumnHeader align="center" icon={<IconLayers width={13} height={13} />}>
+                  <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
                     {t("bankAccounts.colAccountType")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.status ? (
-                <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.status} ${BANK_ACCOUNT_COLUMN_ALIGN.status} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconActivity width={13} height={13} />}>
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.status} ${BANK_ACCOUNT_COLUMN_ALIGN.status} px-3 py-1.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
                     {t("bankAccounts.colStatus")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.collect ? (
-                <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.collect} ${BANK_ACCOUNT_COLUMN_ALIGN.collect} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconArrowIn width={13} height={13} />}>
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.collect} ${BANK_ACCOUNT_COLUMN_ALIGN.collect} px-3 py-1.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconArrowIn width={14} height={14} />}>
                     {t("bankAccounts.colCollect")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.rotation ? (
-                <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.rotation} ${BANK_ACCOUNT_COLUMN_ALIGN.rotation} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconRefresh width={13} height={13} />}>
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.rotation} ${BANK_ACCOUNT_COLUMN_ALIGN.rotation} px-3 py-1.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconRefresh width={14} height={14} />}>
                     {t("bankAccounts.colRotation")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.disburse ? (
-                <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.disburse} ${BANK_ACCOUNT_COLUMN_ALIGN.disburse} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconArrowOut width={13} height={13} />}>
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.disburse} ${BANK_ACCOUNT_COLUMN_ALIGN.disburse} px-3 py-1.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconArrowOut width={14} height={14} />}>
                     {t("bankAccounts.colDisburse")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.coverage ? (
-                <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.coverage} ${BANK_ACCOUNT_COLUMN_ALIGN.coverage} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconLayers width={13} height={13} />}>
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.coverage} ${BANK_ACCOUNT_COLUMN_ALIGN.coverage} px-3 py-1.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
                     {t("bankAccounts.colCoverage")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.web ? (
-                <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.web} ${BANK_ACCOUNT_COLUMN_ALIGN.web} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconGlobe width={13} height={13} />}>
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.web} ${BANK_ACCOUNT_COLUMN_ALIGN.web} px-3 py-1.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconGlobe width={14} height={14} />}>
                     {t("bankAccounts.colWeb")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.app ? (
-                <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.app} ${BANK_ACCOUNT_COLUMN_ALIGN.app} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconSmartphone width={13} height={13} />}>
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.app} ${BANK_ACCOUNT_COLUMN_ALIGN.app} px-3 py-1.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconSmartphone width={14} height={14} />}>
                     {t("bankAccounts.colApp")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.notif ? (
-                <th className={`${BANK_ACCOUNT_COLUMN_WIDTH.notif} ${BANK_ACCOUNT_COLUMN_ALIGN.notif} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconBell width={13} height={13} />}>
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.notif} ${BANK_ACCOUNT_COLUMN_ALIGN.notif} px-3 py-1.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconBell width={14} height={14} />}>
                     {t("bankAccounts.colNotif")}
                   </ColumnHeader>
                 </th>
@@ -516,72 +644,65 @@ export function BankAccountsPage() {
           <tbody>
             {loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-4 py-16 text-center text-label text-muted">
-                  {t("bankAccounts.loading")}
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
+                  {t("common.loading")}
                 </td>
               </tr>
             ) : null}
 
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-4 py-16">
-                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
-                    <p className="text-label text-muted">
-                      {error
-                        ? t("bankAccounts.loadError")
-                        : hasFilters
-                          ? t("bankAccounts.emptyFiltered")
-                          : t("bankAccounts.empty")}
-                    </p>
-                    {!error && !hasFilters ? (
-                      <>
-                        <p className="text-label text-subtle">{t("bankAccounts.emptyHint")}</p>
-                        <Button
-                          type="button"
-                          variant="primary"
-                          size="md"
-                          leftIcon={<IconPlus width={16} height={16} />}
-                          onClick={() => setShowCreate(true)}
-                        >
-                          {t("bankAccounts.emptyCta")}
-                        </Button>
-                      </>
-                    ) : null}
-                    {!error && hasFilters ? (
-                      <Button type="button" variant="secondary" size="md" onClick={onReset}>
-                        {t("bankAccounts.reset")}
-                      </Button>
-                    ) : null}
-                  </div>
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
+                  {hasFilters ? t("bankAccounts.emptyFiltered") : t("bankAccounts.empty")}
                 </td>
               </tr>
             ) : null}
 
             {rows.map((row) => (
-              <tr key={row.id} className="group border-b border-edge last:border-b-0 hover:bg-surface/70">
+              <tr
+                key={row.id}
+                className="group border-b border-edge hover:bg-surface/70"
+              >
                 {show.account ? (
-                  <td className="sticky left-0 z-[1] bg-elevated px-3 py-3 group-hover:bg-surface/70">
+                  <td className="sticky left-0 z-[1] border-r border-edge bg-elevated px-3 py-1.5 shadow-[2px_0_6px_-2px_rgba(24,24,27,0.12)] group-hover:bg-surface/70">
                     <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate font-mono text-label font-medium text-ink" title={row.accountNumber}>
+                      <button
+                        type="button"
+                        className="min-w-0 truncate font-mono text-label font-medium leading-5 text-ink transition hover:text-link-hover hover:underline"
+                        title={row.accountNumber}
+                        onClick={() => router.push(ROUTES.bankAccountDetail(row.id))}
+                      >
                         {row.accountNumber}
+                      </button>
+                      <span className="inline-flex shrink-0 items-center">
+                        <AcbKeyMark
+                          configured={row.acbConfigured}
+                          configuredLabel={t("bankAccounts.acbBadgeOn")}
+                          notConfiguredLabel={t("bankAccounts.acbBadgeOff")}
+                          hint={t("bankAccounts.acbBadgeHint")}
+                        />
+                        <CopyButton
+                          value={row.accountNumber}
+                          label={t("bankAccounts.copyAccount")}
+                          size="sm"
+                        />
                       </span>
-                      <CopyButton value={row.accountNumber} label={t("bankAccounts.copyAccount")} />
                     </div>
                   </td>
                 ) : null}
                 {show.holder ? (
-                  <td className="truncate px-3 py-3" title={row.accountHolder}>
+                  <td className="truncate px-3 py-1.5" title={row.accountHolder}>
                     <button
                       type="button"
                       className="max-w-full truncate text-left text-label font-medium text-ink transition hover:text-link-hover hover:underline"
-                      onClick={() => setEditing(row)}
+                      onClick={() => router.push(ROUTES.bankAccountDetail(row.id))}
                     >
                       {row.accountHolder}
                     </button>
                   </td>
                 ) : null}
                 {show.bank ? (
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-1.5">
                     <span
                       className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
                       title={row.bankName}
@@ -591,51 +712,57 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.accountType ? (
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-1.5 text-center">
                     <StatusBadge tone={BANK_ACCOUNT_TYPE_TONE[row.accountType]}>
                       {t(BANK_ACCOUNT_TYPE_LABEL_KEY[row.accountType])}
                     </StatusBadge>
                   </td>
                 ) : null}
                 {show.status ? (
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-1.5 text-center">
                     <StatusBadge tone={BANK_ACCOUNT_STATUS_TONE[row.status]}>
                       {t(BANK_ACCOUNT_STATUS_LABEL_KEY[row.status])}
                     </StatusBadge>
                   </td>
                 ) : null}
                 {show.collect ? (
-                  <td className="px-3 py-3 text-center">
-                    <BoolBadge
-                      value={row.canCollect}
-                      trueLabel={t("bankAccounts.yes")}
-                      falseLabel={t("bankAccounts.no")}
-                    />
+                  <td className="px-3 py-1.5 text-center">
+                    <div className="inline-flex items-center justify-center">
+                      <Switch
+                        checked={row.canCollect}
+                        disabled={!canWrite || togglingKey != null}
+                        aria-label={t("bankAccounts.colCollect")}
+                        onChange={(next) => void onToggleFlag(row, "canCollect", next)}
+                      />
+                    </div>
                   </td>
                 ) : null}
                 {show.rotation ? (
-                  <td className="px-3 py-3 text-center font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-1.5 text-center font-mono text-label tabular-nums text-ink">
                     {row.rotationGroup != null ? row.rotationGroup : "—"}
                   </td>
                 ) : null}
                 {show.disburse ? (
-                  <td className="px-3 py-3 text-center">
-                    <BoolBadge
-                      value={row.canDisburse}
-                      trueLabel={t("bankAccounts.yes")}
-                      falseLabel={t("bankAccounts.no")}
-                    />
+                  <td className="px-3 py-1.5 text-center">
+                    <div className="inline-flex items-center justify-center">
+                      <Switch
+                        checked={row.canDisburse}
+                        disabled={!canWrite || togglingKey != null}
+                        aria-label={t("bankAccounts.colDisburse")}
+                        onChange={(next) => void onToggleFlag(row, "canDisburse", next)}
+                      />
+                    </div>
                   </td>
                 ) : null}
                 {show.coverage ? (
                   <td
-                    className={`px-3 py-3 text-center font-mono text-label font-semibold tabular-nums ${coverageClass(row.configuredSourceCount)}`}
+                    className={`px-3 py-1.5 text-center font-mono text-label font-semibold tabular-nums ${coverageClass(row.configuredSourceCount)}`}
                   >
                     {row.configuredSourceCount}/3
                   </td>
                 ) : null}
                 {show.web ? (
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-1.5 text-center">
                     <SourceMark
                       configured={row.webConfigured}
                       configuredLabel={t("bankAccounts.sourceConfigured")}
@@ -644,7 +771,7 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.app ? (
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-1.5 text-center">
                     <SourceMark
                       configured={row.appConfigured}
                       configuredLabel={t("bankAccounts.sourceConfigured")}
@@ -653,7 +780,7 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.notif ? (
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-1.5 text-center">
                     <SourceMark
                       configured={row.notificationConfigured}
                       configuredLabel={t("bankAccounts.sourceConfigured")}
@@ -672,17 +799,6 @@ export function BankAccountsPage() {
           onClose={() => setShowCreate(false)}
           onCreated={() => {
             setShowCreate(false);
-            void refresh();
-          }}
-        />
-      ) : null}
-
-      {editing ? (
-        <EditBankAccountModal
-          account={editing}
-          onClose={() => setEditing(null)}
-          onUpdated={() => {
-            setEditing(null);
             void refresh();
           }}
         />

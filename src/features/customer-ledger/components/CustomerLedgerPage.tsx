@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   DateTimeText,
+  AutoRefreshControl,
   ColumnHeader,
   CopyButton,
   DateRangeFilter,
@@ -37,6 +38,7 @@ import {
   IconFileText,
   IconHash,
   IconHeadset,
+  IconInbox,
   IconRefresh,
   IconSearch,
   IconStore,
@@ -47,13 +49,16 @@ import { CUSTOMER_OWNER_TONE } from "@/features/customers/status";
 import { customerLedgerApi } from "@/features/customer-ledger/api";
 import { ColumnPicker } from "@/features/customer-ledger/components/ColumnPicker";
 import {
+  CUSTOMER_LEDGER_COLUMN_MIN_PX,
   CUSTOMER_LEDGER_COLUMN_WIDTH,
+  CUSTOMER_LEDGER_COLUMNS,
   customerLedgerTableMinWidth,
   defaultColumnVisibility,
   loadColumnVisibility,
   saveColumnVisibility,
   visibleColumnCount,
   type ColumnVisibility,
+  type CustomerLedgerColumn,
 } from "@/features/customer-ledger/columns";
 import {
   CUSTOMER_LEDGER_ENTRY_LABEL_KEY,
@@ -70,6 +75,10 @@ import {
   CUSTOMER_LEDGER_OWNER_OPTIONS,
 } from "@/features/customer-ledger/types";
 import { useI18n } from "@/i18n/use-i18n";
+import {
+  useAutoRefresh,
+  type AutoRefreshSeconds,
+} from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatMoney } from "@/lib/format/datetime";
@@ -98,6 +107,8 @@ export function CustomerLedgerPage() {
   const { t } = useI18n();
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
   const [expanded, setExpanded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
@@ -115,6 +126,19 @@ export function CustomerLedgerPage() {
 
   const colSpan = visibleColumnCount(columnVisibility);
   const show = columnVisibility;
+
+  const flexCol: CustomerLedgerColumn =
+    show.note ? "note" : show.owner ? "owner" : show.entry ? "entry" : "created";
+
+  function colClass(col: CustomerLedgerColumn | "stt"): string {
+    if (col !== "stt" && col === flexCol) return "min-w-0";
+    return CUSTOMER_LEDGER_COLUMN_WIDTH[col];
+  }
+
+  function colWidth(col: CustomerLedgerColumn | "stt"): string | undefined {
+    if (col !== "stt" && col === flexCol) return undefined;
+    return `${CUSTOMER_LEDGER_COLUMN_MIN_PX[col]}px`;
+  }
 
   const [qDraft, setQDraft] = useState("");
   const [ownerDraft, setOwnerDraft] = useState<CustomerLedgerOwnerType | null>(null);
@@ -172,6 +196,8 @@ export function CustomerLedgerPage() {
     empty: EMPTY_LIST,
     mapError,
   });
+
+  useAutoRefresh(refresh, { enabled: autoRefresh, intervalSec: autoRefreshSec });
 
   const hasFilters = Object.values(filters).some((v) => v != null && v !== "");
   const canReset =
@@ -313,6 +339,15 @@ export function CustomerLedgerPage() {
           { label: t("customers.breadcrumbParent"), icon: <IconCustomers /> },
           { label: t("customerLedger.listTitle"), icon: <IconFileText /> },
         ]}
+        actions={
+          <AutoRefreshControl
+            enabled={autoRefresh}
+            intervalSec={autoRefreshSec}
+            onEnabledChange={setAutoRefresh}
+            onIntervalChange={setAutoRefreshSec}
+            size="sm"
+          />
+        }
       />
 
       <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4">
@@ -467,70 +502,78 @@ export function CustomerLedgerPage() {
           className="w-full table-fixed border-collapse text-left"
           style={{ minWidth: customerLedgerTableMinWidth(columnVisibility) }}
         >
+          <colgroup>
+            <col style={{ width: colWidth("stt") }} />
+            {CUSTOMER_LEDGER_COLUMNS.map((col) =>
+              show[col] ? <col key={col} style={{ width: colWidth(col) }} /> : null,
+            )}
+          </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className={`${CUSTOMER_LEDGER_COLUMN_WIDTH.stt} px-3 py-3 text-center`}>
-                {t("customerLedger.colStt")}
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className={`${colClass("stt")} px-3 py-2.5 text-center`}>
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("customerLedger.colStt")}
+                </ColumnHeader>
               </th>
               {show.created ? (
-                <th className={`${CUSTOMER_LEDGER_COLUMN_WIDTH.created} px-3 py-3 text-center`}>
-                  <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
+                <th className={`${colClass("created")} px-3 py-2.5 text-center`}>
+                  <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                     {t("customerLedger.colCreatedAt")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.owner ? (
-                <th className={`${CUSTOMER_LEDGER_COLUMN_WIDTH.owner} px-3 py-3`}>
-                  <ColumnHeader icon={<IconStore width={13} height={13} />}>
+                <th className={`${colClass("owner")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconStore width={14} height={14} />}>
                     {t("customerLedger.colOwner")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.entry ? (
-                <th className={`${CUSTOMER_LEDGER_COLUMN_WIDTH.entry} px-3 py-3`}>
-                  <ColumnHeader icon={<IconHash width={13} height={13} />}>
+                <th className={`${colClass("entry")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
                     {t("customerLedger.colEntry")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.direction ? (
-                <th className={`${CUSTOMER_LEDGER_COLUMN_WIDTH.direction} px-3 py-3 text-center`}>
-                  <ColumnHeader align="center" icon={<IconActivity width={13} height={13} />}>
+                <th className={`${colClass("direction")} px-3 py-2.5 text-center`}>
+                  <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
                     {t("customerLedger.colDirection")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.amount ? (
-                <th className={`${CUSTOMER_LEDGER_COLUMN_WIDTH.amount} px-3 py-3 text-right`}>
-                  <ColumnHeader align="right" icon={<IconWallet width={13} height={13} />}>
+                <th className={`${colClass("amount")} px-3 py-2.5 text-right`}>
+                  <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
                     {t("customerLedger.colAmount")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.available ? (
-                <th className={`${CUSTOMER_LEDGER_COLUMN_WIDTH.available} px-3 py-3 text-right`}>
-                  <ColumnHeader align="right" icon={<IconArrowIn width={13} height={13} />}>
+                <th className={`${colClass("available")} px-3 py-2.5 text-right`}>
+                  <ColumnHeader align="right" icon={<IconArrowIn width={14} height={14} />}>
                     {t("customerLedger.colAvailableAfter")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.reserved ? (
-                <th className={`${CUSTOMER_LEDGER_COLUMN_WIDTH.reserved} px-3 py-3 text-right`}>
-                  <ColumnHeader align="right" icon={<IconArrowOut width={13} height={13} />}>
+                <th className={`${colClass("reserved")} px-3 py-2.5 text-right`}>
+                  <ColumnHeader align="right" icon={<IconArrowOut width={14} height={14} />}>
                     {t("customerLedger.colReservedAfter")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.note ? (
-                <th className={`${CUSTOMER_LEDGER_COLUMN_WIDTH.note} px-3 py-3`}>
-                  <ColumnHeader icon={<IconFileText width={13} height={13} />}>
+                <th className={`${colClass("note")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
                     {t("customerLedger.colNote")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.createdBy ? (
-                <th className={`${CUSTOMER_LEDGER_COLUMN_WIDTH.createdBy} px-3 py-3`}>
-                  <ColumnHeader icon={<IconUser width={13} height={13} />}>
+                <th className={`${colClass("createdBy")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconUser width={14} height={14} />}>
                     {t("customerLedger.colCreatedBy")}
                   </ColumnHeader>
                 </th>
@@ -548,12 +591,33 @@ export function CustomerLedgerPage() {
 
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
-                  {error
-                    ? t("customerLedger.loadError")
-                    : hasFilters
-                      ? t("customerLedger.emptyFiltered")
-                      : t("customerLedger.empty")}
+                <td colSpan={colSpan} className="px-3 py-16">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
+                    >
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {error
+                        ? t("customerLedger.loadError")
+                        : hasFilters
+                          ? t("customerLedger.emptyFiltered")
+                          : t("customerLedger.empty")}
+                    </p>
+                    {!error && hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("common.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : null}
@@ -564,16 +628,16 @@ export function CustomerLedgerPage() {
 
               return (
                 <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
-                  <td className="px-3 py-3 text-center font-mono text-label tabular-nums text-muted">
+                  <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                     {page * size + idx + 1}
                   </td>
                   {show.created ? (
-                    <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                    <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
                       <DateTimeText value={row.createdAt} />
                     </td>
                   ) : null}
                   {show.owner ? (
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-2.5">
                       <div className="flex min-w-0 flex-col gap-1">
                         <StatusBadge tone={CUSTOMER_OWNER_TONE[row.ownerType]} className="w-fit gap-1">
                           {row.ownerType === "agent" ? (
@@ -612,7 +676,7 @@ export function CustomerLedgerPage() {
                     </td>
                   ) : null}
                   {show.entry ? (
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-2.5">
                       {isCustomerLedgerEntryType(row.entryType) ? (
                         <StatusBadge tone={CUSTOMER_LEDGER_ENTRY_TONE[row.entryType]}>
                           {entryLabel(row.entryType)}
@@ -623,7 +687,7 @@ export function CustomerLedgerPage() {
                     </td>
                   ) : null}
                   {show.direction ? (
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-3 py-2.5 text-center">
                       <StatusBadge tone={directionTone(row.direction)}>
                         {directionLabel(row.direction)}
                       </StatusBadge>
@@ -631,29 +695,29 @@ export function CustomerLedgerPage() {
                   ) : null}
                   {show.amount ? (
                     <td
-                      className={`px-3 py-3 text-right font-mono text-label font-medium tabular-nums ${amountClass(row.amount ?? 0)}`}
+                      className={`px-3 py-2.5 text-right font-mono text-label font-medium tabular-nums ${amountClass(row.amount ?? 0)}`}
                     >
                       {formatMoney(row.amount ?? 0)}
                     </td>
                   ) : null}
                   {show.available ? (
-                    <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
+                    <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
                       {formatMoney(row.availableAfter ?? 0)}
                     </td>
                   ) : null}
                   {show.reserved ? (
-                    <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
+                    <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
                       {formatMoney(row.reservedAfter ?? 0)}
                     </td>
                   ) : null}
                   {show.note ? (
-                    <td className="truncate px-3 py-3 text-label text-muted" title={row.note ?? undefined}>
+                    <td className="truncate px-3 py-2.5 text-label text-muted" title={row.note ?? undefined}>
                       {row.note?.trim() ? row.note : "—"}
                     </td>
                   ) : null}
                   {show.createdBy ? (
                     <td
-                      className="truncate px-3 py-3 text-label text-muted"
+                      className="truncate px-3 py-2.5 text-label text-muted"
                       title={row.createdByUsername ?? undefined}
                     >
                       {row.createdByUsername ?? "—"}
@@ -665,13 +729,13 @@ export function CustomerLedgerPage() {
 
             {!loading && rows.length > 0 ? (
               <tr className="border-t border-edge bg-surface/50">
-                <td className="px-3 py-3 text-label font-semibold text-ink">{t("customerLedger.totalRow")}</td>
+                <td className="px-3 py-2.5 text-label font-semibold text-ink">{t("customerLedger.totalRow")}</td>
                 {show.created ? <td /> : null}
                 {show.owner ? <td /> : null}
                 {show.entry ? <td /> : null}
                 {show.direction ? <td /> : null}
                 {show.amount ? (
-                  <td className="px-3 py-3 text-right font-mono text-label font-semibold tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink">
                     {formatMoney(pageStats.net)}
                   </td>
                 ) : null}

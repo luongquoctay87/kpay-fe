@@ -2,7 +2,9 @@
 
 import { useCallback, useMemo, useState, type FormEvent } from "react";
 import {
+  IconActivity,
   IconBank,
+  IconClock,
   IconHash,
   IconLayers,
   IconRefresh,
@@ -74,13 +76,11 @@ export function BankBalancesPage() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
 
   const [qDraft, setQDraft] = useState("");
-  const [bankDraft, setBankDraft] = useState("");
   const [statusDraft, setStatusDraft] = useState<string | null>(null);
   const [checkDraft, setCheckDraft] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<{
     q?: string;
-    bankCode?: string;
     status?: string;
     balanceCheckStatus?: string;
   }>({});
@@ -137,14 +137,14 @@ export function BankBalancesPage() {
   ).length;
 
   const hasFilters = Boolean(
-    filters.q || filters.bankCode || filters.status || filters.balanceCheckStatus,
+    filters.q || filters.status || filters.balanceCheckStatus,
   );
   const draftsDirty =
-    Boolean(qDraft) || Boolean(bankDraft) || Boolean(statusDraft) || Boolean(checkDraft);
+    Boolean(qDraft) || Boolean(statusDraft) || Boolean(checkDraft);
   const canReset = hasFilters || draftsDirty;
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
-  const colSpan = canSync ? 8 : 7;
+  const colSpan = 7;
 
   function applyFilters(
     overrides?: Partial<{ status: string | null; check: string | null }>,
@@ -157,7 +157,6 @@ export function BankBalancesPage() {
     setPage(0);
     setFilters({
       q: qDraft.trim() || undefined,
-      bankCode: bankDraft.trim() || undefined,
       status: next.status || undefined,
       balanceCheckStatus: next.check || undefined,
     });
@@ -170,7 +169,6 @@ export function BankBalancesPage() {
 
   function onReset() {
     setQDraft("");
-    setBankDraft("");
     setStatusDraft(null);
     setCheckDraft(null);
     setPage(0);
@@ -213,22 +211,7 @@ export function BankBalancesPage() {
           { label: t("bankBalances.breadcrumbParent"), icon: <IconBank /> },
           { label: t("bankBalances.breadcrumbCurrent"), icon: <IconWallet /> },
         ]}
-        actions={
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            className="w-full sm:w-auto"
-            leftIcon={<IconRefresh width={16} height={16} />}
-            onClick={() => void refresh()}
-            disabled={loading}
-          >
-            {t("bankBalances.refresh")}
-          </Button>
-        }
       />
-
-      <p className="text-sm text-muted">{t("bankBalances.listHint")}</p>
 
       <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4">
         <StatCard label={t("bankBalances.statTotal")} value={String(total)} />
@@ -257,7 +240,7 @@ export function BankBalancesPage() {
           loading={loading}
           searchLabel={t("bankBalances.search")}
           resetLabel={t("bankBalances.reset")}
-          fieldsClassName="lg:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_repeat(2,minmax(8rem,10rem))]"
+          fieldsClassName="lg:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_minmax(9rem,10.5rem)_minmax(9rem,10.5rem)]"
         >
           <div className="min-w-0 sm:col-span-2 lg:col-span-1">
             <Input
@@ -269,17 +252,6 @@ export function BankBalancesPage() {
               aria-label={t("bankBalances.filterQ")}
               className="!border-edge bg-surface/80 hover:!border-edge-strong"
               leftAddon={<IconSearch width={15} height={15} />}
-            />
-          </div>
-          <div className="min-w-0">
-            <Input
-              id="bb-filter-bank"
-              size="md"
-              value={bankDraft}
-              onChange={(e) => setBankDraft(e.target.value)}
-              placeholder={t("bankBalances.filterBankPlaceholder")}
-              aria-label={t("bankBalances.filterBank")}
-              className="!border-edge bg-surface/80 hover:!border-edge-strong"
             />
           </div>
           <div className="min-w-0">
@@ -320,9 +292,7 @@ export function BankBalancesPage() {
       <TableCard
         error={error}
         onRetry={() => void refresh()}
-        onRefresh={() => void refresh()}
         loading={loading}
-        refreshLabel={t("bankBalances.refresh")}
         pagination={
           total > 0 || loading ? (
             <Pagination
@@ -340,57 +310,71 @@ export function BankBalancesPage() {
           ) : null
         }
       >
-        <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 960 }}>
+        <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 900 }}>
+          <colgroup>
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "18%" }} />
+          </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className="w-[9rem] px-3 py-3">
-                <ColumnHeader>{t("bankBalances.colBank")}</ColumnHeader>
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconBank width={14} height={14} />}>
+                  {t("bankBalances.colBank")}
+                </ColumnHeader>
               </th>
-              <th className="w-[11rem] px-3 py-3">
-                <ColumnHeader icon={<IconHash width={13} height={13} />}>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconHash width={14} height={14} />}>
                   {t("bankBalances.colAccount")}
                 </ColumnHeader>
               </th>
-              <th className="w-[12rem] px-3 py-3">
-                <ColumnHeader icon={<IconUser width={13} height={13} />}>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconUser width={14} height={14} />}>
                   {t("bankBalances.colHolder")}
                 </ColumnHeader>
               </th>
-              <th className="w-[7.5rem] px-3 py-3">
-                <ColumnHeader>{t("bankBalances.colStatus")}</ColumnHeader>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconActivity width={14} height={14} />}>
+                  {t("bankBalances.colStatus")}
+                </ColumnHeader>
               </th>
-              <th className="w-[9rem] px-3 py-3 text-right">
-                <ColumnHeader align="right">{t("bankBalances.colBalance")}</ColumnHeader>
+              <th className="px-3 py-2.5 text-right">
+                <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                  {t("bankBalances.colBalance")}
+                </ColumnHeader>
               </th>
-              <th className="w-[10rem] px-3 py-3">
-                <ColumnHeader>{t("bankBalances.colCheckedAt")}</ColumnHeader>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconClock width={14} height={14} />}>
+                  {t("bankBalances.colCheckedAt")}
+                </ColumnHeader>
               </th>
-              <th className="min-w-[9rem] px-3 py-3">
-                <ColumnHeader>{t("bankBalances.colCheckStatus")}</ColumnHeader>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconActivity width={14} height={14} />}>
+                  {t("bankBalances.colCheckStatus")}
+                </ColumnHeader>
               </th>
-              {canSync ? (
-                <th className="w-[7.5rem] px-3 py-3 text-right">
-                  <ColumnHeader align="right">{t("bankBalances.colActions")}</ColumnHeader>
-                </th>
-              ) : null}
             </tr>
           </thead>
-          <tbody className="divide-y divide-edge">
+          <tbody>
             {loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-4 py-10 text-center text-muted">
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
                   {t("bankBalances.loading")}
                 </td>
               </tr>
             ) : null}
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-4 py-10 text-center">
-                  <p className="text-muted">
+                <td colSpan={colSpan} className="px-3 py-16 text-center">
+                  <p className="text-label text-muted">
                     {hasFilters ? t("bankBalances.emptyFiltered") : t("bankBalances.empty")}
                   </p>
                   {!hasFilters ? (
-                    <p className="mt-1 text-sm text-muted">{t("bankBalances.emptyHint")}</p>
+                    <p className="mt-1 text-label text-subtle">{t("bankBalances.emptyHint")}</p>
                   ) : null}
                 </td>
               </tr>
@@ -398,83 +382,104 @@ export function BankBalancesPage() {
             {rows.map((row) => {
               const canRowSync = canSync && row.workerConfigured && row.workerEnabled;
               const syncing = syncingId === row.bankAccountId;
+              const syncHint = !row.workerConfigured
+                ? t("bankBalances.noCredentials")
+                : !row.workerEnabled
+                  ? t("bankBalances.workerOff")
+                  : row.balanceCheckStatus === "error" && row.balanceCheckError
+                    ? row.balanceCheckError
+                    : null;
               return (
-                <tr key={row.bankAccountId} className="hover:bg-panel-2/60">
-                  <td className="px-3 py-3 align-top">
-                    <div className="font-medium text-ink">{row.bankCode}</div>
-                    {row.bankName ? (
-                      <div className="truncate text-caption text-muted" title={row.bankName}>
-                        {row.bankName}
-                      </div>
-                    ) : null}
+                <tr
+                  key={row.bankAccountId}
+                  className="border-b border-edge hover:bg-surface/70"
+                >
+                  <td className="px-3 py-2.5">
+                    <div className="min-w-0" title={row.bankName ?? row.bankCode}>
+                      <span className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge">
+                        {row.bankCode}
+                      </span>
+                      {row.bankName ? (
+                        <p className="mt-0.5 truncate font-mono text-caption text-muted">
+                          {row.bankName}
+                        </p>
+                      ) : null}
+                    </div>
                   </td>
-                  <td className="px-3 py-3 align-top">
-                    <div className="inline-flex max-w-full items-center gap-1.5 font-mono text-ink">
-                      <span className="truncate">{row.accountNumber}</span>
+                  <td className="px-3 py-2.5">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span
+                        className="truncate font-mono text-label text-ink-secondary"
+                        title={row.accountNumber}
+                      >
+                        {row.accountNumber}
+                      </span>
                       <CopyButton
                         value={row.accountNumber}
                         label={t("bankBalances.copyAccount")}
                       />
                     </div>
                   </td>
-                  <td className="px-3 py-3 align-top">
-                    <p className="truncate text-ink" title={row.accountHolder}>
-                      {row.accountHolder}
-                    </p>
+                  <td className="px-3 py-2.5">
+                    <div className="flex min-w-0 items-center gap-2">
+                      {canSync ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="md"
+                          iconOnly
+                          className="shrink-0"
+                          leftIcon={<IconRefresh width={15} height={15} />}
+                          disabled={!canRowSync || syncing || loading}
+                          aria-label={
+                            syncing ? t("bankBalances.syncing") : t("bankBalances.sync")
+                          }
+                          title={
+                            !row.workerConfigured || !row.workerEnabled
+                              ? t("bankBalances.syncDisabledHint")
+                              : syncing
+                                ? t("bankBalances.syncing")
+                                : t("bankBalances.sync")
+                          }
+                          onClick={() => void onSync(row)}
+                        />
+                      ) : null}
+                      <p
+                        className="min-w-0 flex-1 truncate text-label text-ink"
+                        title={row.accountHolder}
+                      >
+                        {row.accountHolder}
+                      </p>
+                    </div>
                   </td>
-                  <td className="px-3 py-3 align-top">
+                  <td className="px-3 py-2.5">
                     <StatusBadge tone={row.status === "active" ? "active" : "disabled"}>
                       {row.status === "active"
                         ? t("bankBalances.statusActive")
                         : t("bankBalances.statusInactive")}
                     </StatusBadge>
                   </td>
-                  <td className="px-3 py-3 text-right align-top">
+                  <td className="px-3 py-2.5 text-right">
                     <MoneyAmount value={row.lastKnownBalance} />
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3 align-top text-muted">
+                  <td className="whitespace-nowrap px-3 py-2.5 text-label text-ink">
                     <DateTimeText value={row.balanceCheckedAt} />
                   </td>
-                  <td className="px-3 py-3 align-top">
-                    <StatusBadge tone={checkTone(row.balanceCheckStatus)}>
-                      {checkLabel(row.balanceCheckStatus)}
-                    </StatusBadge>
-                    {row.balanceCheckStatus === "error" && row.balanceCheckError ? (
-                      <div
-                        className="mt-1 max-w-[180px] truncate text-caption text-muted"
-                        title={row.balanceCheckError}
-                      >
-                        {row.balanceCheckError}
-                      </div>
-                    ) : null}
-                    {!row.workerConfigured ? (
-                      <div className="mt-1 text-caption text-muted">
-                        {t("bankBalances.noCredentials")}
-                      </div>
-                    ) : !row.workerEnabled ? (
-                      <div className="mt-1 text-caption text-muted">
-                        {t("bankBalances.workerOff")}
-                      </div>
-                    ) : null}
+                  <td className="px-3 py-2.5">
+                    <div className="min-w-0">
+                      <StatusBadge tone={checkTone(row.balanceCheckStatus)}>
+                        {checkLabel(row.balanceCheckStatus)}
+                      </StatusBadge>
+                      {syncHint ? (
+                        <p
+                          className="mt-0.5 truncate text-caption text-muted"
+                          title={syncHint}
+                        >
+                          {syncHint}
+                        </p>
+                      ) : null}
+                    </div>
                   </td>
-                  {canSync ? (
-                    <td className="px-3 py-3 text-right align-top">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        disabled={!canRowSync || syncing || loading}
-                        title={
-                          !row.workerConfigured || !row.workerEnabled
-                            ? t("bankBalances.syncDisabledHint")
-                            : undefined
-                        }
-                        onClick={() => void onSync(row)}
-                      >
-                        {syncing ? t("bankBalances.syncing") : t("bankBalances.sync")}
-                      </Button>
-                    </td>
-                  ) : null}
                 </tr>
               );
             })}

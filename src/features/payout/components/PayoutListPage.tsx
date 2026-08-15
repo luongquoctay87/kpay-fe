@@ -19,10 +19,13 @@ import {
   IconDownload,
   IconFileText,
   IconHash,
+  IconInbox,
   IconRefresh,
   IconSearch,
+  IconSettings,
   IconStore,
   IconUser,
+  IconWallet,
   IconWebhook,
 } from "@/components/icons/NavIcons";
 import {
@@ -42,6 +45,7 @@ import {
 } from "@/components/common";
 
 import { Button, Select, StatusBadge, toast } from "@/components/ui";
+import { useAuthStore } from "@/features/auth/store";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import { getActiveMerchantOptions } from "@/features/merchants/options-cache";
 import { payoutApi } from "@/features/payout/api";
@@ -50,13 +54,16 @@ import { FinalizePayoutModal } from "@/features/payout/components/FinalizePayout
 import { PayoutDetailDrawer } from "@/features/payout/components/PayoutDetailDrawer";
 import {
   PAYOUT_COLUMN_ALIGN,
+  PAYOUT_COLUMN_MIN_PX,
   PAYOUT_COLUMN_WIDTH,
+  PAYOUT_COLUMNS,
   defaultColumnVisibility,
   loadColumnVisibility,
   payoutTableMinWidth,
   saveColumnVisibility,
   visibleColumnCount,
   type ColumnVisibility,
+  type PayoutColumn,
 } from "@/features/payout/columns";
 import { isAwaitingReconciliation, realStatusLabel } from "@/features/payout/real-status";
 import {
@@ -90,6 +97,11 @@ const EMPTY_PAYOUT_LIST = {
 
 export function PayoutListPage() {
   const { t } = useI18n();
+  const permissions = useAuthStore((s) => s.user?.permissions);
+  const canWrite =
+    permissions == null ||
+    permissions.length === 0 ||
+    permissions.includes("payout:write");
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
   const [expanded, setExpanded] = useState(false);
@@ -156,6 +168,26 @@ export function PayoutListPage() {
 
   const colSpan = visibleColumnCount(columnVisibility);
   const show = columnVisibility;
+
+  const flexCol: PayoutColumn =
+    show.transferContent
+      ? "transferContent"
+      : show.requestId
+        ? "requestId"
+        : show.merchant
+          ? "merchant"
+          : show.note
+            ? "note"
+            : show.beneficiaryName
+              ? "beneficiaryName"
+              : (PAYOUT_COLUMNS.find((c) => show[c]) ?? "requestId");
+
+  function colWidth(col: PayoutColumn | "stt" | "actions"): string | undefined {
+    if (col === "actions") return "96px";
+    if (col !== "stt" && col === flexCol) return undefined;
+    return `${PAYOUT_COLUMN_MIN_PX[col]}px`;
+  }
+
 
   const statusOptions = useMemo(
     () =>
@@ -534,137 +566,158 @@ export function PayoutListPage() {
           className="w-full table-fixed border-collapse text-left"
           style={{ minWidth: payoutTableMinWidth(columnVisibility) }}
         >
+          <colgroup>
+            <col style={{ width: colWidth("stt") }} />
+            {PAYOUT_COLUMNS.map((col) =>
+              show[col] ? <col key={col} style={{ width: colWidth(col) }} /> : null,
+            )}
+            <col style={{ width: colWidth("actions") }} />
+          </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className={`${PAYOUT_COLUMN_WIDTH.stt} ${PAYOUT_COLUMN_ALIGN.stt} px-3 py-3`}>
-                {t("payout.colStt")}
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className={`${PAYOUT_COLUMN_WIDTH.stt} ${PAYOUT_COLUMN_ALIGN.stt} px-3 py-2.5`}>
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("payout.colStt")}
+                </ColumnHeader>
               </th>
               {show.requestId ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.requestId} ${PAYOUT_COLUMN_ALIGN.requestId} px-3 py-3`}>
-                  <ColumnHeader icon={<IconHash width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.requestId} ${PAYOUT_COLUMN_ALIGN.requestId} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
                     {t("payout.colRequestId")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.merchant ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.merchant} ${PAYOUT_COLUMN_ALIGN.merchant} px-3 py-3`}>
-                  <ColumnHeader icon={<IconStore width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.merchant} ${PAYOUT_COLUMN_ALIGN.merchant} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconStore width={14} height={14} />}>
                     {t("payout.colMerchant")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.beneficiaryName ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.beneficiaryName} ${PAYOUT_COLUMN_ALIGN.beneficiaryName} px-3 py-3`}>
-                  <ColumnHeader icon={<IconUser width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.beneficiaryName} ${PAYOUT_COLUMN_ALIGN.beneficiaryName} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconUser width={14} height={14} />}>
                     {t("payout.colBeneficiaryName")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.accountNumber ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.accountNumber} ${PAYOUT_COLUMN_ALIGN.accountNumber} px-3 py-3`}>
-                  <ColumnHeader icon={<IconHash width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.accountNumber} ${PAYOUT_COLUMN_ALIGN.accountNumber} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
                     {t("payout.colAccountNumber")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.bank ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.bank} ${PAYOUT_COLUMN_ALIGN.bank} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconBank width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.bank} ${PAYOUT_COLUMN_ALIGN.bank} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconBank width={14} height={14} />}>
                     {t("payout.colBank")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.transferContent ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.transferContent} ${PAYOUT_COLUMN_ALIGN.transferContent} px-3 py-3`}>
-                  <ColumnHeader icon={<IconFileText width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.transferContent} ${PAYOUT_COLUMN_ALIGN.transferContent} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
                     {t("payout.colTransferContent")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.amount ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.amount} ${PAYOUT_COLUMN_ALIGN.amount} px-3 py-3`}>
-                  <ColumnHeader align="right" icon={<IconArrowOut width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.amount} ${PAYOUT_COLUMN_ALIGN.amount} px-3 py-2.5`}>
+                  <ColumnHeader align="right" icon={<IconArrowOut width={14} height={14} />}>
                     {t("payout.colAmount")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.fee ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.fee} ${PAYOUT_COLUMN_ALIGN.fee} px-3 py-3`}>
-                  <ColumnHeader align="right">{t("payout.colFee")}</ColumnHeader>
+                <th className={`${PAYOUT_COLUMN_WIDTH.fee} ${PAYOUT_COLUMN_ALIGN.fee} px-3 py-2.5`}>
+                  <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                    {t("payout.colFee")}
+                  </ColumnHeader>
                 </th>
               ) : null}
               {show.status ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.status} ${PAYOUT_COLUMN_ALIGN.status} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconActivity width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.status} ${PAYOUT_COLUMN_ALIGN.status} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
                     {t("payout.colStatus")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.callback ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.callback} ${PAYOUT_COLUMN_ALIGN.callback} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconWebhook width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.callback} ${PAYOUT_COLUMN_ALIGN.callback} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconWebhook width={14} height={14} />}>
                     {t("payout.colCallback")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.realStatus ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.realStatus} ${PAYOUT_COLUMN_ALIGN.realStatus} px-3 py-3`}>
-                  <ColumnHeader align="center">{t("payout.colRealStatus")}</ColumnHeader>
+                <th className={`${PAYOUT_COLUMN_WIDTH.realStatus} ${PAYOUT_COLUMN_ALIGN.realStatus} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
+                    {t("payout.colRealStatus")}
+                  </ColumnHeader>
                 </th>
               ) : null}
               {show.reason ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.reason} ${PAYOUT_COLUMN_ALIGN.reason} px-3 py-3`}>
-                  <ColumnHeader>{t("payout.colReason")}</ColumnHeader>
+                <th className={`${PAYOUT_COLUMN_WIDTH.reason} ${PAYOUT_COLUMN_ALIGN.reason} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                    {t("payout.colReason")}
+                  </ColumnHeader>
                 </th>
               ) : null}
               {show.note ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.note} ${PAYOUT_COLUMN_ALIGN.note} px-3 py-3`}>
-                  <ColumnHeader icon={<IconFileText width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.note} ${PAYOUT_COLUMN_ALIGN.note} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
                     {t("payout.colNote")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.sourceAccount ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.sourceAccount} ${PAYOUT_COLUMN_ALIGN.sourceAccount} px-3 py-3`}>
-                  <ColumnHeader icon={<IconBank width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.sourceAccount} ${PAYOUT_COLUMN_ALIGN.sourceAccount} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconBank width={14} height={14} />}>
                     {t("payout.colSourceAccount")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.processedBy ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.processedBy} ${PAYOUT_COLUMN_ALIGN.processedBy} px-3 py-3`}>
-                  <ColumnHeader icon={<IconUser width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.processedBy} ${PAYOUT_COLUMN_ALIGN.processedBy} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconUser width={14} height={14} />}>
                     {t("payout.colProcessedBy")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.processedInMs ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.processedInMs} ${PAYOUT_COLUMN_ALIGN.processedInMs} px-3 py-3`}>
-                  <ColumnHeader align="right" icon={<IconClock width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.processedInMs} ${PAYOUT_COLUMN_ALIGN.processedInMs} px-3 py-2.5`}>
+                  <ColumnHeader align="right" icon={<IconClock width={14} height={14} />}>
                     {t("payout.colProcessedIn")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.retryCount ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.retryCount} ${PAYOUT_COLUMN_ALIGN.retryCount} px-3 py-3`}>
-                  <ColumnHeader align="center">{t("payout.colRetry")}</ColumnHeader>
+                <th className={`${PAYOUT_COLUMN_WIDTH.retryCount} ${PAYOUT_COLUMN_ALIGN.retryCount} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconRefresh width={14} height={14} />}>
+                    {t("payout.colRetry")}
+                  </ColumnHeader>
                 </th>
               ) : null}
               {show.createdAt ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.createdAt} ${PAYOUT_COLUMN_ALIGN.createdAt} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.createdAt} ${PAYOUT_COLUMN_ALIGN.createdAt} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                     {t("payout.colCreatedAt")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.updatedAt ? (
-                <th className={`${PAYOUT_COLUMN_WIDTH.updatedAt} ${PAYOUT_COLUMN_ALIGN.updatedAt} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
+                <th className={`${PAYOUT_COLUMN_WIDTH.updatedAt} ${PAYOUT_COLUMN_ALIGN.updatedAt} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                     {t("payout.colUpdatedAt")}
                   </ColumnHeader>
                 </th>
               ) : null}
-              <th className="w-[96px] px-3 py-3 text-center">{t("payout.colActions")}</th>
+              <th className="w-[96px] px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconSettings width={14} height={14} />}>
+                  {t("payout.colActions")}
+                </ColumnHeader>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -678,23 +731,44 @@ export function PayoutListPage() {
 
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
-                  {error
-                    ? t("payout.loadError")
-                    : hasFilters
-                      ? t("payout.emptyFiltered")
-                      : t("payout.empty")}
+                <td colSpan={colSpan} className="px-3 py-16">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
+                    >
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {error
+                        ? t("payout.loadError")
+                        : hasFilters
+                          ? t("payout.emptyFiltered")
+                          : t("payout.empty")}
+                    </p>
+                    {!error && hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("common.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : null}
 
             {rows.map((row, index) => (
               <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
-                <td className="px-3 py-3 text-center font-mono text-label tabular-nums text-muted">
+                <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                   {page * size + index + 1}
                 </td>
                 {show.requestId ? (
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2.5">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <button
                         type="button"
@@ -710,7 +784,7 @@ export function PayoutListPage() {
                 ) : null}
                 {show.merchant ? (
                   <td
-                    className="truncate px-3 py-3 text-label text-ink"
+                    className="truncate px-3 py-2.5 text-label text-ink"
                     title={row.merchantName ?? row.merchantCode ?? undefined}
                   >
                     {row.merchantId ? (
@@ -726,17 +800,17 @@ export function PayoutListPage() {
                   </td>
                 ) : null}
                 {show.beneficiaryName ? (
-                  <td className="truncate px-3 py-3 text-label text-ink" title={row.beneficiaryName ?? undefined}>
+                  <td className="truncate px-3 py-2.5 text-label text-ink" title={row.beneficiaryName ?? undefined}>
                     {row.beneficiaryName ?? "—"}
                   </td>
                 ) : null}
                 {show.accountNumber ? (
-                  <td className="truncate px-3 py-3 font-mono text-label text-ink" title={row.accountNumber ?? undefined}>
+                  <td className="truncate px-3 py-2.5 font-mono text-label text-ink" title={row.accountNumber ?? undefined}>
                     {row.accountNumber ?? "—"}
                   </td>
                 ) : null}
                 {show.bank ? (
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     {row.bankCode || row.bankName ? (
                       <span
                         className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
@@ -750,29 +824,29 @@ export function PayoutListPage() {
                   </td>
                 ) : null}
                 {show.transferContent ? (
-                  <td className="truncate px-3 py-3 text-label text-ink-secondary" title={row.transferContent ?? undefined}>
+                  <td className="truncate px-3 py-2.5 text-label text-ink-secondary" title={row.transferContent ?? undefined}>
                     {row.transferContent ?? "—"}
                   </td>
                 ) : null}
                 {show.amount ? (
-                  <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
                     {formatMoney(row.amount)}
                   </td>
                 ) : null}
                 {show.fee ? (
-                  <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
                     {formatMoney(row.fee)}
                   </td>
                 ) : null}
                 {show.status ? (
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <StatusBadge tone={PAYOUT_STATUS_TONE[row.status]}>
                       {t(PAYOUT_STATUS_LABEL_KEY[row.status])}
                     </StatusBadge>
                   </td>
                 ) : null}
                 {show.callback ? (
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <StatusBadge tone={CALLBACK_STATUS_TONE[row.callbackStatus]}>
                       {t(CALLBACK_STATUS_LABEL_KEY[row.callbackStatus])}
                     </StatusBadge>
@@ -780,7 +854,7 @@ export function PayoutListPage() {
                 ) : null}
                 {show.realStatus ? (
                   <td
-                    className="px-3 py-3 text-center text-label text-ink-secondary"
+                    className="px-3 py-2.5 text-center text-label text-ink-secondary"
                     title={realStatusLabel(row)}
                   >
                     {isAwaitingReconciliation(row) ? (
@@ -791,18 +865,18 @@ export function PayoutListPage() {
                   </td>
                 ) : null}
                 {show.reason ? (
-                  <td className="truncate px-3 py-3 text-label text-ink-secondary" title={row.reason ?? undefined}>
+                  <td className="truncate px-3 py-2.5 text-label text-ink-secondary" title={row.reason ?? undefined}>
                     {row.reason ?? "—"}
                   </td>
                 ) : null}
                 {show.note ? (
-                  <td className="truncate px-3 py-3 text-label text-ink-secondary" title={row.note ?? undefined}>
+                  <td className="truncate px-3 py-2.5 text-label text-ink-secondary" title={row.note ?? undefined}>
                     {row.note ?? "—"}
                   </td>
                 ) : null}
                 {show.sourceAccount ? (
                   <td
-                    className="truncate px-3 py-3 font-mono text-label text-ink"
+                    className="truncate px-3 py-2.5 font-mono text-label text-ink"
                     title={
                       row.sourceAccountNumber
                         ? `${row.sourceBankCode ?? ""} ${row.sourceAccountNumber}`.trim()
@@ -815,32 +889,32 @@ export function PayoutListPage() {
                   </td>
                 ) : null}
                 {show.processedBy ? (
-                  <td className="truncate px-3 py-3 text-label text-ink">
+                  <td className="truncate px-3 py-2.5 text-label text-ink">
                     {row.processedBy ?? "—"}
                   </td>
                 ) : null}
                 {show.processedInMs ? (
-                  <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-muted">
+                  <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-muted">
                     {row.processedInMs != null ? `${row.processedInMs} ms` : "—"}
                   </td>
                 ) : null}
                 {show.retryCount ? (
-                  <td className="px-3 py-3 text-center font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-center font-mono text-label tabular-nums text-ink">
                     {row.retryCount ?? 0}
                   </td>
                 ) : null}
                 {show.createdAt ? (
-                  <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                  <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
                     <DateTimeText value={row.createdAt} />
                   </td>
                 ) : null}
                 {show.updatedAt ? (
-                  <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                  <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
                     <DateTimeText value={row.updatedAt} />
                   </td>
                 ) : null}
-                <td className="px-3 py-3 text-center">
-                  {row.status === "pending" || row.status === "processing" ? (
+                <td className="px-3 py-2.5 text-center">
+                  {canWrite && (row.status === "pending" || row.status === "processing") ? (
                     <span className="group relative inline-flex">
                       <Button
                         type="button"
@@ -867,7 +941,7 @@ export function PayoutListPage() {
 
             {!loading && rows.length > 0 ? (
               <tr className="border-t border-edge bg-surface/50">
-                <td className="px-3 py-3 text-label font-semibold text-ink" colSpan={1}>
+                <td className="px-3 py-2.5 text-label font-semibold text-ink" colSpan={1}>
                   {t("payout.totalRow")}
                 </td>
                 {show.requestId ? <td /> : null}
@@ -877,12 +951,12 @@ export function PayoutListPage() {
                 {show.bank ? <td /> : null}
                 {show.transferContent ? <td /> : null}
                 {show.amount ? (
-                  <td className="px-3 py-3 text-right font-mono text-label font-semibold tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink">
                     {formatMoney(pageTotals.amount)}
                   </td>
                 ) : null}
                 {show.fee ? (
-                  <td className="px-3 py-3 text-right font-mono text-label font-semibold tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink">
                     {formatMoney(pageTotals.fee)}
                   </td>
                 ) : null}
@@ -909,7 +983,8 @@ export function PayoutListPage() {
           row={detailRow}
           onClose={() => setDetailRow(null)}
           onFinalize={
-            detailRow.status === "pending" || detailRow.status === "processing"
+            canWrite &&
+            (detailRow.status === "pending" || detailRow.status === "processing")
               ? () => {
                   setFinalizeRow(detailRow);
                   setDetailRow(null);

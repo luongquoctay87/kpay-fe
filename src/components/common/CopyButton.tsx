@@ -8,13 +8,20 @@ import { cn } from "@/lib/cn";
 type CopyButtonProps = {
   value: string;
   label: string;
-  /** Extra classes on the button (e.g. gap / accent for denser tables). */
+  /** Extra classes on the button (e.g. margin). Do not pass h-/w- — use `size`. */
   className?: string;
+  /** Hit area. `sm` (20px) for dense table rows; default `md` (36px). */
+  size?: "sm" | "md";
   /**
    * @deprecated Feedback luôn bật (icon ✓ + tooltip). Giữ prop để tương thích call site cũ.
    */
   showCheck?: boolean;
 };
+
+const SIZE_CLASS = {
+  sm: "h-5 w-5",
+  md: "h-9 w-9",
+} as const;
 
 function CopyIcon() {
   return (
@@ -53,7 +60,7 @@ function CheckIcon() {
   );
 }
 
-export function CopyButton({ value, label, className }: CopyButtonProps) {
+export function CopyButton({ value, label, className, size = "md" }: CopyButtonProps) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<number | null>(null);
@@ -83,7 +90,8 @@ export function CopyButton({ value, label, className }: CopyButtonProps) {
         void onCopy();
       }}
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center rounded p-0.5 transition",
+        "relative inline-flex shrink-0 items-center justify-center rounded-md transition",
+        SIZE_CLASS[size],
         copied ? "text-success" : "text-muted hover:bg-hover hover:text-ink",
         className,
       )}

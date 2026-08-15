@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
-type ColumnHeaderProps = {
-  icon?: ReactNode;
+export type ColumnHeaderProps = {
+  /** Leading icon — required for consistent table headers. Size is normalized by CSS. */
+  icon: ReactNode;
   children: ReactNode;
   /** Match table column text alignment. */
   align?: "left" | "center" | "right";
@@ -10,7 +11,9 @@ type ColumnHeaderProps = {
 };
 
 /**
- * Table header label with an optional leading icon.
+ * Shared table column header: muted label + leading icon.
+ * Typography and icon size are fixed here so every table looks the same.
+ * Labels stay on one line — column min-widths must fit the Vietnamese title.
  */
 export function ColumnHeader({
   icon,
@@ -21,16 +24,16 @@ export function ColumnHeader({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5",
+        "inline-flex items-center gap-1.5 whitespace-nowrap text-label font-medium text-muted",
         align === "center" && "justify-center",
         align === "right" && "justify-end",
         className,
       )}
     >
-      {icon ? (
-        <span className="inline-flex shrink-0 text-muted [&_svg]:block">{icon}</span>
-      ) : null}
-      <span className="truncate">{children}</span>
+      <span className="inline-flex size-3.5 shrink-0 items-center justify-center text-muted [&_svg]:block [&_svg]:size-3.5">
+        {icon}
+      </span>
+      <span>{children}</span>
     </span>
   );
 }

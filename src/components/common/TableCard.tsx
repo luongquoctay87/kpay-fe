@@ -51,7 +51,7 @@ export function TableCard({
   const refreshText = refreshLabel ?? t("common.refresh");
 
   return (
-    <section className="relative z-0 w-full min-w-0 rounded-lg border border-edge bg-elevated">
+    <section className="relative z-0 w-full min-w-0 overflow-hidden rounded-lg border border-edge bg-elevated">
       {/* Toolbar */}
       {(toolbar || onRefresh) ? (
         <div className="flex flex-wrap items-center justify-end gap-2 border-b border-edge px-3 py-3 sm:px-5">
@@ -74,7 +74,7 @@ export function TableCard({
 
       {/* Error bar */}
       {error ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-danger-edge bg-danger-bg px-5 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-danger-edge bg-danger-bg px-3 py-2.5 sm:px-5">
           <p className="text-label text-danger">{error}</p>
           {onRetry ? (
             <Button

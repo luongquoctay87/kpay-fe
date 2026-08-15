@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { IconCheckCircle, IconX } from "@/components/icons/NavIcons";
+import { IconCheckCircle, IconRefresh, IconX } from "@/components/icons/NavIcons";
 import { Button, Field, Input, Switch, toast } from "@/components/ui";
 import { agentApi } from "@/features/agents/api";
 import type { AgentDetail, AgentListItem } from "@/features/agents/types";
@@ -189,6 +189,7 @@ export function EditAgentModal({ agent, onClose, onUpdated }: EditAgentModalProp
                   type="button"
                   variant="secondary"
                   size="sm"
+                  leftIcon={<IconRefresh width={14} height={14} />}
                   onClick={() => setLoadKey((k) => k + 1)}
                 >
                   {t("agents.retryLoad")}

@@ -4,11 +4,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
+  IconActivity,
+  IconCheckCircle,
+  IconClock,
+  IconGlobe,
+  IconHash,
+  IconInbox,
+  IconLayers,
   IconPlus,
   IconRefresh,
   IconSave,
   IconSearch,
   IconSettings,
+  IconUser,
   IconUsers,
   IconX,
 } from "@/components/icons/NavIcons";
@@ -24,6 +32,7 @@ import {
   filterControlClass,
 } from "@/components/common";
 import { Button, Field, Input, PasswordVisibilityToggle, Select, StatusBadge, toast } from "@/components/ui";
+import { hasAdminStaffRole } from "@/features/auth/admin-role";
 import { useAuthStore } from "@/features/auth/store";
 import { adminUsersApi } from "@/features/settings/api/admin-users-api";
 import { rolesApi } from "@/features/settings/api/roles-api";
@@ -332,6 +341,7 @@ export function AdminUsersPage() {
     permissions == null ||
     permissions.length === 0 ||
     permissions.includes("admin_users:write");
+  const canChangeRoles = hasAdminStaffRole(useAuthStore((s) => s.user));
 
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
@@ -419,7 +429,7 @@ export function AdminUsersPage() {
           { label: t("nav.settingsUsers"), icon: <IconUsers /> },
         ]}
         actions={
-          canWrite ? (
+          canWrite && canChangeRoles ? (
             <Button
               type="button"
               variant="primary"
@@ -527,34 +537,50 @@ export function AdminUsersPage() {
       >
         <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 880 }}>
           <colgroup>
-            <col style={{ width: 48 }} />
-            <col style={{ width: 160 }} />
-            <col />
-            <col style={{ width: 160 }} />
-            <col style={{ width: 88 }} />
-            <col style={{ width: 112 }} />
-            <col style={{ width: 160 }} />
+            <col style={{ width: "5%" }} />
+            <col style={{ width: "16%" }} />
+            <col style={{ width: "26%" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "17%" }} />
           </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className="w-12 px-3 py-3 text-center">{t("settings.colStt")}</th>
-              <th className="px-3 py-3">
-                <ColumnHeader>{t("settings.colUsername")}</ColumnHeader>
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className="px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("settings.colStt")}
+                </ColumnHeader>
               </th>
-              <th className="min-w-0 px-3 py-3">
-                <ColumnHeader>{t("settings.colEmail")}</ColumnHeader>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconUser width={14} height={14} />}>
+                  {t("settings.colUsername")}
+                </ColumnHeader>
               </th>
-              <th className="px-3 py-3">
-                <ColumnHeader>{t("settings.colRoles")}</ColumnHeader>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconGlobe width={14} height={14} />}>
+                  {t("settings.colEmail")}
+                </ColumnHeader>
               </th>
-              <th className="px-3 py-3">
-                <ColumnHeader>{t("settings.colTotp")}</ColumnHeader>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconLayers width={14} height={14} />}>
+                  {t("settings.colRoles")}
+                </ColumnHeader>
               </th>
-              <th className="px-3 py-3">
-                <ColumnHeader>{t("settings.colStatus")}</ColumnHeader>
+              <th className="px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconCheckCircle width={14} height={14} />}>
+                  {t("settings.colTotp")}
+                </ColumnHeader>
               </th>
-              <th className="px-3 py-3">
-                <ColumnHeader>{t("settings.colLastLogin")}</ColumnHeader>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconActivity width={14} height={14} />}>
+                  {t("settings.colStatus")}
+                </ColumnHeader>
+              </th>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconClock width={14} height={14} />}>
+                  {t("settings.colLastLogin")}
+                </ColumnHeader>
               </th>
             </tr>
           </thead>
@@ -568,47 +594,96 @@ export function AdminUsersPage() {
             ) : null}
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
-                  {hasFilters ? t("settings.usersEmptyFiltered") : t("settings.usersEmpty")}
+                <td colSpan={colSpan} className="px-3 py-16">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
+                    >
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {hasFilters ? t("settings.usersEmptyFiltered") : t("settings.usersEmpty")}
+                    </p>
+                    {!hasFilters && canWrite && canChangeRoles ? (
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="md"
+                        leftIcon={<IconPlus width={16} height={16} />}
+                        onClick={() => setShowCreate(true)}
+                      >
+                        {t("settings.btnAddUser")}
+                      </Button>
+                    ) : null}
+                    {hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("common.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : null}
-            {rows.map((row, idx) => (
+            {rows.map((row, idx) => {
+              const roles = row.roleCodes ?? [];
+              return (
               <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
-                <td className="px-3 py-3 text-center font-mono text-caption tabular-nums text-muted">
+                <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                   {page * size + idx + 1}
                 </td>
-                <td className="px-3 py-3">
+                <td className="px-3 py-2.5">
                   <Link
                     href={ROUTES.settingsUserDetail(row.id)}
-                    className="font-medium text-label text-ink underline-offset-2 hover:underline"
+                    className="block max-w-full truncate text-label font-medium text-ink transition hover:text-link-hover hover:underline"
+                    title={row.username}
                   >
                     {row.username}
                   </Link>
                 </td>
-                <td className="min-w-0 px-3 py-3">
+                <td className="px-3 py-2.5">
                   <p className="truncate text-label text-ink" title={row.email}>
                     {row.email}
                   </p>
                 </td>
-                <td className="truncate px-3 py-3 text-label text-muted">
-                  {(row.roleCodes ?? []).join(", ") || "—"}
+                <td className="px-3 py-2.5">
+                  {roles.length > 0 ? (
+                    <div className="flex min-w-0 flex-wrap gap-1" title={roles.join(", ")}>
+                      {roles.map((code) => (
+                        <span
+                          key={code}
+                          className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
+                        >
+                          {code}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-label text-muted">—</span>
+                  )}
                 </td>
-                <td className="px-3 py-3">
+                <td className="px-3 py-2.5 text-center">
                   <StatusBadge tone={row.totpEnabled ? "active" : "disabled"}>
                     {row.totpEnabled ? t("common.on") : t("common.off")}
                   </StatusBadge>
                 </td>
-                <td className="px-3 py-3">
+                <td className="px-3 py-2.5">
                   <StatusBadge tone={row.isActive ? "active" : "disabled"}>
                     {row.isActive ? t("settings.statusActive") : t("settings.statusInactive")}
                   </StatusBadge>
                 </td>
-                <td className="whitespace-nowrap px-3 py-3 text-label text-muted">
+                <td className="px-3 py-2.5 text-label text-muted">
                   <DateTimeText value={row.lastLoginAt} />
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </TableCard>

@@ -1,4 +1,3 @@
-import type { BadgeTone } from "@/components/ui";
 import type { MessageKey } from "@/i18n/types";
 import {
   MONEY_FLOW_DIRECTION_OPTIONS,
@@ -9,12 +8,6 @@ export const MONEY_FLOW_DIRECTION_LABEL_KEY: Record<MoneyFlowDirection, MessageK
   in: "moneyFlow.directionIn",
   out: "moneyFlow.directionOut",
   internal: "moneyFlow.directionInternal",
-};
-
-export const MONEY_FLOW_DIRECTION_TONE: Record<MoneyFlowDirection, BadgeTone> = {
-  in: "active",
-  out: "danger",
-  internal: "neutral",
 };
 
 /** Direction badges — teal / amber / slate, distinct from the stage sky–indigo ramp. */
@@ -28,11 +21,6 @@ export function isMoneyFlowDirection(value: string | null | undefined): value is
   return (
     value != null && (MONEY_FLOW_DIRECTION_OPTIONS as readonly string[]).includes(value)
   );
-}
-
-export function directionTone(value: string | null | undefined): BadgeTone {
-  if (isMoneyFlowDirection(value)) return MONEY_FLOW_DIRECTION_TONE[value];
-  return "neutral";
 }
 
 export function directionBadgeClass(value: string | null | undefined): string {
@@ -81,7 +69,7 @@ export function stageNature(stage: string): StageNature {
   return "info";
 }
 
-export function stageBadgeClass(stage: string, _stepNo?: number | null): string {
+export function stageBadgeClass(stage: string): string {
   return NATURE_BADGE[stageNature(stage)];
 }
 

@@ -31,8 +31,26 @@ export interface BankAccountListItem {
   appConfigured: boolean;
   notificationConfigured: boolean;
   configuredSourceCount: number;
+  /** True when ACB AccountKeys row exists (secrets never returned). */
+  acbConfigured: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface BankAccountAcbCredentialsStatus {
+  bankAccountId: string;
+  configured: boolean;
+  workerEnabled: boolean;
+  hasProxy: boolean;
+  updatedAt?: string | null;
+}
+
+export interface UpsertBankAccountAcbCredentialsBody {
+  password: string;
+  totpCode?: string;
+  credentialsJson: string;
+  proxyUrl?: string;
+  workerEnabled?: boolean;
 }
 
 export interface BankAccountListResp {
@@ -45,14 +63,14 @@ export interface BankAccountListResp {
 }
 
 export interface BankAccountListParams {
-  accountNumber?: string;
-  bankName?: string;
+  q?: string;
   status?: BankAccountStatus;
   accountType?: BankAccountType;
   canCollect?: boolean;
   canDisburse?: boolean;
   page?: number;
   size?: number;
+  signal?: AbortSignal;
 }
 
 export interface BankOption {

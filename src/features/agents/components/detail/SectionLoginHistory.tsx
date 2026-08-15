@@ -1,8 +1,16 @@
 "use client";
 
+import { ColumnHeader, DateTimeText } from "@/components/common";
+import {
+  IconActivity,
+  IconClock,
+  IconFileText,
+  IconGlobe,
+  IconLayers,
+  IconSmartphone,
+} from "@/components/icons/NavIcons";
 import { type AgentLoginHistoryItem } from "@/features/agents/types";
 import { useI18n } from "@/i18n/use-i18n";
-import { DateTimeText } from "@/components/common";
 
 export function SectionLoginHistory({ rows }: { rows: AgentLoginHistoryItem[] }) {
   const { t } = useI18n();
@@ -17,26 +25,54 @@ export function SectionLoginHistory({ rows }: { rows: AgentLoginHistoryItem[] })
         ) : (
           <table className="w-full min-w-[720px] text-left text-label">
             <thead>
-              <tr className="border-b border-edge text-muted">
-                <th className="py-2 font-medium">{t("agentDetail.colIp")}</th>
-                <th className="py-2 font-medium">{t("agentDetail.colDevice")}</th>
-                <th className="py-2 font-medium">{t("agentDetail.colBrowser")}</th>
-                <th className="py-2 font-medium">{t("agentDetail.colOs")}</th>
-                <th className="py-2 font-medium">{t("agentDetail.colStatus")}</th>
-                <th className="py-2 font-medium">{t("agentDetail.colFailure")}</th>
-                <th className="py-2 font-medium">{t("agentDetail.colLoginAt")}</th>
+              <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconGlobe width={14} height={14} />}>
+                    {t("agentDetail.colIp")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconSmartphone width={14} height={14} />}>
+                    {t("agentDetail.colDevice")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconGlobe width={14} height={14} />}>
+                    {t("agentDetail.colBrowser")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconLayers width={14} height={14} />}>
+                    {t("agentDetail.colOs")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconActivity width={14} height={14} />}>
+                    {t("agentDetail.colStatus")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                    {t("agentDetail.colFailure")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconClock width={14} height={14} />}>
+                    {t("agentDetail.colLoginAt")}
+                  </ColumnHeader>
+                </th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="border-b border-edge">
-                  <td className="py-2 font-mono text-caption">{row.ipAddress ?? "—"}</td>
-                  <td className="py-2">{row.device ?? "—"}</td>
-                  <td className="py-2">{row.browser ?? "—"}</td>
-                  <td className="py-2">{row.os ?? "—"}</td>
-                  <td className="py-2">{row.status ?? "—"}</td>
-                  <td className="py-2">{row.failureReason ?? "—"}</td>
-                  <td className="py-2 text-muted"><DateTimeText value={row.loginAt} /></td>
+                  <td className="px-3 py-2 font-mono text-caption">{row.ipAddress ?? "—"}</td>
+                  <td className="px-3 py-2">{row.device ?? "—"}</td>
+                  <td className="px-3 py-2">{row.browser ?? "—"}</td>
+                  <td className="px-3 py-2">{row.os ?? "—"}</td>
+                  <td className="px-3 py-2">{row.status ?? "—"}</td>
+                  <td className="px-3 py-2">{row.failureReason ?? "—"}</td>
+                  <td className="px-3 py-2 text-muted"><DateTimeText value={row.loginAt} /></td>
                 </tr>
               ))}
             </tbody>
@@ -46,4 +82,3 @@ export function SectionLoginHistory({ rows }: { rows: AgentLoginHistoryItem[] })
     </section>
   );
 }
-

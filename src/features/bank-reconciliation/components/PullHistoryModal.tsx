@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { IconRefresh } from "@/components/icons/NavIcons";
+import { IconRefresh, IconX } from "@/components/icons/NavIcons";
 import { Button, Field, Select, toast } from "@/components/ui";
 import {
   DateRangeFilter,
@@ -144,7 +144,7 @@ export function PullHistoryModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="rounded p-1 text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
             aria-label={t("bankReconciliation.btnCancel")}
           >
             <svg
@@ -214,11 +214,13 @@ export function PullHistoryModal({
             {error ? <p className="text-label text-danger">{error}</p> : null}
           </div>
 
-          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-edge px-4 py-3 sm:px-5">
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
             <Button
               type="button"
               variant="secondary"
               size="md"
+              className="w-full sm:w-auto"
+              leftIcon={<IconX width={15} height={15} />}
               disabled={submitting}
               onClick={onClose}
             >
@@ -228,6 +230,7 @@ export function PullHistoryModal({
               type="submit"
               variant="primary"
               size="md"
+              className="w-full sm:w-auto"
               loading={submitting}
               leftIcon={<IconRefresh width={15} height={15} />}
             >

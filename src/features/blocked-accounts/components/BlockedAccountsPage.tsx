@@ -7,10 +7,10 @@ import {
   IconClock,
   IconFileText,
   IconHash,
+  IconInbox,
   IconLayers,
   IconPlus,
   IconRefresh,
-  IconSearch,
   IconUser,
 } from "@/components/icons/NavIcons";
 import {
@@ -20,10 +20,12 @@ import {
   FilterBar,
   PageHeader,
   Pagination,
+  SearchInput,
   StatCard,
   TableCard,
+  filterControlClass,
 } from "@/components/common";
-import { Button, Input, Select, StatusBadge, toast } from "@/components/ui";
+import { Button, Select, Switch, toast } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { blockedAccountApi } from "@/features/blocked-accounts/api";
 import { CreateBlockedAccountModal } from "@/features/blocked-accounts/components/CreateBlockedAccountModal";
@@ -51,16 +53,15 @@ export function BlockedAccountsPage() {
   const [size, setSize] = useState(20);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<BlockedAccountListItem | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const [qDraft, setQDraft] = useState("");
-  const [bankDraft, setBankDraft] = useState("");
-  const [activeDraft, setActiveDraft] = useState<string | null>("true");
+  const [activeDraft, setActiveDraft] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<{
     q?: string;
-    bankCode?: string;
     isActive?: boolean;
-  }>({ isActive: true });
+  }>({});
 
   const statusOptions = useMemo(
     () => [
@@ -102,23 +103,18 @@ export function BlockedAccountsPage() {
   const activeOnPage = rows.filter((r) => r.isActive).length;
   const inactiveOnPage = rows.filter((r) => !r.isActive).length;
 
-  const hasFilters = Boolean(
-    filters.q || filters.bankCode || filters.isActive !== true,
-  );
-  const draftsDirty =
-    Boolean(qDraft) || Boolean(bankDraft) || activeDraft !== "true";
+  const hasFilters = Boolean(filters.q || filters.isActive != null);
+  const draftsDirty = Boolean(qDraft) || activeDraft != null;
   const canReset = hasFilters || draftsDirty;
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
-  const colSpan = canWrite ? 7 : 6;
+  const colSpan = 6;
 
-  function applyFilters(overrides?: Partial<{ active: string | null }>) {
-    const nextActive = overrides && "active" in overrides ? overrides.active : activeDraft;
+  function applyFilters() {
     setPage(0);
     setFilters({
       q: qDraft.trim() || undefined,
-      bankCode: bankDraft.trim() || undefined,
-      isActive: nextActive != null ? nextActive === "true" : undefined,
+      isActive: activeDraft != null ? activeDraft === "true" : undefined,
     });
   }
 
@@ -129,28 +125,30 @@ export function BlockedAccountsPage() {
 
   function onReset() {
     setQDraft("");
-    setBankDraft("");
-    setActiveDraft("true");
+    setActiveDraft(null);
     setPage(0);
-    setFilters({ isActive: true });
+    setFilters({});
   }
 
-  async function onDeactivate(row: BlockedAccountListItem) {
-    const ok = window.confirm(
-      t("blockedAccounts.deactivateConfirm", {
-        account: row.accountNumber,
-        bank: row.bankCode,
-      }),
-    );
-    if (!ok) return;
+  async function onToggleActive(row: BlockedAccountListItem, next: boolean) {
+    if (!canWrite || togglingId) return;
+    setTogglingId(row.id);
     try {
-      await blockedAccountApi.deactivate(row.id);
-      toast.success(t("blockedAccounts.deactivateOk"));
+      await blockedAccountApi.update(row.id, { isActive: next });
+      toast.success(
+        next ? t("blockedAccounts.activateOk") : t("blockedAccounts.deactivateOk"),
+      );
       await refresh();
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? err.message : t("blockedAccounts.deactivateError"),
+        err instanceof ApiError
+          ? err.message
+          : next
+            ? t("blockedAccounts.activateError")
+            : t("blockedAccounts.deactivateError"),
       );
+    } finally {
+      setTogglingId(null);
     }
   }
 
@@ -164,37 +162,24 @@ export function BlockedAccountsPage() {
           { label: t("blockedAccounts.breadcrumbCurrent"), icon: <IconBan /> },
         ]}
         actions={
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          canWrite ? (
             <Button
               type="button"
-              variant="secondary"
+              variant="primary"
               size="md"
               className="w-full sm:w-auto"
-              leftIcon={<IconRefresh width={16} height={16} />}
-              onClick={() => void refresh()}
-              disabled={loading}
+              leftIcon={<IconPlus width={16} height={16} />}
+              onClick={() => setShowCreate(true)}
             >
-              {t("blockedAccounts.refresh")}
+              {t("blockedAccounts.add")}
             </Button>
-            {canWrite ? (
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                className="w-full sm:w-auto"
-                leftIcon={<IconPlus width={16} height={16} />}
-                onClick={() => setShowCreate(true)}
-              >
-                {t("blockedAccounts.add")}
-              </Button>
-            ) : null}
-          </div>
+          ) : null
         }
       />
 
       <p className="text-sm text-muted">{t("blockedAccounts.listHint")}</p>
 
-      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4">
         <StatCard label={t("blockedAccounts.statTotal")} value={String(total)} />
         <StatCard
           label={t("blockedAccounts.statActivePage")}
@@ -216,29 +201,15 @@ export function BlockedAccountsPage() {
           loading={loading}
           searchLabel={t("blockedAccounts.search")}
           resetLabel={t("blockedAccounts.reset")}
-          fieldsClassName="lg:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(8rem,10rem)]"
+          fieldsClassName="lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(8.5rem,11rem)]"
         >
           <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-            <Input
+            <SearchInput
               id="ba-blocked-filter-q"
-              size="md"
               value={qDraft}
-              onChange={(e) => setQDraft(e.target.value)}
+              onChange={setQDraft}
               placeholder={t("blockedAccounts.filterQPlaceholder")}
-              aria-label={t("blockedAccounts.filterQ")}
-              className="!border-edge bg-surface/80 hover:!border-edge-strong"
-              leftAddon={<IconSearch width={15} height={15} />}
-            />
-          </div>
-          <div className="min-w-0">
-            <Input
-              id="ba-blocked-filter-bank"
-              size="md"
-              value={bankDraft}
-              onChange={(e) => setBankDraft(e.target.value)}
-              placeholder={t("blockedAccounts.filterBankPlaceholder")}
-              aria-label={t("blockedAccounts.filterBank")}
-              className="!border-edge bg-surface/80 hover:!border-edge-strong"
+              label={t("blockedAccounts.filterQ")}
             />
           </div>
           <div className="min-w-0">
@@ -246,174 +217,192 @@ export function BlockedAccountsPage() {
               id="ba-blocked-filter-status"
               size="md"
               value={activeDraft}
-              onChange={(v) => {
-                setActiveDraft(v);
-                applyFilters({ active: v });
-              }}
+              onChange={setActiveDraft}
               options={statusOptions}
               placeholder={t("blockedAccounts.filterStatusAll")}
               clearable
               aria-label={t("blockedAccounts.filterStatus")}
-              triggerClassName="!border-edge bg-surface/80 hover:!border-edge-strong"
+              triggerClassName={filterControlClass}
             />
           </div>
         </FilterBar>
       </div>
 
       <TableCard
+        loading={loading}
         error={error}
         onRetry={() => void refresh()}
-        onRefresh={() => void refresh()}
-        loading={loading}
-        refreshLabel={t("blockedAccounts.refresh")}
+        retryLabel={t("blockedAccounts.refresh")}
         pagination={
-          total > 0 || loading ? (
-            <Pagination
-              page={page}
-              pageSize={size}
-              total={total}
-              loading={loading}
-              onPageChange={setPage}
-              onPageSizeChange={(s: number) => {
-                setSize(s);
-                setPage(0);
-              }}
-              rangeLabel={t("blockedAccounts.range", { from, to, total })}
-            />
-          ) : null
+          <Pagination
+            page={page}
+            pageSize={size}
+            total={total}
+            loading={loading}
+            onPageChange={setPage}
+            onPageSizeChange={(s: number) => {
+              setSize(s);
+              setPage(0);
+            }}
+            rangeLabel={t("blockedAccounts.range", { from, to, total })}
+          />
         }
       >
-        <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 920 }}>
+        <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 720 }}>
+          <colgroup>
+            <col className="w-[16%]" />
+            <col className="w-[15%]" />
+            <col className="w-[20%]" />
+            <col className="w-[10%]" />
+            <col className="w-[22%]" />
+            <col className="w-[17%]" />
+          </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className="w-[9rem] px-3 py-3">
-                <ColumnHeader>{t("blockedAccounts.colBank")}</ColumnHeader>
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconBank width={14} height={14} />}>
+                  {t("blockedAccounts.colBank")}
+                </ColumnHeader>
               </th>
-              <th className="w-[11rem] px-3 py-3">
-                <ColumnHeader icon={<IconHash width={13} height={13} />}>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconHash width={14} height={14} />}>
                   {t("blockedAccounts.colAccount")}
                 </ColumnHeader>
               </th>
-              <th className="w-[12rem] px-3 py-3">
-                <ColumnHeader icon={<IconUser width={13} height={13} />}>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconUser width={14} height={14} />}>
                   {t("blockedAccounts.colName")}
                 </ColumnHeader>
               </th>
-              <th className="w-[7.5rem] px-3 py-3">
-                <ColumnHeader icon={<IconBan width={13} height={13} />}>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconBan width={14} height={14} />}>
                   {t("blockedAccounts.colStatus")}
                 </ColumnHeader>
               </th>
-              <th className="min-w-[10rem] px-3 py-3">
-                <ColumnHeader icon={<IconFileText width={13} height={13} />}>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconFileText width={14} height={14} />}>
                   {t("blockedAccounts.colNote")}
                 </ColumnHeader>
               </th>
-              <th className="w-[10rem] px-3 py-3">
-                <ColumnHeader icon={<IconClock width={13} height={13} />}>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconClock width={14} height={14} />}>
                   {t("blockedAccounts.colCreatedAt")}
                 </ColumnHeader>
               </th>
-              {canWrite ? (
-                <th className="w-[9.5rem] px-3 py-3 text-right">
-                  <ColumnHeader align="right">{t("blockedAccounts.colActions")}</ColumnHeader>
-                </th>
-              ) : null}
             </tr>
           </thead>
-          <tbody className="divide-y divide-edge">
+          <tbody>
             {loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-4 py-10 text-center text-muted">
+                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
                   {t("blockedAccounts.loading")}
                 </td>
               </tr>
             ) : null}
+
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-4 py-10 text-center">
-                  <p className="text-muted">
-                    {hasFilters ? t("blockedAccounts.emptyFiltered") : t("blockedAccounts.empty")}
-                  </p>
-                  {!hasFilters ? (
-                    <p className="mt-1 text-sm text-muted">{t("blockedAccounts.emptyHint")}</p>
-                  ) : null}
-                  {canWrite && !hasFilters ? (
-                    <Button
-                      type="button"
-                      className="mt-4"
-                      leftIcon={<IconPlus width={16} height={16} />}
-                      onClick={() => setShowCreate(true)}
+                <td colSpan={colSpan} className="px-3 py-16">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
                     >
-                      {t("blockedAccounts.emptyCta")}
-                    </Button>
-                  ) : null}
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {error
+                        ? t("blockedAccounts.loadError")
+                        : hasFilters
+                          ? t("blockedAccounts.emptyFiltered")
+                          : t("blockedAccounts.empty")}
+                    </p>
+                    {!error && hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("blockedAccounts.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : null}
+
             {rows.map((row) => (
-              <tr key={row.id} className="hover:bg-panel-2/60">
-                <td className="px-3 py-3 align-top">
-                  <div className="font-medium text-ink">{row.bankCode}</div>
-                  {row.bankName ? (
-                    <div className="truncate text-caption text-muted" title={row.bankName}>
-                      {row.bankName}
-                    </div>
-                  ) : null}
+              <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
+                <td className="px-3 py-2.5">
+                  <div className="min-w-0" title={row.bankName ?? row.bankCode}>
+                    <span className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge">
+                      {row.bankCode}
+                    </span>
+                    {row.bankName ? (
+                      <p className="mt-0.5 truncate font-mono text-caption text-muted">
+                        {row.bankName}
+                      </p>
+                    ) : null}
+                  </div>
                 </td>
-                <td className="px-3 py-3 align-top">
-                  <div className="inline-flex max-w-full items-center gap-1.5 font-mono text-ink">
-                    <span className="truncate">{row.accountNumber}</span>
+                <td className="px-3 py-2.5">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span
+                      className="truncate font-mono text-label text-ink-secondary"
+                      title={row.accountNumber}
+                    >
+                      {row.accountNumber}
+                    </span>
                     <CopyButton
                       value={row.accountNumber}
                       label={t("blockedAccounts.copyAccount")}
                     />
                   </div>
                 </td>
-                <td className="px-3 py-3 align-top">
-                  <p className="truncate text-ink" title={row.accountName}>
-                    {row.accountName}
-                  </p>
+                <td className="px-3 py-2.5">
+                  {canWrite ? (
+                    <button
+                      type="button"
+                      className="max-w-full truncate text-left text-label font-medium text-ink transition hover:text-link-hover hover:underline"
+                      title={row.accountName}
+                      onClick={() => setEditing(row)}
+                    >
+                      {row.accountName}
+                    </button>
+                  ) : (
+                    <p className="truncate text-label text-ink" title={row.accountName}>
+                      {row.accountName}
+                    </p>
+                  )}
                 </td>
-                <td className="px-3 py-3 align-top">
-                  <StatusBadge tone={row.isActive ? "danger" : "disabled"}>
-                    {row.isActive
-                      ? t("blockedAccounts.statusActive")
-                      : t("blockedAccounts.statusInactive")}
-                  </StatusBadge>
+                <td className="px-3 py-2.5">
+                  <div className="inline-flex items-center">
+                    <Switch
+                      checked={row.isActive}
+                      disabled={!canWrite || togglingId === row.id}
+                      aria-label={
+                        row.isActive
+                          ? t("blockedAccounts.statusActive")
+                          : t("blockedAccounts.statusInactive")
+                      }
+                      onChange={(next) => void onToggleActive(row, next)}
+                    />
+                  </div>
                 </td>
-                <td className="px-3 py-3 align-top">
-                  <p className="truncate text-muted" title={row.note ?? ""}>
-                    {row.note || "—"}
-                  </p>
+                <td className="px-3 py-2.5">
+                  {row.note ? (
+                    <p className="truncate text-label text-muted" title={row.note}>
+                      {row.note}
+                    </p>
+                  ) : (
+                    <span className="text-label text-muted">—</span>
+                  )}
                 </td>
-                <td className="whitespace-nowrap px-3 py-3 align-top text-muted">
+                <td className="whitespace-nowrap px-3 py-2.5 text-label text-ink">
                   <DateTimeText value={row.createdAt} />
                 </td>
-                {canWrite ? (
-                  <td className="px-3 py-3 text-right align-top">
-                    <div className="inline-flex flex-wrap items-center justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setEditing(row)}
-                      >
-                        {t("blockedAccounts.edit")}
-                      </Button>
-                      {row.isActive ? (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => void onDeactivate(row)}
-                        >
-                          {t("blockedAccounts.deactivate")}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </td>
-                ) : null}
               </tr>
             ))}
           </tbody>

@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import {
+  AutoRefreshControl,
   ColumnHeader,
   DateRangeFilter,
   DateTimeText,
@@ -34,6 +35,7 @@ import {
   IconGlobe,
   IconHash,
   IconHeadset,
+  IconInbox,
   IconLog,
   IconRefresh,
   IconSearch,
@@ -44,13 +46,16 @@ import { auditLogApi } from "@/features/audit-logs/api";
 import { ColumnPicker } from "@/features/audit-logs/components/ColumnPicker";
 import { AuditDetailDrawer } from "@/features/audit-logs/components/AuditDetailDrawer";
 import {
+  AUDIT_LOG_COLUMN_MIN_PX,
   AUDIT_LOG_COLUMN_WIDTH,
+  AUDIT_LOG_COLUMNS,
   auditLogsTableMinWidth,
   defaultColumnVisibility,
   loadColumnVisibility,
   saveColumnVisibility,
   visibleColumnCount,
   type ColumnVisibility,
+  type AuditLogColumn,
 } from "@/features/audit-logs/columns";
 import {
   AUDIT_ACTOR_LABEL_KEY,
@@ -61,6 +66,10 @@ import {
   type AuditLogListItem,
 } from "@/features/audit-logs/types";
 import { useI18n } from "@/i18n/use-i18n";
+import {
+  useAutoRefresh,
+  type AutoRefreshSeconds,
+} from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { useMerchantAgentFilterOptions } from "@/lib/options/use-merchant-agent-filter-options";
 import { ApiError } from "@/lib/types/api";
@@ -85,6 +94,8 @@ export function AuditLogsPage() {
   const { t } = useI18n();
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
   const [expanded, setExpanded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
@@ -102,6 +113,19 @@ export function AuditLogsPage() {
 
   const colSpan = visibleColumnCount(columnVisibility);
   const show = columnVisibility;
+
+  const flexCol: AuditLogColumn =
+    show.summary ? "summary" : show.action ? "action" : show.entity ? "entity" : show.actor ? "actor" : "time";
+
+  function colClass(col: AuditLogColumn | "stt"): string {
+    if (col !== "stt" && col === flexCol) return "min-w-0";
+    return AUDIT_LOG_COLUMN_WIDTH[col];
+  }
+
+  function colWidth(col: AuditLogColumn | "stt"): string | undefined {
+    if (col !== "stt" && col === flexCol) return undefined;
+    return `${AUDIT_LOG_COLUMN_MIN_PX[col]}px`;
+  }
 
   const [qDraft, setQDraft] = useState("");
   const [actorDraft, setActorDraft] = useState<AuditActorType | null>(null);
@@ -150,6 +174,8 @@ export function AuditLogsPage() {
     empty: EMPTY,
     mapError,
   });
+
+  useAutoRefresh(refresh, { enabled: autoRefresh, intervalSec: autoRefreshSec });
 
   const hasFilters = Object.values(filters).some((v) => v != null && v !== "");
   const canReset =
@@ -266,6 +292,15 @@ export function AuditLogsPage() {
           { label: t("auditLogs.breadcrumbParent"), icon: <IconLog /> },
           { label: t("auditLogs.listTitle"), icon: <IconAuditLog /> },
         ]}
+        actions={
+          <AutoRefreshControl
+            enabled={autoRefresh}
+            intervalSec={autoRefreshSec}
+            onEnabledChange={setAutoRefresh}
+            onIntervalChange={setAutoRefreshSec}
+            size="sm"
+          />
+        }
       />
 
       <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
@@ -416,63 +451,71 @@ export function AuditLogsPage() {
           className="w-full table-fixed border-collapse text-left"
           style={{ minWidth: auditLogsTableMinWidth(columnVisibility) }}
         >
+          <colgroup>
+            <col style={{ width: colWidth("stt") }} />
+            {AUDIT_LOG_COLUMNS.map((col) =>
+              show[col] ? <col key={col} style={{ width: colWidth(col) }} /> : null,
+            )}
+          </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className={`${AUDIT_LOG_COLUMN_WIDTH.stt} px-3 py-3 text-center`}>
-                {t("auditLogs.colStt")}
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className={`${colClass("stt")} px-3 py-2.5 text-center`}>
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("auditLogs.colStt")}
+                </ColumnHeader>
               </th>
               {show.time ? (
-                <th className={`${AUDIT_LOG_COLUMN_WIDTH.time} px-3 py-3 text-center`}>
-                  <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
+                <th className={`${colClass("time")} px-3 py-2.5 text-center`}>
+                  <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                     {t("auditLogs.colTime")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.actorType ? (
-                <th className={`${AUDIT_LOG_COLUMN_WIDTH.actorType} px-3 py-3`}>
-                  <ColumnHeader icon={<IconUser width={13} height={13} />}>
+                <th className={`${colClass("actorType")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconUser width={14} height={14} />}>
                     {t("auditLogs.colActorType")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.actor ? (
-                <th className={`${AUDIT_LOG_COLUMN_WIDTH.actor} px-3 py-3`}>
-                  <ColumnHeader icon={<IconUser width={13} height={13} />}>
+                <th className={`${colClass("actor")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconUser width={14} height={14} />}>
                     {t("auditLogs.colActor")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.action ? (
-                <th className={`${AUDIT_LOG_COLUMN_WIDTH.action} px-3 py-3`}>
-                  <ColumnHeader icon={<IconHash width={13} height={13} />}>
+                <th className={`${colClass("action")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
                     {t("auditLogs.colAction")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.entity ? (
-                <th className={`${AUDIT_LOG_COLUMN_WIDTH.entity} px-3 py-3`}>
-                  <ColumnHeader icon={<IconFileText width={13} height={13} />}>
+                <th className={`${colClass("entity")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
                     {t("auditLogs.colEntity")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.summary ? (
-                <th className={`${AUDIT_LOG_COLUMN_WIDTH.summary} px-3 py-3`}>
-                  <ColumnHeader icon={<IconActivity width={13} height={13} />}>
+                <th className={`${colClass("summary")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconActivity width={14} height={14} />}>
                     {t("auditLogs.colSummary")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.success ? (
-                <th className={`${AUDIT_LOG_COLUMN_WIDTH.success} px-3 py-3 text-center`}>
-                  <ColumnHeader align="center" icon={<IconCheckCircle width={13} height={13} />}>
+                <th className={`${colClass("success")} px-3 py-2.5 text-center`}>
+                  <ColumnHeader align="center" icon={<IconCheckCircle width={14} height={14} />}>
                     {t("auditLogs.colSuccess")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.ip ? (
-                <th className={`${AUDIT_LOG_COLUMN_WIDTH.ip} px-3 py-3`}>
-                  <ColumnHeader icon={<IconGlobe width={13} height={13} />}>
+                <th className={`${colClass("ip")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconGlobe width={14} height={14} />}>
                     {t("auditLogs.colIp")}
                   </ColumnHeader>
                 </th>
@@ -490,12 +533,33 @@ export function AuditLogsPage() {
 
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
-                  {error
-                    ? t("auditLogs.loadError")
-                    : hasFilters
-                      ? t("auditLogs.emptyFiltered")
-                      : t("auditLogs.empty")}
+                <td colSpan={colSpan} className="px-3 py-16">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
+                    >
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {error
+                        ? t("auditLogs.loadError")
+                        : hasFilters
+                          ? t("auditLogs.emptyFiltered")
+                          : t("auditLogs.empty")}
+                    </p>
+                    {!error && hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("common.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : null}
@@ -510,16 +574,16 @@ export function AuditLogsPage() {
                   }`}
                   onClick={() => setDetail(row)}
                 >
-                  <td className="px-3 py-3 text-center font-mono text-caption tabular-nums text-muted">
+                  <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                     {page * size + idx + 1}
                   </td>
                   {show.time ? (
-                    <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                    <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
                       <DateTimeText value={row.occurredAt} />
                     </td>
                   ) : null}
                   {show.actorType ? (
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-2.5">
                       {isAuditActorType(row.actorType) ? (
                         <StatusBadge tone={AUDIT_ACTOR_TONE[row.actorType]} className="w-fit gap-1">
                           {actorIcon(row.actorType)}
@@ -531,7 +595,7 @@ export function AuditLogsPage() {
                     </td>
                   ) : null}
                   {show.actor ? (
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-2.5">
                       <div className="flex min-w-0 flex-col gap-1">
                         {!show.actorType && isAuditActorType(row.actorType) ? (
                           <StatusBadge tone={AUDIT_ACTOR_TONE[row.actorType]} className="w-fit gap-1">
@@ -551,29 +615,34 @@ export function AuditLogsPage() {
                     </td>
                   ) : null}
                   {show.action ? (
-                    <td className="truncate px-3 py-3 font-mono text-caption text-ink" title={row.action}>
-                      {row.action}
+                    <td className="px-3 py-2.5">
+                      <span
+                        className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
+                        title={row.action}
+                      >
+                        {row.action}
+                      </span>
                     </td>
                   ) : null}
                   {show.entity ? (
-                    <td className="truncate px-3 py-3 font-mono text-caption text-muted" title={entity}>
+                    <td className="truncate px-3 py-2.5 font-mono text-caption text-muted" title={entity}>
                       {entity}
                     </td>
                   ) : null}
                   {show.summary ? (
-                    <td className="truncate px-3 py-3 text-label text-muted" title={row.summary}>
+                    <td className="truncate px-3 py-2.5 text-label text-muted" title={row.summary}>
                       {row.summary || "—"}
                     </td>
                   ) : null}
                   {show.success ? (
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-3 py-2.5 text-center">
                       <StatusBadge tone={row.success ? "active" : "danger"}>
                         {row.success ? t("auditLogs.successOk") : t("auditLogs.successFail")}
                       </StatusBadge>
                     </td>
                   ) : null}
                   {show.ip ? (
-                    <td className="truncate px-3 py-3 font-mono text-caption text-muted" title={row.ipAddress ?? undefined}>
+                    <td className="truncate px-3 py-2.5 font-mono text-caption text-muted" title={row.ipAddress ?? undefined}>
                       {row.ipAddress ?? "—"}
                     </td>
                   ) : null}

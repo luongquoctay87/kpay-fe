@@ -54,7 +54,6 @@ export interface BankReconciliationListParams {
   toolName?: string;
   amountFrom?: number;
   amountTo?: number;
-  counterparty?: string;
   q?: string;
   from?: string;
   to?: string;

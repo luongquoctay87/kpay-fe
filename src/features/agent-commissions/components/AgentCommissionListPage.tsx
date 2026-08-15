@@ -2,6 +2,7 @@
 
 import { useCallback, useState, type FormEvent } from "react";
 import {
+  ColumnHeader,
   DateTimeText,
   FilterField,
   PageHeader,
@@ -10,6 +11,15 @@ import {
   dateTimeControlClass,
 } from "@/components/common";
 import { Button, Input } from "@/components/ui";
+import {
+  IconClock,
+  IconHash,
+  IconLink,
+  IconRefresh,
+  IconSearch,
+  IconStore,
+  IconWallet,
+} from "@/components/icons/NavIcons";
 import {
   agentCommissionApi,
   type AgentCommissionItem,
@@ -86,7 +96,13 @@ export function AgentCommissionListPage() {
       <PageHeader
         title={t("pages.agentCommissions")}
         actions={
-          <Button type="button" variant="secondary" size="sm" onClick={() => void refresh()}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            leftIcon={<IconRefresh width={14} height={14} />}
+            onClick={() => void refresh()}
+          >
             {t("common.refresh")}
           </Button>
         }
@@ -110,10 +126,21 @@ export function AgentCommissionListPage() {
           />
         </FilterField>
         <div className={PORTAL_FILTER_ACTIONS_CLASS}>
-          <Button type="submit" variant="primary" size="sm">
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            leftIcon={<IconSearch width={14} height={14} />}
+          >
             {t("common.search")}
           </Button>
-          <Button type="button" variant="secondary" size="sm" onClick={onReset}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            leftIcon={<IconRefresh width={14} height={14} />}
+            onClick={onReset}
+          >
             {t("common.reset")}
           </Button>
         </div>
@@ -139,19 +166,37 @@ export function AgentCommissionListPage() {
       >
         <table className="w-full min-w-[640px] border-collapse text-left text-label">
           <thead>
-            <tr className="border-b border-edge text-caption text-muted">
-              <th className="px-3 py-2 font-medium">{t("agentPortal.colCreatedAt")}</th>
-              <th className="px-3 py-2 font-medium">{t("agentPortal.colRequestId")}</th>
-              <th className="hidden px-3 py-2 font-medium md:table-cell">
-                {t("agentPortal.colMerchant")}
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconClock width={14} height={14} />}>
+                  {t("agentPortal.colCreatedAt")}
+                </ColumnHeader>
               </th>
-              <th className="hidden px-3 py-2 font-medium lg:table-cell">
-                {t("agentPortal.colChannel")}
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                  {t("agentPortal.colRequestId")}
+                </ColumnHeader>
               </th>
-              <th className="hidden px-3 py-2 font-medium sm:table-cell">
-                {t("agentPortal.colAcceptedAmount")}
+              <th className="hidden px-3 py-2.5 md:table-cell">
+                <ColumnHeader icon={<IconStore width={14} height={14} />}>
+                  {t("agentPortal.colMerchant")}
+                </ColumnHeader>
               </th>
-              <th className="px-3 py-2 font-medium">{t("agentPortal.colCommission")}</th>
+              <th className="hidden px-3 py-2.5 lg:table-cell">
+                <ColumnHeader icon={<IconLink width={14} height={14} />}>
+                  {t("agentPortal.colChannel")}
+                </ColumnHeader>
+              </th>
+              <th className="hidden px-3 py-2.5 sm:table-cell">
+                <ColumnHeader icon={<IconWallet width={14} height={14} />}>
+                  {t("agentPortal.colAcceptedAmount")}
+                </ColumnHeader>
+              </th>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconWallet width={14} height={14} />}>
+                  {t("agentPortal.colCommission")}
+                </ColumnHeader>
+              </th>
             </tr>
           </thead>
           <tbody>

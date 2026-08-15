@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { IconPencil, IconSave, IconX } from "@/components/icons/NavIcons";
+import { ColumnHeader } from "@/components/common";
+import {
+  IconActivity,
+  IconLayers,
+  IconPencil,
+  IconSave,
+  IconWallet,
+  IconX,
+} from "@/components/icons/NavIcons";
 import {
   Button,
   Field,
@@ -175,14 +183,20 @@ export function SectionCommissions({
                 <table className="w-full min-w-[420px] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-                      <th className="px-3 py-2.5 font-medium sm:px-4">
-                        {t("agentDetail.colChannel")}
+                      <th className="px-3 py-2.5 sm:px-4">
+                        <ColumnHeader icon={<IconLayers width={14} height={14} />}>
+                          {t("agentDetail.colChannel")}
+                        </ColumnHeader>
                       </th>
-                      <th className="w-[140px] px-3 py-2.5 font-medium sm:w-[180px] sm:px-4">
-                        {t("agentDetail.colRate")}
+                      <th className="w-[140px] px-3 py-2.5 sm:w-[180px] sm:px-4">
+                        <ColumnHeader icon={<IconWallet width={14} height={14} />}>
+                          {t("agentDetail.colRate")}
+                        </ColumnHeader>
                       </th>
-                      <th className="w-[120px] px-3 py-2.5 font-medium sm:px-4">
-                        {t("agentDetail.colActive")}
+                      <th className="w-[120px] px-3 py-2.5 sm:px-4">
+                        <ColumnHeader icon={<IconActivity width={14} height={14} />}>
+                          {t("agentDetail.colActive")}
+                        </ColumnHeader>
                       </th>
                     </tr>
                   </thead>

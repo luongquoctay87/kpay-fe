@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import {
+  AutoRefreshControl,
   ColumnHeader,
   DateRangeFilter,
   DateTimeText,
@@ -32,6 +33,7 @@ import {
   IconDownload,
   IconFileText,
   IconHash,
+  IconInbox,
   IconLayers,
   IconLog,
   IconMoneyFlow,
@@ -69,6 +71,10 @@ import {
   type MoneyFlowEventListItem,
 } from "@/features/money-flow/types";
 import { useI18n } from "@/i18n/use-i18n";
+import {
+  useAutoRefresh,
+  type AutoRefreshSeconds,
+} from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { formatMoney } from "@/lib/format/datetime";
 import { useMerchantAgentFilterOptions } from "@/lib/options/use-merchant-agent-filter-options";
@@ -90,6 +96,8 @@ export function MoneyFlowPage() {
   const { t } = useI18n();
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
   const [expanded, setExpanded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
@@ -171,6 +179,8 @@ export function MoneyFlowPage() {
     empty: EMPTY,
     mapError,
   });
+
+  useAutoRefresh(refresh, { enabled: autoRefresh, intervalSec: autoRefreshSec });
 
   const hasFilters = Object.values(filters).some((v) => v != null && v !== "");
   const canReset =
@@ -288,6 +298,15 @@ export function MoneyFlowPage() {
           { label: t("moneyFlow.breadcrumbParent"), icon: <IconLog /> },
           { label: t("moneyFlow.listTitle"), icon: <IconMoneyFlow /> },
         ]}
+        actions={
+          <AutoRefreshControl
+            enabled={autoRefresh}
+            intervalSec={autoRefreshSec}
+            onEnabledChange={setAutoRefresh}
+            onIntervalChange={setAutoRefreshSec}
+            size="sm"
+          />
+        }
       />
 
       <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
@@ -454,55 +473,57 @@ export function MoneyFlowPage() {
             )}
           </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className={`${colClass("stt")} px-3 py-3 text-center`}>
-                {t("moneyFlow.colStt")}
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className={`${colClass("stt")} px-3 py-2.5 text-center`}>
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("moneyFlow.colStt")}
+                </ColumnHeader>
               </th>
               {show.time ? (
-                <th className={`${colClass("time")} px-3 py-3 text-center`}>
-                  <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
+                <th className={`${colClass("time")} px-3 py-2.5 text-center`}>
+                  <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                     {t("moneyFlow.colTime")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.stage ? (
-                <th className={`${colClass("stage")} px-3 py-3`}>
-                  <ColumnHeader icon={<IconLayers width={13} height={13} />}>
+                <th className={`${colClass("stage")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconLayers width={14} height={14} />}>
                     {t("moneyFlow.colStage")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.direction ? (
-                <th className={`${colClass("direction")} px-3 py-3 text-center`}>
-                  <ColumnHeader align="center" icon={<IconActivity width={13} height={13} />}>
+                <th className={`${colClass("direction")} px-3 py-2.5 text-center`}>
+                  <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
                     {t("moneyFlow.colDirection")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.amount ? (
-                <th className={`${colClass("amount")} px-3 py-3 text-right`}>
-                  <ColumnHeader align="right" icon={<IconWallet width={13} height={13} />}>
+                <th className={`${colClass("amount")} px-3 py-2.5 text-right`}>
+                  <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
                     {t("moneyFlow.colAmount")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.correlation ? (
-                <th className={`${colClass("correlation")} px-3 py-3`}>
-                  <ColumnHeader icon={<IconHash width={13} height={13} />}>
+                <th className={`${colClass("correlation")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
                     {t("moneyFlow.colCorrelation")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.summary ? (
-                <th className={`${colClass("summary")} px-3 py-3`}>
-                  <ColumnHeader icon={<IconFileText width={13} height={13} />}>
+                <th className={`${colClass("summary")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
                     {t("moneyFlow.colSummary")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.source ? (
-                <th className={`${colClass("source")} px-3 py-3`}>
-                  <ColumnHeader icon={<IconLayers width={13} height={13} />}>
+                <th className={`${colClass("source")} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconLayers width={14} height={14} />}>
                     {t("moneyFlow.colSource")}
                   </ColumnHeader>
                 </th>
@@ -520,12 +541,33 @@ export function MoneyFlowPage() {
 
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
-                  {error
-                    ? t("moneyFlow.loadError")
-                    : hasFilters
-                      ? t("moneyFlow.emptyFiltered")
-                      : t("moneyFlow.empty")}
+                <td colSpan={colSpan} className="px-3 py-16">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
+                    >
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {error
+                        ? t("moneyFlow.loadError")
+                        : hasFilters
+                          ? t("moneyFlow.emptyFiltered")
+                          : t("moneyFlow.empty")}
+                    </p>
+                    {!error && hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("common.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : null}
@@ -541,16 +583,16 @@ export function MoneyFlowPage() {
                   }`}
                   onClick={() => setTimelineSeed(row)}
                 >
-                  <td className="px-3 py-3 text-center font-mono text-caption tabular-nums text-muted">
+                  <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                     {page * size + idx + 1}
                   </td>
                   {show.time ? (
-                    <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                    <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
                       <DateTimeText value={row.occurredAt} />
                     </td>
                   ) : null}
                   {show.stage ? (
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-2.5">
                       <div className="flex min-w-0 items-center gap-1.5">
                         {step ? (
                           <span
@@ -572,7 +614,7 @@ export function MoneyFlowPage() {
                     </td>
                   ) : null}
                   {show.direction ? (
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-3 py-2.5 text-center">
                       {isMoneyFlowDirection(row.direction) ? (
                         <span
                           className={`inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-caption font-medium ring-1 ring-inset ${directionBadgeClass(row.direction)}`}
@@ -590,25 +632,27 @@ export function MoneyFlowPage() {
                     </td>
                   ) : null}
                   {show.amount ? (
-                    <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
                       {row.amount != null ? formatMoney(row.amount) : "—"}
                     </td>
                   ) : null}
                   {show.correlation ? (
-                    <td
-                      className="truncate px-3 py-3 font-mono text-caption text-muted"
-                      title={correlation}
-                    >
-                      {correlation}
+                    <td className="px-3 py-2.5">
+                      <span
+                        className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption text-muted ring-1 ring-inset ring-edge"
+                        title={correlation}
+                      >
+                        {correlation}
+                      </span>
                     </td>
                   ) : null}
                   {show.summary ? (
-                    <td className="truncate px-3 py-3 text-label text-muted" title={row.summary}>
+                    <td className="truncate px-3 py-2.5 text-label text-muted" title={row.summary}>
                       {row.summary || "—"}
                     </td>
                   ) : null}
                   {show.source ? (
-                    <td className="truncate px-3 py-3 text-caption text-muted" title={row.source}>
+                    <td className="truncate px-3 py-2.5 text-caption text-muted" title={row.source}>
                       {row.source || "—"}
                     </td>
                   ) : null}

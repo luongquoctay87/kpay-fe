@@ -25,7 +25,9 @@ import {
   IconWallet,
   IconWebhook,
 } from "@/components/icons/NavIcons";
+import { ADMIN_STAFF_ROLE } from "@/features/auth/admin-role";
 import { useAuthStore } from "@/features/auth/store";
+import type { User } from "@/features/auth/types";
 import { useI18n } from "@/i18n/use-i18n";
 import type { MessageKey } from "@/i18n/types";
 import { cn } from "@/lib/cn";
@@ -56,6 +58,8 @@ type NavLeaf = {
   icon?: ReactNode;
   /** Soft-hide when permissions are loaded and omit this code. */
   permission?: string;
+  /** Soft-hide unless the signed-in user has this staff role code (e.g. `admin`). */
+  staffRole?: string;
 };
 
 type NavGroup = {
@@ -119,33 +123,41 @@ function canSeePermission(
   return permissions.includes(required);
 }
 
+function canSeeLeaf(user: User | null | undefined, leaf: NavLeaf): boolean {
+  if (leaf.staffRole) {
+    const required = leaf.staffRole.toLowerCase();
+    if (!user?.roles?.some((c) => c.toLowerCase() === required)) return false;
+  }
+  return canSeePermission(user?.permissions, leaf.permission);
+}
+
 function filterNavChildren(
   children: NavChild[],
-  permissions: string[] | null | undefined,
+  user: User | null | undefined,
 ): NavChild[] {
   const out: NavChild[] = [];
   for (const child of children) {
     if (isGroup(child)) {
-      const nextKids = filterNavChildren(child.children, permissions);
+      const nextKids = filterNavChildren(child.children, user);
       if (nextKids.length > 0) out.push({ ...child, children: nextKids });
       continue;
     }
-    if (canSeePermission(permissions, child.permission)) out.push(child);
+    if (canSeeLeaf(user, child)) out.push(child);
   }
   return out;
 }
 
 function filterNavEntries(
   entries: NavEntry[],
-  permissions: string[] | null | undefined,
+  user: User | null | undefined,
 ): NavEntry[] {
   const out: NavEntry[] = [];
   for (const entry of entries) {
     if (!isGroup(entry)) {
-      if (canSeePermission(permissions, entry.permission)) out.push(entry);
+      if (canSeeLeaf(user, entry)) out.push(entry);
       continue;
     }
-    const kids = filterNavChildren(entry.children, permissions);
+    const kids = filterNavChildren(entry.children, user);
     if (kids.length > 0) out.push({ ...entry, children: kids });
   }
   return out;
@@ -219,7 +231,7 @@ const NAV: NavEntry[] = [
         href: ROUTES.settingsRoles,
         labelKey: "nav.settingsRoles",
         icon: <IconKey />,
-        permission: "roles:read",
+        staffRole: ADMIN_STAFF_ROLE,
       },
     ],
   },
@@ -301,13 +313,10 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const { t } = useI18n();
-  const permissions = useAuthStore((s) => s.user?.permissions);
+  const user = useAuthStore((s) => s.user);
   const [openGroups, setOpenGroups] = useState<string[]>([]);
 
-  const navEntries = useMemo(
-    () => filterNavEntries(NAV, permissions),
-    [permissions],
-  );
+  const navEntries = useMemo(() => filterNavEntries(NAV, user), [user]);
 
   useEffect(() => {
     try {

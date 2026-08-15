@@ -120,18 +120,16 @@ export const PAYIN_COLUMN_ALIGN: Record<PayinColumn | "stt", string> = {
   gateway: "text-center",
 };
 
+/** Default list scan: ID → merchant → amount → status → time. */
 export const DEFAULT_VISIBLE_COLUMNS: readonly PayinColumn[] = [
   "requestId",
   "merchant",
-  "channel",
   "requestValue",
   "status",
-  "callback",
   "createdAt",
-  "updatedAt",
 ];
 
-export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.payin.columns";
+export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.payin.columns.v2";
 
 export type ColumnVisibility = Record<PayinColumn, boolean>;
 

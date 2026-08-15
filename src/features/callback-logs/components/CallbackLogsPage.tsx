@@ -8,6 +8,7 @@ import {
   IconCheckCircle,
   IconClock,
   IconHash,
+  IconInbox,
   IconLayers,
   IconLink,
   IconRefresh,
@@ -16,6 +17,7 @@ import {
   IconWebhook,
 } from "@/components/icons/NavIcons";
 import {
+  AutoRefreshControl,
   ColumnHeader,
   CopyButton,
   FilterBar,
@@ -30,13 +32,16 @@ import { ColumnPicker } from "@/features/callback-logs/components/ColumnPicker";
 import { JsonViewModal } from "@/features/callback-logs/components/JsonViewModal";
 import {
   CALLBACK_LOG_COLUMN_ALIGN,
+  CALLBACK_LOG_COLUMN_MIN_PX,
   CALLBACK_LOG_COLUMN_WIDTH,
+  CALLBACK_LOG_COLUMNS,
   callbackLogsTableMinWidth,
   defaultColumnVisibility,
   loadColumnVisibility,
   saveColumnVisibility,
   visibleColumnCount,
   type ColumnVisibility,
+  type CallbackLogColumn,
 } from "@/features/callback-logs/columns";
 import {
   CALLBACK_DIRECTION_LABEL_KEY,
@@ -65,6 +70,10 @@ import { PayoutDetailDrawer } from "@/features/payout/components/PayoutDetailDra
 import { payoutApi } from "@/features/payout/api";
 import type { PayoutOrderListItem } from "@/features/payout/types";
 import { useI18n } from "@/i18n/use-i18n";
+import {
+  useAutoRefresh,
+  type AutoRefreshSeconds,
+} from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { ApiError } from "@/lib/types/api";
 import { useAuthStore } from "@/features/auth/store";
@@ -190,6 +199,8 @@ export function CallbackLogsPage() {
   const [finalizePayout, setFinalizePayout] = useState<PayoutOrderListItem | null>(null);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
 
   const [externalIdDraft, setExternalIdDraft] = useState("");
   const [typeDraft, setTypeDraft] = useState<CallbackType | null>(null);
@@ -265,6 +276,8 @@ export function CallbackLogsPage() {
     empty: EMPTY_CALLBACK_LIST,
     mapError,
   });
+
+  useAutoRefresh(refresh, { enabled: autoRefresh, intervalSec: autoRefreshSec });
 
   const hasFilters = Boolean(
     filters.externalRequestId || filters.type || filters.direction || filters.status,
@@ -400,6 +413,14 @@ export function CallbackLogsPage() {
   const thClass = (col: keyof typeof CALLBACK_LOG_COLUMN_WIDTH) =>
     `${CALLBACK_LOG_COLUMN_WIDTH[col]} ${CALLBACK_LOG_COLUMN_ALIGN[col]} px-3 py-2.5 font-medium`;
 
+  const flexCol: CallbackLogColumn =
+    show.url ? "url" : show.externalId ? "externalId" : show.refId ? "refId" : "time";
+
+  function colWidth(col: CallbackLogColumn): string | undefined {
+    if (col === flexCol) return undefined;
+    return `${CALLBACK_LOG_COLUMN_MIN_PX[col]}px`;
+  }
+
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
       <PageHeader
@@ -408,6 +429,15 @@ export function CallbackLogsPage() {
           { label: t("callbackLogs.breadcrumbParent"), icon: <IconUsers /> },
           { label: t("callbackLogs.listTitle"), icon: <IconWebhook /> },
         ]}
+        actions={
+          <AutoRefreshControl
+            enabled={autoRefresh}
+            intervalSec={autoRefreshSec}
+            onEnabledChange={setAutoRefresh}
+            onIntervalChange={setAutoRefreshSec}
+            size="sm"
+          />
+        }
       />
 
       <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
@@ -509,6 +539,11 @@ export function CallbackLogsPage() {
           className="w-full table-fixed border-collapse text-left"
           style={{ minWidth: callbackLogsTableMinWidth(columnVisibility) }}
         >
+          <colgroup>
+            {CALLBACK_LOG_COLUMNS.map((col) =>
+              show[col] ? <col key={col} style={{ width: colWidth(col) }} /> : null,
+            )}
+          </colgroup>
           <thead>
             <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
               {show.externalId ? (
@@ -615,12 +650,33 @@ export function CallbackLogsPage() {
 
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
-                  {error
-                    ? t("callbackLogs.loadError")
-                    : hasFilters
-                      ? t("callbackLogs.emptyFiltered")
-                      : t("callbackLogs.empty")}
+                <td colSpan={colSpan} className="px-3 py-16">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
+                    >
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {error
+                        ? t("callbackLogs.loadError")
+                        : hasFilters
+                          ? t("callbackLogs.emptyFiltered")
+                          : t("callbackLogs.empty")}
+                    </p>
+                    {!error && hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("common.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : null}

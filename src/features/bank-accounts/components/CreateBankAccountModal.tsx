@@ -179,7 +179,7 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="rounded p-1 text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-hover hover:text-ink disabled:opacity-50"
             aria-label={t("bankAccounts.btnCancel")}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
@@ -191,10 +191,6 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
 
         <form onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col">
           <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
-            <div className="rounded-lg border border-edge bg-surface px-3.5 py-3 text-label leading-relaxed text-ink-secondary">
-              {t("bankAccounts.modalCreateHint")}
-            </div>
-
             <Field
               label={t("bankAccounts.labelBank")}
               htmlFor="ba-bank"
@@ -273,7 +269,7 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
               <Field
                 label={t("bankAccounts.labelDailyLimit")}
                 htmlFor="ba-limit"
-                hint={t("bankAccounts.placeholderDailyLimit")}
+                tooltip={t("bankAccounts.placeholderDailyLimit")}
               >
                 <MoneyInput
                   id="ba-limit"
@@ -312,7 +308,7 @@ export function CreateBankAccountModal({ onClose, onCreated }: CreateBankAccount
             <Field
               label={t("bankAccounts.labelRotation")}
               htmlFor="ba-rotation"
-              hint={t("bankAccounts.hintRotation")}
+              tooltip={t("bankAccounts.hintRotation")}
             >
               <Input
                 id="ba-rotation"

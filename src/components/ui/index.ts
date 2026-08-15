@@ -11,6 +11,7 @@ export {
   type ConfirmDialogTone,
 } from "@/components/ui/ConfirmDialog";
 export { Field, type FieldProps } from "@/components/ui/Field";
+export { HintTooltip } from "@/components/ui/HintTooltip";
 export { Input, type InputProps } from "@/components/ui/Input";
 export { MoneyInput, type MoneyInputProps } from "@/components/ui/MoneyInput";
 export { OtpInput, type OtpInputProps } from "@/components/ui/OtpInput";

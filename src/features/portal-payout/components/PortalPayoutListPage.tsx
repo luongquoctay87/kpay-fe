@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
+  ColumnHeader,
   DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
@@ -15,7 +16,17 @@ import {
   type DateRangeValue,
 } from "@/components/common";
 import { Button, Select, StatusBadge } from "@/components/ui";
-import { IconChevron, IconRefresh, IconSearch } from "@/components/icons/NavIcons";
+import {
+  IconActivity,
+  IconArrowOut,
+  IconChevron,
+  IconClock,
+  IconFileText,
+  IconHash,
+  IconRefresh,
+  IconSearch,
+  IconWebhook,
+} from "@/components/icons/NavIcons";
 import { PayoutDetailDrawer } from "@/features/payout/components/PayoutDetailDrawer";
 import {
   CALLBACK_STATUS_LABEL_KEY,
@@ -318,21 +329,41 @@ export function PortalPayoutListPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] border-collapse text-left text-label">
             <thead>
-              <tr className="border-b border-edge text-caption text-muted">
-                <th className="px-3 py-2 font-medium">{t("payout.colRequestId")}</th>
-                <th className="hidden px-3 py-2 font-medium sm:table-cell">
-                  {t("payout.colAccountNumber")}
+              <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                    {t("payout.colRequestId")}
+                  </ColumnHeader>
                 </th>
-                <th className="hidden px-3 py-2 font-medium md:table-cell">
-                  {t("payout.colTransferContent")}
+                <th className="hidden px-3 py-2.5 sm:table-cell">
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                    {t("payout.colAccountNumber")}
+                  </ColumnHeader>
                 </th>
-                <th className="px-3 py-2 font-medium">{t("payout.colAmount")}</th>
-                <th className="px-3 py-2 font-medium">{t("payout.colStatus")}</th>
-                <th className="hidden px-3 py-2 font-medium md:table-cell">
-                  {t("payout.colCallback")}
+                <th className="hidden px-3 py-2.5 md:table-cell">
+                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                    {t("payout.colTransferContent")}
+                  </ColumnHeader>
                 </th>
-                <th className="hidden px-3 py-2 font-medium lg:table-cell">
-                  {t("payout.colCreatedAt")}
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconArrowOut width={14} height={14} />}>
+                    {t("payout.colAmount")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconActivity width={14} height={14} />}>
+                    {t("payout.colStatus")}
+                  </ColumnHeader>
+                </th>
+                <th className="hidden px-3 py-2.5 md:table-cell">
+                  <ColumnHeader icon={<IconWebhook width={14} height={14} />}>
+                    {t("payout.colCallback")}
+                  </ColumnHeader>
+                </th>
+                <th className="hidden px-3 py-2.5 lg:table-cell">
+                  <ColumnHeader icon={<IconClock width={14} height={14} />}>
+                    {t("payout.colCreatedAt")}
+                  </ColumnHeader>
                 </th>
               </tr>
             </thead>

@@ -23,10 +23,6 @@ export const transferContentApi = {
     );
   },
 
-  getById(id: string): Promise<TransferContentRule> {
-    return unwrap(apiClient.get(`/settings/transfer-content-rules/${id}`));
-  },
-
   create(body: CreateTransferContentRuleBody): Promise<TransferContentRule> {
     return unwrap(apiClient.post("/settings/transfer-content-rules", body));
   },

@@ -124,7 +124,6 @@ export function BankReconciliationPage() {
     null,
   );
   const [toolDraft, setToolDraft] = useState<string | null>(null);
-  const [counterpartyDraft, setCounterpartyDraft] = useState("");
   const [amountFromDraft, setAmountFromDraft] = useState("");
   const [amountToDraft, setAmountToDraft] = useState("");
   const [postedRangeDraft, setPostedRangeDraft] = useState<DateRangeValue>(null);
@@ -134,7 +133,6 @@ export function BankReconciliationPage() {
     bankAccountId?: string;
     direction?: BankReconciliationDirection;
     toolName?: string;
-    counterparty?: string;
     amountFrom?: number;
     amountTo?: number;
     from?: string;
@@ -227,7 +225,6 @@ export function BankReconciliationPage() {
       filters.bankAccountId ||
       filters.direction ||
       filters.toolName ||
-      filters.counterparty ||
       filters.amountFrom != null ||
       filters.amountTo != null ||
       filters.from ||
@@ -239,7 +236,6 @@ export function BankReconciliationPage() {
     accountDraft != null ||
     directionDraft != null ||
     toolDraft != null ||
-    Boolean(counterpartyDraft) ||
     Boolean(amountFromDraft) ||
     Boolean(amountToDraft) ||
     Boolean(postedRangeDraft?.[0] || postedRangeDraft?.[1]);
@@ -259,7 +255,6 @@ export function BankReconciliationPage() {
       bankAccountId: accountDraft ?? undefined,
       direction: directionDraft ?? undefined,
       toolName: toolDraft ?? undefined,
-      counterparty: counterpartyDraft.trim() || undefined,
       amountFrom:
         amountFrom != null && !Number.isNaN(amountFrom) ? amountFrom : undefined,
       amountTo: amountTo != null && !Number.isNaN(amountTo) ? amountTo : undefined,
@@ -290,7 +285,6 @@ export function BankReconciliationPage() {
     setAccountDraft(null);
     setDirectionDraft(null);
     setToolDraft(null);
-    setCounterpartyDraft("");
     setAmountFromDraft("");
     setAmountToDraft("");
     setPostedRangeDraft(null);
@@ -408,7 +402,7 @@ export function BankReconciliationPage() {
       >
         {expanded ? (
           <div className="flex flex-col gap-3.5">
-            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1.5fr)_minmax(0,0.8fr)_minmax(0,0.75fr)_minmax(0,0.75fr)_minmax(0,0.9fr)]">
               <FilterField label={t("bankReconciliation.filterAccount")} htmlFor="br-account">
                 <Select
                   id="br-account"
@@ -423,6 +417,23 @@ export function BankReconciliationPage() {
                   triggerClassName={filterControlClass}
                 />
               </FilterField>
+              <div className="min-w-0 sm:col-span-2 lg:col-span-1">
+                <FilterField
+                  label={t("bankReconciliation.filterPosted")}
+                  htmlFor="br-posted-range"
+                >
+                  <DateRangeFilter
+                    id="br-posted-range"
+                    value={postedRangeDraft}
+                    onChange={setPostedRangeDraft}
+                    placeholder={[
+                      t("bankReconciliation.filterFromPlaceholder"),
+                      t("bankReconciliation.filterToPlaceholder"),
+                    ]}
+                    aria-label={t("bankReconciliation.filterPosted")}
+                  />
+                </FilterField>
+              </div>
               <FilterField
                 label={t("bankReconciliation.filterDirection")}
                 htmlFor="br-direction"
@@ -436,33 +447,6 @@ export function BankReconciliationPage() {
                   placeholder={t("bankReconciliation.filterDirectionPlaceholder")}
                   clearable
                   triggerClassName={filterControlClass}
-                />
-              </FilterField>
-              <FilterField label={t("bankReconciliation.filterTool")} htmlFor="br-tool">
-                <Select
-                  id="br-tool"
-                  size="md"
-                  options={toolOptions}
-                  value={toolDraft}
-                  onChange={setToolDraft}
-                  placeholder={t("bankReconciliation.filterToolPlaceholder")}
-                  clearable
-                  triggerClassName={filterControlClass}
-                />
-              </FilterField>
-              <FilterField
-                label={t("bankReconciliation.filterPosted")}
-                htmlFor="br-posted-range"
-              >
-                <DateRangeFilter
-                  id="br-posted-range"
-                  value={postedRangeDraft}
-                  onChange={setPostedRangeDraft}
-                  placeholder={[
-                    t("bankReconciliation.filterFromPlaceholder"),
-                    t("bankReconciliation.filterToPlaceholder"),
-                  ]}
-                  aria-label={t("bankReconciliation.filterPosted")}
                 />
               </FilterField>
               <FilterField
@@ -491,17 +475,16 @@ export function BankReconciliationPage() {
                   className={filterControlClass}
                 />
               </FilterField>
-              <FilterField
-                label={t("bankReconciliation.filterCounterparty")}
-                htmlFor="br-counterparty"
-              >
-                <Input
-                  id="br-counterparty"
+              <FilterField label={t("bankReconciliation.filterTool")} htmlFor="br-tool">
+                <Select
+                  id="br-tool"
                   size="md"
-                  value={counterpartyDraft}
-                  onChange={(e) => setCounterpartyDraft(e.target.value)}
-                  placeholder={t("bankReconciliation.filterCounterpartyPlaceholder")}
-                  className={filterControlClass}
+                  options={toolOptions}
+                  value={toolDraft}
+                  onChange={setToolDraft}
+                  placeholder={t("bankReconciliation.filterToolPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
                 />
               </FilterField>
             </div>
@@ -696,7 +679,13 @@ export function BankReconciliationPage() {
                       </>
                     ) : null}
                     {!error && hasFilters ? (
-                      <Button type="button" variant="secondary" size="md" onClick={onReset}>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
                         {t("bankReconciliation.reset")}
                       </Button>
                     ) : null}

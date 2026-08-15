@@ -24,20 +24,12 @@ export const blockedAccountApi = {
     );
   },
 
-  getById(id: string): Promise<BlockedAccountListItem> {
-    return unwrap(apiClient.get(`/blocked-accounts/${id}`));
-  },
-
   create(body: CreateBlockedAccountBody): Promise<BlockedAccountListItem> {
     return unwrap(apiClient.post("/blocked-accounts", body));
   },
 
   update(id: string, body: UpdateBlockedAccountBody): Promise<BlockedAccountListItem> {
     return unwrap(apiClient.patch(`/blocked-accounts/${id}`, body));
-  },
-
-  deactivate(id: string): Promise<void> {
-    return unwrap(apiClient.delete(`/blocked-accounts/${id}`));
   },
 
   listBanks: bankAccountApi.listBanks,

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconCheckCircle, IconX } from "@/components/icons/NavIcons";
+import { ColumnHeader } from "@/components/common";
+import { IconCheckCircle, IconGlobe, IconHash, IconSettings, IconX } from "@/components/icons/NavIcons";
 import { Button, Field, Input } from "@/components/ui";
 import { agentApi } from "@/features/agents/api";
 import { type AgentDetail, type AgentLoginIpItem } from "@/features/agents/types";
@@ -200,10 +201,22 @@ export function SectionLoginIp({
         ) : (
           <table className="w-full text-left text-label">
             <thead>
-              <tr className="border-b border-edge text-muted">
-                <th className="py-2 font-medium">{t("agentDetail.labelId")}</th>
-                <th className="py-2 font-medium">{t("agentDetail.labelCidr")}</th>
-                <th className="py-2 text-right font-medium">{t("agentDetail.colActions")}</th>
+              <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                    {t("agentDetail.labelId")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconGlobe width={14} height={14} />}>
+                    {t("agentDetail.labelCidr")}
+                  </ColumnHeader>
+                </th>
+                <th className="px-3 py-2.5 text-right">
+                  <ColumnHeader align="right" icon={<IconSettings width={14} height={14} />}>
+                    {t("agentDetail.colActions")}
+                  </ColumnHeader>
+                </th>
               </tr>
             </thead>
             <tbody>

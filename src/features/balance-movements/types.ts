@@ -29,6 +29,8 @@ export interface BalanceMovementListItem {
 
 export interface BalanceMovementListResp {
   items: BalanceMovementListItem[];
+  /** Sum of amount over all filtered rows (not just current page). */
+  sumAmount?: number;
   page: number;
   size: number;
   totalElements: number;

@@ -77,10 +77,6 @@ export function pipelineKindFromEvent(
   return null;
 }
 
-export function pipelineSteps(kind: PipelineKind): readonly PipelineStepDef[] {
-  return PIPELINES[kind];
-}
-
 /** 1-based pipeline slot for a stage, or null if the stage is not in that flow. */
 export function stageStepNo(stage: string, kind: PipelineKind | null): number | null {
   if (!kind) return null;

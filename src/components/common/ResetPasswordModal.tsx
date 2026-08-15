@@ -49,13 +49,13 @@ export function ResetPasswordModal({
   const [showNewPassword, setShowNewPassword] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-xl border border-edge bg-elevated shadow-xl">
-        <div className="border-b border-edge px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
+      <div className="flex max-h-[min(100dvh-1.5rem,90vh)] w-full max-w-sm flex-col overflow-hidden rounded-xl border border-edge bg-elevated shadow-xl">
+        <div className="shrink-0 border-b border-edge px-4 py-4 sm:px-5">
           <p className="kpay-text-title font-semibold">{labels.title}</p>
           <p className="mt-1 text-label text-muted">{labels.hint}</p>
         </div>
-        <div className="flex flex-col gap-3 p-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 sm:p-5">
           <Field label={labels.adminPassword} htmlFor="reset-admin-pw" required>
             <Input
               id="reset-admin-pw"
@@ -114,7 +114,7 @@ export function ResetPasswordModal({
           </Field>
           {error ? <p className="text-label text-danger">{error}</p> : null}
         </div>
-        <div className="flex flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
           <Button
             type="button"
             variant="secondary"

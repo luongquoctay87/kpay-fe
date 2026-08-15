@@ -17,9 +17,11 @@ import {
   IconDownload,
   IconHash,
   IconHeadset,
+  IconInbox,
   IconPlus,
   IconRefresh,
   IconSearch,
+  IconSettings,
   IconStore,
   IconUsers,
   IconWallet,
@@ -57,20 +59,35 @@ import { ROUTES } from "@/lib/constants/routes";
 import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 
-/** Explicit widths so `table-fixed` scales every column, not only Name. */
+/**
+ * Explicit widths so `table-fixed` scales every column (no leftover dump into Name).
+ * Mins must fit Vietnamese headers (`ColumnHeader` is nowrap) and DateTimeText.
+ */
 const CUSTOMER_COLUMN_WIDTH = {
   stt: "w-[52px]",
-  type: "w-[108px]",
+  type: "w-[120px]",
   code: "w-[168px]",
-  name: "w-[240px]",
-  balance: "w-[156px]",
-  status: "w-[124px]",
-  activity: "w-[172px]",
-  created: "w-[116px]",
-  actions: "w-[88px]",
+  name: "w-[200px]",
+  balance: "w-[168px]",
+  status: "w-[140px]",
+  activity: "w-[168px]",
+  created: "w-[168px]",
+  actions: "w-[108px]",
 } as const;
 
-const TABLE_MIN_WIDTH = 1224;
+const CUSTOMER_COLUMN_MIN_PX = {
+  stt: 52,
+  type: 120,
+  code: 168,
+  name: 200,
+  balance: 168,
+  status: 140,
+  activity: 168,
+  created: 168,
+  actions: 108,
+} as const;
+
+const TABLE_MIN_WIDTH = Object.values(CUSTOMER_COLUMN_MIN_PX).reduce((a, b) => a + b, 0);
 
 const EMPTY = {
   rows: [] as CustomerListItem[],
@@ -401,48 +418,63 @@ export function CustomersPage() {
           className="w-full table-fixed border-collapse text-left"
           style={{ minWidth: TABLE_MIN_WIDTH }}
         >
+          <colgroup>
+            <col style={{ width: `${CUSTOMER_COLUMN_MIN_PX.stt}px` }} />
+            <col style={{ width: `${CUSTOMER_COLUMN_MIN_PX.type}px` }} />
+            <col style={{ width: `${CUSTOMER_COLUMN_MIN_PX.code}px` }} />
+            <col style={{ width: `${CUSTOMER_COLUMN_MIN_PX.name}px` }} />
+            <col style={{ width: `${CUSTOMER_COLUMN_MIN_PX.balance}px` }} />
+            <col style={{ width: `${CUSTOMER_COLUMN_MIN_PX.status}px` }} />
+            <col style={{ width: `${CUSTOMER_COLUMN_MIN_PX.activity}px` }} />
+            <col style={{ width: `${CUSTOMER_COLUMN_MIN_PX.created}px` }} />
+            <col style={{ width: `${CUSTOMER_COLUMN_MIN_PX.actions}px` }} />
+          </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className={`${CUSTOMER_COLUMN_WIDTH.stt} px-3 py-3 text-center`}>
-                {t("customers.colStt")}
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className={`${CUSTOMER_COLUMN_WIDTH.stt} whitespace-nowrap px-3 py-2.5 text-center`}>
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("customers.colStt")}
+                </ColumnHeader>
               </th>
-              <th className={`${CUSTOMER_COLUMN_WIDTH.type} px-3 py-3`}>
-                <ColumnHeader icon={<IconStore width={13} height={13} />}>
+              <th className={`${CUSTOMER_COLUMN_WIDTH.type} whitespace-nowrap px-3 py-2.5`}>
+                <ColumnHeader icon={<IconStore width={14} height={14} />}>
                   {t("customers.colType")}
                 </ColumnHeader>
               </th>
-              <th className={`${CUSTOMER_COLUMN_WIDTH.code} px-3 py-3`}>
-                <ColumnHeader icon={<IconHash width={13} height={13} />}>
+              <th className={`${CUSTOMER_COLUMN_WIDTH.code} whitespace-nowrap px-3 py-2.5`}>
+                <ColumnHeader icon={<IconHash width={14} height={14} />}>
                   {t("customers.colCode")}
                 </ColumnHeader>
               </th>
-              <th className={`${CUSTOMER_COLUMN_WIDTH.name} px-3 py-3`}>
-                <ColumnHeader icon={<IconUsers width={13} height={13} />}>
+              <th className={`${CUSTOMER_COLUMN_WIDTH.name} whitespace-nowrap px-3 py-2.5`}>
+                <ColumnHeader icon={<IconUsers width={14} height={14} />}>
                   {t("customers.colName")}
                 </ColumnHeader>
               </th>
-              <th className={`${CUSTOMER_COLUMN_WIDTH.balance} px-3 py-3 text-right`}>
-                <ColumnHeader align="right" icon={<IconWallet width={13} height={13} />}>
+              <th className={`${CUSTOMER_COLUMN_WIDTH.balance} whitespace-nowrap px-3 py-2.5 text-right`}>
+                <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
                   {t("customers.colBalance")}
                 </ColumnHeader>
               </th>
-              <th className={`${CUSTOMER_COLUMN_WIDTH.status} px-3 py-3 text-center`}>
-                <ColumnHeader align="center" icon={<IconActivity width={13} height={13} />}>
+              <th className={`${CUSTOMER_COLUMN_WIDTH.status} whitespace-nowrap px-3 py-2.5 text-center`}>
+                <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
                   {t("customers.colStatus")}
                 </ColumnHeader>
               </th>
-              <th className={`${CUSTOMER_COLUMN_WIDTH.activity} px-3 py-3 text-center`}>
-                <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
+              <th className={`${CUSTOMER_COLUMN_WIDTH.activity} whitespace-nowrap px-3 py-2.5 text-center`}>
+                <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                   {t("customers.colActivity")}
                 </ColumnHeader>
               </th>
-              <th className={`${CUSTOMER_COLUMN_WIDTH.created} px-3 py-3 text-center`}>
-                <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
+              <th className={`${CUSTOMER_COLUMN_WIDTH.created} whitespace-nowrap px-3 py-2.5 text-center`}>
+                <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                   {t("customers.colCreated")}
                 </ColumnHeader>
               </th>
-              <th className={`${CUSTOMER_COLUMN_WIDTH.actions} px-3 py-3 text-center`}>
-                {t("customers.colActions")}
+              <th className={`${CUSTOMER_COLUMN_WIDTH.actions} whitespace-nowrap px-3 py-2.5 text-center`}>
+                <ColumnHeader align="center" icon={<IconSettings width={14} height={14} />}>
+                  {t("customers.colActions")}
+                </ColumnHeader>
               </th>
             </tr>
           </thead>
@@ -457,12 +489,33 @@ export function CustomersPage() {
 
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-3 py-16 text-center text-label text-muted">
-                  {error
-                    ? t("customers.loadError")
-                    : hasFilters
-                      ? t("customers.emptyFiltered")
-                      : t("customers.empty")}
+                <td colSpan={9} className="px-3 py-16">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
+                    >
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {error
+                        ? t("customers.loadError")
+                        : hasFilters
+                          ? t("customers.emptyFiltered")
+                          : t("customers.empty")}
+                    </p>
+                    {!error && hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("common.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : null}
@@ -476,10 +529,10 @@ export function CustomersPage() {
                   key={`${row.ownerType}-${row.id}`}
                   className="border-b border-edge hover:bg-surface/70"
                 >
-                  <td className="px-3 py-3 text-center font-mono text-label tabular-nums text-muted">
+                  <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                     {page * size + idx + 1}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2.5">
                     <StatusBadge
                       tone={CUSTOMER_OWNER_TONE[row.ownerType]}
                       className="gap-1"
@@ -492,11 +545,11 @@ export function CustomersPage() {
                       {t(CUSTOMER_OWNER_LABEL_KEY[row.ownerType])}
                     </StatusBadge>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="min-w-0 overflow-hidden px-3 py-2.5">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <Link
                         href={href}
-                        className="truncate font-mono text-label font-medium text-ink transition hover:text-link-hover hover:underline"
+                        className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge transition hover:text-link-hover hover:underline"
                         title={row.code}
                       >
                         {row.code}
@@ -504,18 +557,19 @@ export function CustomersPage() {
                       <CopyButton value={row.code} label={t("customers.copyCode")} />
                     </div>
                   </td>
-                  <td className="truncate px-3 py-3 text-label text-ink" title={row.name}>
+                  <td className="min-w-0 overflow-hidden px-3 py-2.5">
                     <Link
                       href={href}
-                      className="font-medium transition hover:text-link-hover hover:underline"
+                      className="block max-w-full truncate text-label font-medium text-ink transition hover:text-link-hover hover:underline"
+                      title={row.name}
                     >
                       {row.name}
                     </Link>
                   </td>
-                  <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
                     {formatMoney(row.availableBalance ?? 0)}
                   </td>
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     {statusKey ? (
                       <StatusBadge tone={CUSTOMER_STATUS_TONE[statusKey]}>
                         {t(CUSTOMER_STATUS_LABEL_KEY[statusKey])}
@@ -524,13 +578,13 @@ export function CustomersPage() {
                       <span className="text-label text-muted">{row.status}</span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                  <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
                     <DateTimeText value={row.lastActivityAt} />
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                  <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
                     <DateTimeText value={row.createdAt} />
                   </td>
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <ActionTooltip label={t("customers.detail")}>
                       <Button
                         href={href}
@@ -548,10 +602,10 @@ export function CustomersPage() {
 
             {!loading && rows.length > 0 ? (
               <tr className="border-t border-edge bg-surface/50">
-                <td colSpan={4} className="px-3 py-3 text-label font-semibold text-ink">
+                <td colSpan={4} className="px-3 py-2.5 text-label font-semibold text-ink">
                   {t("customers.totalRow")}
                 </td>
-                <td className="px-3 py-3 text-right font-mono text-label font-semibold tabular-nums text-ink">
+                <td className="px-3 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink">
                   {formatMoney(totalBalance ?? pageStats.pageBalance)}
                 </td>
                 <td colSpan={4} />

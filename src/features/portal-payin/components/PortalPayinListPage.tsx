@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-  DateTimeText,
   AutoRefreshControl,
+  ColumnHeader,
+  DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
   FilterField,
@@ -16,7 +17,18 @@ import {
   type DateRangeValue,
 } from "@/components/common";
 import { Button, Select, StatusBadge } from "@/components/ui";
-import { IconChevron, IconRefresh, IconSearch } from "@/components/icons/NavIcons";
+import {
+  IconActivity,
+  IconArrowIn,
+  IconChevron,
+  IconClock,
+  IconFileText,
+  IconHash,
+  IconLink,
+  IconRefresh,
+  IconSearch,
+  IconWebhook,
+} from "@/components/icons/NavIcons";
 import { PayinDetailDrawer } from "@/features/payin/components/PayinDetailDrawer";
 import {
   CALLBACK_STATUS_LABEL_KEY,
@@ -382,21 +394,41 @@ export function PortalPayinListPage() {
       >
         <table className="w-full min-w-[640px] border-collapse text-left text-label">
           <thead>
-            <tr className="border-b border-edge text-caption text-muted">
-              <th className="px-3 py-2 font-medium">{t("payin.colRequestId")}</th>
-              <th className="hidden px-3 py-2 font-medium sm:table-cell">
-                {t("payin.colDescription")}
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                  {t("payin.colRequestId")}
+                </ColumnHeader>
               </th>
-              <th className="hidden px-3 py-2 font-medium md:table-cell">
-                {t("payin.colChannel")}
+              <th className="hidden px-3 py-2.5 sm:table-cell">
+                <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                  {t("payin.colDescription")}
+                </ColumnHeader>
               </th>
-              <th className="px-3 py-2 font-medium">{t("payin.colRequestValue")}</th>
-              <th className="px-3 py-2 font-medium">{t("payin.colStatus")}</th>
-              <th className="hidden px-3 py-2 font-medium sm:table-cell">
-                {t("payin.colCallback")}
+              <th className="hidden px-3 py-2.5 md:table-cell">
+                <ColumnHeader icon={<IconLink width={14} height={14} />}>
+                  {t("payin.colChannel")}
+                </ColumnHeader>
               </th>
-              <th className="hidden px-3 py-2 font-medium lg:table-cell">
-                {t("payin.colCreatedAt")}
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconArrowIn width={14} height={14} />}>
+                  {t("payin.colRequestValue")}
+                </ColumnHeader>
+              </th>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconActivity width={14} height={14} />}>
+                  {t("payin.colStatus")}
+                </ColumnHeader>
+              </th>
+              <th className="hidden px-3 py-2.5 sm:table-cell">
+                <ColumnHeader icon={<IconWebhook width={14} height={14} />}>
+                  {t("payin.colCallback")}
+                </ColumnHeader>
+              </th>
+              <th className="hidden px-3 py-2.5 lg:table-cell">
+                <ColumnHeader icon={<IconClock width={14} height={14} />}>
+                  {t("payin.colCreatedAt")}
+                </ColumnHeader>
               </th>
             </tr>
           </thead>

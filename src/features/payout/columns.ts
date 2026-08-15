@@ -121,23 +121,17 @@ export const PAYOUT_COLUMN_ALIGN: Record<PayoutColumn | "stt", string> = {
   fee: "text-right",
 };
 
-/** Daily ops scan: ID → payee → money → status → time. */
+/** Default list scan: ID → merchant → payee → amount → status → time. */
 export const DEFAULT_VISIBLE_COLUMNS: readonly PayoutColumn[] = [
   "requestId",
   "merchant",
   "beneficiaryName",
-  "accountNumber",
-  "bank",
-  "transferContent",
   "amount",
-  "fee",
   "status",
-  "callback",
   "createdAt",
-  "updatedAt",
 ];
 
-export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.payout.columns.v3";
+export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.payout.columns.v4";
 
 export type ColumnVisibility = Record<PayoutColumn, boolean>;
 

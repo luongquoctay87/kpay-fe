@@ -18,12 +18,16 @@ import {
   IconChevron,
   IconClock,
   IconDownload,
+  IconGlobe,
   IconHash,
+  IconInbox,
   IconLink,
   IconRefresh,
   IconSearch,
+  IconSettings,
   IconStore,
   IconUser,
+  IconWallet,
   IconWebhook,
 } from "@/components/icons/NavIcons";
 import {
@@ -51,13 +55,16 @@ import { PayinDetailDrawer } from "@/features/payin/components/PayinDetailDrawer
 import { ColumnPicker } from "@/features/payin/components/ColumnPicker";
 import {
   PAYIN_COLUMN_ALIGN,
+  PAYIN_COLUMN_MIN_PX,
   PAYIN_COLUMN_WIDTH,
+  PAYIN_COLUMNS,
   defaultColumnVisibility,
   loadColumnVisibility,
   payinTableMinWidth,
   saveColumnVisibility,
   visibleColumnCount,
   type ColumnVisibility,
+  type PayinColumn,
 } from "@/features/payin/columns";
 import {
   CALLBACK_STATUS_LABEL_KEY,
@@ -170,6 +177,26 @@ export function PayinListPage() {
 
   const colSpan = visibleColumnCount(columnVisibility);
   const show = columnVisibility;
+
+  const flexCol: PayinColumn =
+    show.description
+      ? "description"
+      : show.requestId
+        ? "requestId"
+        : show.merchant
+          ? "merchant"
+          : show.accountName
+            ? "accountName"
+            : show.createdAt
+              ? "createdAt"
+              : (PAYIN_COLUMNS.find((c) => show[c]) ?? "requestId");
+
+  function colWidth(col: PayinColumn | "stt" | "actions"): string | undefined {
+    if (col === "actions") return "96px";
+    if (col !== "stt" && col === flexCol) return undefined;
+    return `${PAYIN_COLUMN_MIN_PX[col]}px`;
+  }
+
 
   const statusOptions = useMemo(
     () =>
@@ -567,135 +594,158 @@ export function PayinListPage() {
           className="w-full table-fixed border-collapse text-left"
           style={{ minWidth: payinTableMinWidth(columnVisibility) }}
         >
+          <colgroup>
+            <col style={{ width: colWidth("stt") }} />
+            {PAYIN_COLUMNS.map((col) =>
+              show[col] ? <col key={col} style={{ width: colWidth(col) }} /> : null,
+            )}
+            <col style={{ width: colWidth("actions") }} />
+          </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-caption font-medium text-muted">
-              <th className={`${PAYIN_COLUMN_WIDTH.stt} ${PAYIN_COLUMN_ALIGN.stt} px-3 py-3`}>
-                {t("payin.colStt")}
+            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+              <th className={`${PAYIN_COLUMN_WIDTH.stt} ${PAYIN_COLUMN_ALIGN.stt} px-3 py-2.5`}>
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("payin.colStt")}
+                </ColumnHeader>
               </th>
               {show.requestId ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.requestId} ${PAYIN_COLUMN_ALIGN.requestId} px-3 py-3`}>
-                  <ColumnHeader icon={<IconHash width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.requestId} ${PAYIN_COLUMN_ALIGN.requestId} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
                     {t("payin.colRequestId")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.merchant ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.merchant} ${PAYIN_COLUMN_ALIGN.merchant} px-3 py-3`}>
-                  <ColumnHeader icon={<IconStore width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.merchant} ${PAYIN_COLUMN_ALIGN.merchant} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconStore width={14} height={14} />}>
                     {t("payin.colMerchant")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.channel ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.channel} ${PAYIN_COLUMN_ALIGN.channel} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconLink width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.channel} ${PAYIN_COLUMN_ALIGN.channel} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconLink width={14} height={14} />}>
                     {t("payin.colChannel")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.accountName ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.accountName} ${PAYIN_COLUMN_ALIGN.accountName} px-3 py-3`}>
-                  <ColumnHeader icon={<IconUser width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.accountName} ${PAYIN_COLUMN_ALIGN.accountName} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconUser width={14} height={14} />}>
                     {t("payin.colAccountName")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.accountNumber ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.accountNumber} ${PAYIN_COLUMN_ALIGN.accountNumber} px-3 py-3`}>
-                  <ColumnHeader icon={<IconHash width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.accountNumber} ${PAYIN_COLUMN_ALIGN.accountNumber} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
                     {t("payin.colAccountNumber")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.bank ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.bank} ${PAYIN_COLUMN_ALIGN.bank} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconBank width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.bank} ${PAYIN_COLUMN_ALIGN.bank} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconBank width={14} height={14} />}>
                     {t("payin.colBank")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.description ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.description} ${PAYIN_COLUMN_ALIGN.description} px-3 py-3`}>
-                  <ColumnHeader icon={<IconWebhook width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.description} ${PAYIN_COLUMN_ALIGN.description} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconWebhook width={14} height={14} />}>
                     {t("payin.colDescription")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.requestValue ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.requestValue} ${PAYIN_COLUMN_ALIGN.requestValue} px-3 py-3`}>
-                  <ColumnHeader align="right" icon={<IconArrowIn width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.requestValue} ${PAYIN_COLUMN_ALIGN.requestValue} px-3 py-2.5`}>
+                  <ColumnHeader align="right" icon={<IconArrowIn width={14} height={14} />}>
                     {t("payin.colRequestValue")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.receivedAmount ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.receivedAmount} ${PAYIN_COLUMN_ALIGN.receivedAmount} px-3 py-3`}>
-                  <ColumnHeader align="right">{t("payin.colReceivedAmount")}</ColumnHeader>
+                <th className={`${PAYIN_COLUMN_WIDTH.receivedAmount} ${PAYIN_COLUMN_ALIGN.receivedAmount} px-3 py-2.5`}>
+                  <ColumnHeader align="right" icon={<IconArrowIn width={14} height={14} />}>
+                    {t("payin.colReceivedAmount")}
+                  </ColumnHeader>
                 </th>
               ) : null}
               {show.acceptedAmount ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.acceptedAmount} ${PAYIN_COLUMN_ALIGN.acceptedAmount} px-3 py-3`}>
-                  <ColumnHeader align="right">{t("payin.colAcceptedAmount")}</ColumnHeader>
+                <th className={`${PAYIN_COLUMN_WIDTH.acceptedAmount} ${PAYIN_COLUMN_ALIGN.acceptedAmount} px-3 py-2.5`}>
+                  <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                    {t("payin.colAcceptedAmount")}
+                  </ColumnHeader>
                 </th>
               ) : null}
               {show.fee ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.fee} ${PAYIN_COLUMN_ALIGN.fee} px-3 py-3`}>
-                  <ColumnHeader align="right">{t("payin.colFee")}</ColumnHeader>
+                <th className={`${PAYIN_COLUMN_WIDTH.fee} ${PAYIN_COLUMN_ALIGN.fee} px-3 py-2.5`}>
+                  <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                    {t("payin.colFee")}
+                  </ColumnHeader>
                 </th>
               ) : null}
               {show.netAmount ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.netAmount} ${PAYIN_COLUMN_ALIGN.netAmount} px-3 py-3`}>
-                  <ColumnHeader align="right">{t("payin.colNetAmount")}</ColumnHeader>
+                <th className={`${PAYIN_COLUMN_WIDTH.netAmount} ${PAYIN_COLUMN_ALIGN.netAmount} px-3 py-2.5`}>
+                  <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                    {t("payin.colNetAmount")}
+                  </ColumnHeader>
                 </th>
               ) : null}
               {show.status ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.status} ${PAYIN_COLUMN_ALIGN.status} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconActivity width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.status} ${PAYIN_COLUMN_ALIGN.status} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
                     {t("payin.colStatus")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.callback ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.callback} ${PAYIN_COLUMN_ALIGN.callback} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconWebhook width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.callback} ${PAYIN_COLUMN_ALIGN.callback} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconWebhook width={14} height={14} />}>
                     {t("payin.colCallback")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.processedAt ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.processedAt} ${PAYIN_COLUMN_ALIGN.processedAt} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.processedAt} ${PAYIN_COLUMN_ALIGN.processedAt} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                     {t("payin.colProcessedAt")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.createdAt ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.createdAt} ${PAYIN_COLUMN_ALIGN.createdAt} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.createdAt} ${PAYIN_COLUMN_ALIGN.createdAt} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                     {t("payin.colCreatedAt")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.updatedAt ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.updatedAt} ${PAYIN_COLUMN_ALIGN.updatedAt} px-3 py-3`}>
-                  <ColumnHeader align="center" icon={<IconClock width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.updatedAt} ${PAYIN_COLUMN_ALIGN.updatedAt} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                     {t("payin.colUpdatedAt")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.processedBy ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.processedBy} ${PAYIN_COLUMN_ALIGN.processedBy} px-3 py-3`}>
-                  <ColumnHeader icon={<IconUser width={13} height={13} />}>
+                <th className={`${PAYIN_COLUMN_WIDTH.processedBy} ${PAYIN_COLUMN_ALIGN.processedBy} px-3 py-2.5`}>
+                  <ColumnHeader icon={<IconUser width={14} height={14} />}>
                     {t("payin.colProcessedBy")}
                   </ColumnHeader>
                 </th>
               ) : null}
               {show.gateway ? (
-                <th className={`${PAYIN_COLUMN_WIDTH.gateway} ${PAYIN_COLUMN_ALIGN.gateway} px-3 py-3`}>
-                  <ColumnHeader align="center">{t("payin.colGateway")}</ColumnHeader>
+                <th className={`${PAYIN_COLUMN_WIDTH.gateway} ${PAYIN_COLUMN_ALIGN.gateway} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconGlobe width={14} height={14} />}>
+                    {t("payin.colGateway")}
+                  </ColumnHeader>
                 </th>
               ) : null}
-              <th className="w-[96px] px-3 py-3 text-center">{t("payin.colActions")}</th>
+              <th className="w-[96px] px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconSettings width={14} height={14} />}>
+                  {t("payin.colActions")}
+                </ColumnHeader>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -709,23 +759,44 @@ export function PayinListPage() {
 
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
-                  {error
-                    ? t("payin.loadError")
-                    : hasFilters
-                      ? t("payin.emptyFiltered")
-                      : t("payin.empty")}
+                <td colSpan={colSpan} className="px-3 py-16">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
+                    >
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {error
+                        ? t("payin.loadError")
+                        : hasFilters
+                          ? t("payin.emptyFiltered")
+                          : t("payin.empty")}
+                    </p>
+                    {!error && hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("common.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : null}
 
             {rows.map((row, index) => (
               <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
-                <td className="px-3 py-3 text-center font-mono text-label tabular-nums text-muted">
+                <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                   {page * size + index + 1}
                 </td>
                 {show.requestId ? (
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2.5">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <button
                         type="button"
@@ -741,7 +812,7 @@ export function PayinListPage() {
                 ) : null}
                 {show.merchant ? (
                   <td
-                    className="truncate px-3 py-3 text-label text-ink"
+                    className="truncate px-3 py-2.5 text-label text-ink"
                     title={row.merchantName ?? row.merchantCode ?? undefined}
                   >
                     {row.merchantId ? (
@@ -757,7 +828,7 @@ export function PayinListPage() {
                   </td>
                 ) : null}
                 {show.channel ? (
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     {row.channelName ? (
                       <StatusBadge tone="neutral">{row.channelName}</StatusBadge>
                     ) : (
@@ -766,17 +837,17 @@ export function PayinListPage() {
                   </td>
                 ) : null}
                 {show.accountName ? (
-                  <td className="truncate px-3 py-3 text-label text-ink" title={row.accountName ?? undefined}>
+                  <td className="truncate px-3 py-2.5 text-label text-ink" title={row.accountName ?? undefined}>
                     {row.accountName ?? "—"}
                   </td>
                 ) : null}
                 {show.accountNumber ? (
-                  <td className="truncate px-3 py-3 font-mono text-label text-ink" title={row.bankAccountNumber ?? undefined}>
+                  <td className="truncate px-3 py-2.5 font-mono text-label text-ink" title={row.bankAccountNumber ?? undefined}>
                     {row.bankAccountNumber ?? "—"}
                   </td>
                 ) : null}
                 {show.bank ? (
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     {row.bankName ? (
                       <span
                         className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
@@ -790,75 +861,75 @@ export function PayinListPage() {
                   </td>
                 ) : null}
                 {show.description ? (
-                  <td className="truncate px-3 py-3 text-label text-ink-secondary" title={row.transferContent ?? undefined}>
+                  <td className="truncate px-3 py-2.5 text-label text-ink-secondary" title={row.transferContent ?? undefined}>
                     {row.transferContent ?? "—"}
                   </td>
                 ) : null}
                 {show.requestValue ? (
-                  <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
                     {formatMoney(row.requestValue)}
                   </td>
                 ) : null}
                 {show.receivedAmount ? (
-                  <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
                     {formatMoney(row.receivedAmount)}
                   </td>
                 ) : null}
                 {show.acceptedAmount ? (
-                  <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
                     {formatMoney(row.acceptedAmount)}
                   </td>
                 ) : null}
                 {show.fee ? (
-                  <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
                     {formatMoney(row.fee)}
                   </td>
                 ) : null}
                 {show.netAmount ? (
-                  <td className="px-3 py-3 text-right font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label tabular-nums text-ink">
                     {formatMoney(row.netAmount)}
                   </td>
                 ) : null}
                 {show.status ? (
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <StatusBadge tone={PAYIN_STATUS_TONE[row.status]}>
                       {t(PAYIN_STATUS_LABEL_KEY[row.status])}
                     </StatusBadge>
                   </td>
                 ) : null}
                 {show.callback ? (
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <StatusBadge tone={CALLBACK_STATUS_TONE[row.callbackStatus]}>
                       {t(CALLBACK_STATUS_LABEL_KEY[row.callbackStatus])}
                     </StatusBadge>
                   </td>
                 ) : null}
                 {show.processedAt ? (
-                  <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                  <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
                     <DateTimeText value={row.processedAt} />
                   </td>
                 ) : null}
                 {show.createdAt ? (
-                  <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                  <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
                     <DateTimeText value={row.createdAt} />
                   </td>
                 ) : null}
                 {show.updatedAt ? (
-                  <td className="whitespace-nowrap px-3 py-3 text-center text-label text-muted">
+                  <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
                     <DateTimeText value={row.updatedAt} />
                   </td>
                 ) : null}
                 {show.processedBy ? (
-                  <td className="truncate px-3 py-3 text-label text-ink">
+                  <td className="truncate px-3 py-2.5 text-label text-ink">
                     {row.processedBy ?? "—"}
                   </td>
                 ) : null}
                 {show.gateway ? (
-                  <td className="px-3 py-3 text-center text-label text-ink-secondary">
+                  <td className="px-3 py-2.5 text-center text-label text-ink-secondary">
                     {row.gateway ?? "—"}
                   </td>
                 ) : null}
-                <td className="px-3 py-3 text-center">
+                <td className="px-3 py-2.5 text-center">
                   {row.status === "created" || row.status === "pending" ? (
                     <span className="group relative inline-flex">
                       <Button
@@ -886,7 +957,7 @@ export function PayinListPage() {
 
             {!loading && rows.length > 0 ? (
               <tr className="border-t border-edge bg-surface/50">
-                <td className="px-3 py-3 text-label font-semibold text-ink" colSpan={1}>
+                <td className="px-3 py-2.5 text-label font-semibold text-ink" colSpan={1}>
                   {t("payin.totalRow")}
                 </td>
                 {show.requestId ? <td /> : null}
@@ -897,27 +968,27 @@ export function PayinListPage() {
                 {show.bank ? <td /> : null}
                 {show.description ? <td /> : null}
                 {show.requestValue ? (
-                  <td className="px-3 py-3 text-right font-mono text-label font-semibold tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink">
                     {formatMoney(pageTotals.requestValue)}
                   </td>
                 ) : null}
                 {show.receivedAmount ? (
-                  <td className="px-3 py-3 text-right font-mono text-label font-semibold tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink">
                     {formatMoney(pageTotals.receivedAmount)}
                   </td>
                 ) : null}
                 {show.acceptedAmount ? (
-                  <td className="px-3 py-3 text-right font-mono text-label font-semibold tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink">
                     {formatMoney(pageTotals.acceptedAmount)}
                   </td>
                 ) : null}
                 {show.fee ? (
-                  <td className="px-3 py-3 text-right font-mono text-label font-semibold tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink">
                     {formatMoney(pageTotals.fee)}
                   </td>
                 ) : null}
                 {show.netAmount ? (
-                  <td className="px-3 py-3 text-right font-mono text-label font-semibold tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-label font-semibold tabular-nums text-ink">
                     {formatMoney(pageTotals.netAmount)}
                   </td>
                 ) : null}

@@ -7,12 +7,16 @@ import type {
 } from "@/features/settings/types";
 
 export const rolesApi = {
-  list(): Promise<RoleItem[]> {
-    return unwrap(apiClient.get("/roles"));
+  list(opts?: { signal?: AbortSignal }): Promise<RoleItem[]> {
+    return unwrap(apiClient.get("/roles", { signal: opts?.signal }));
   },
 
-  permissions(): Promise<PermissionCatalog> {
-    return unwrap(apiClient.get("/roles/permissions"));
+  getByCode(code: string): Promise<RoleItem> {
+    return unwrap(apiClient.get(`/roles/${encodeURIComponent(code)}`));
+  },
+
+  permissions(opts?: { signal?: AbortSignal }): Promise<PermissionCatalog> {
+    return unwrap(apiClient.get("/roles/permissions", { signal: opts?.signal }));
   },
 
   create(body: CreateRoleBody): Promise<RoleItem> {

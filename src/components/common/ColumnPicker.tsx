@@ -101,13 +101,13 @@ export function ColumnPicker<C extends string>({
               return (
                 <li key={col}>
                   <label
-                    className={`flex cursor-pointer items-center gap-2.5 px-3 py-1.5 text-label text-ink hover:bg-surface ${
+                    className={`flex min-h-10 cursor-pointer items-center gap-2.5 px-3 py-2.5 text-label text-ink hover:bg-surface ${
                       disabled ? "cursor-not-allowed opacity-50" : ""
                     }`}
                   >
                     <input
                       type="checkbox"
-                      className="h-3.5 w-3.5 accent-accent"
+                      className="h-4 w-4 accent-accent"
                       checked={checked}
                       disabled={disabled}
                       onChange={() => toggle(col)}

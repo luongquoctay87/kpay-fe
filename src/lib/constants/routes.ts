@@ -36,6 +36,7 @@ export const ROUTES = {
    * BE REST stays `/bank-accounts`, `/bank-reconciliations`, etc.
    */
   bankAccounts: "/banking/accounts",
+  bankAccountDetail: (id: string) => `/banking/accounts/${id}`,
   bankReconciliations: "/banking/reconciliations",
   /** Phase 2 #9 — biến động số dư từ app notify. */
   balanceMovements: "/banking/movements",
@@ -50,6 +51,7 @@ export const ROUTES = {
   settingsUsers: "/settings/users",
   settingsUserDetail: (id: string) => `/settings/users/${id}`,
   settingsRoles: "/settings/roles",
+  settingsRoleDetail: (code: string) => `/settings/roles/${encodeURIComponent(code)}`,
   profile: "/profile",
   pay: (token: string) => `/pay/${token}`,
 } as const;

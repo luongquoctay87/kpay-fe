@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { IconPencil, IconSave } from "@/components/icons/NavIcons";
+import { ColumnHeader } from "@/components/common";
+import { IconLayers, IconPencil, IconSave, IconWallet } from "@/components/icons/NavIcons";
 import { Button, toast } from "@/components/ui";
 import { merchantApi } from "@/features/merchants/api";
 import type { MerchantDetail, MerchantFee, UpdateFeeItem } from "@/features/merchants/types";
@@ -103,12 +104,20 @@ export function SectionFees({
               <table className="w-full min-w-[480px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-                    <th className="px-3 py-2.5 font-medium sm:px-4">{t("merchantDetail.feeColChannel")}</th>
-                    <th className="w-[120px] px-3 py-2.5 font-medium sm:w-[160px] sm:px-4">
-                      {t("merchantDetail.feeColRate")}
+                    <th className="px-3 py-2.5 sm:px-4">
+                      <ColumnHeader icon={<IconLayers width={14} height={14} />}>
+                        {t("merchantDetail.feeColChannel")}
+                      </ColumnHeader>
                     </th>
-                    <th className="w-[140px] px-3 py-2.5 font-medium sm:w-[200px] sm:px-4">
-                      {t("merchantDetail.feeColMemberRate")}
+                    <th className="w-[120px] px-3 py-2.5 sm:w-[160px] sm:px-4">
+                      <ColumnHeader icon={<IconWallet width={14} height={14} />}>
+                        {t("merchantDetail.feeColRate")}
+                      </ColumnHeader>
+                    </th>
+                    <th className="w-[140px] px-3 py-2.5 sm:w-[200px] sm:px-4">
+                      <ColumnHeader icon={<IconWallet width={14} height={14} />}>
+                        {t("merchantDetail.feeColMemberRate")}
+                      </ColumnHeader>
                     </th>
                   </tr>
                 </thead>
