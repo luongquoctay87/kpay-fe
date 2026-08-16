@@ -680,7 +680,7 @@ export function BankAccountsPage() {
                     <div className="flex min-w-0 items-center gap-1.5">
                       <button
                         type="button"
-                        className="min-w-0 truncate font-mono text-label font-medium leading-5 text-ink transition hover:text-link-hover hover:underline"
+                        className="min-w-0 truncate font-mono text-label leading-5 text-ink transition hover:text-link-hover hover:underline"
                         title={row.accountNumber}
                         onClick={() => router.push(ROUTES.bankAccountDetail(row.id))}
                       >
@@ -706,7 +706,7 @@ export function BankAccountsPage() {
                   <td className="truncate px-3 py-2.5" title={row.accountHolder}>
                     <button
                       type="button"
-                      className="max-w-full truncate text-left text-label font-medium text-ink transition hover:text-link-hover hover:underline"
+                      className="max-w-full truncate text-left text-label text-ink transition hover:text-link-hover hover:underline"
                       onClick={() => router.push(ROUTES.bankAccountDetail(row.id))}
                     >
                       {row.accountHolder}

@@ -967,7 +967,7 @@ export function TransferContentRulesPage() {
                 <td className="px-3 py-2.5">
                   <div className="min-w-0">
                     <span
-                      className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
+                      className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption text-ink ring-1 ring-inset ring-edge"
                       title={row.code}
                     >
                       {row.code}
@@ -996,7 +996,7 @@ export function TransferContentRulesPage() {
                       {canWrite ? (
                         <button
                           type="button"
-                          className="block max-w-full truncate text-left text-label font-medium text-ink transition hover:text-link-hover hover:underline"
+                          className="block max-w-full truncate text-left text-label text-ink transition hover:text-link-hover hover:underline"
                           title={row.name}
                           onClick={() => setEditing(row)}
                         >
