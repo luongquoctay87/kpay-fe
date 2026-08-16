@@ -10,6 +10,7 @@ import {
 import {
   IconActivity,
   IconBank,
+  IconBell,
   IconClock,
   IconFileText,
   IconHash,
@@ -199,7 +200,7 @@ export function BalanceMovementsPage() {
         breadcrumbs={[
           { label: t("balanceMovements.breadcrumbRoot"), icon: <IconLayers /> },
           { label: t("balanceMovements.breadcrumbParent"), icon: <IconBank /> },
-          { label: t("balanceMovements.breadcrumbCurrent"), icon: <IconActivity /> },
+          { label: t("balanceMovements.breadcrumbCurrent"), icon: <IconBell /> },
         ]}
         actions={
           <AutoRefreshControl
