@@ -1768,6 +1768,7 @@ export const en = {
     statusError: "Error",
     directionIn: "In",
     directionOut: "Out",
+    colStt: "#",
     colCreatedAt: "Time",
     colDirection: "Direction",
     colAmount: "Amount",

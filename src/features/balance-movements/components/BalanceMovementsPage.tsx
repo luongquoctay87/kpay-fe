@@ -65,19 +65,14 @@ const EMPTY_LIST = {
   sumAmount: 0,
 };
 
-const COL_MIN = {
-  stt: 52,
-  created: 152,
-  direction: 88,
-  amount: 128,
-  content: 200,
-  account: 176,
-  status: 144,
-  device: 136,
-  payin: 160,
-} as const;
+/** CSS grid tracks — headers cannot collapse/overlap when the body is empty. */
+const GRID_COLS =
+  "72px 168px 100px 140px minmax(220px,1fr) 180px 152px 148px 176px";
+const TABLE_MIN_WIDTH = 72 + 168 + 100 + 140 + 220 + 180 + 152 + 148 + 176;
 
-const TABLE_MIN_WIDTH = Object.values(COL_MIN).reduce((a, b) => a + b, 0);
+const HEAD_CELL =
+  "flex min-w-0 items-center overflow-hidden px-3 py-2.5";
+const BODY_CELL = "flex min-w-0 items-center px-3 py-2.5";
 
 export function BalanceMovementsPage() {
   const { t } = useI18n();
@@ -148,7 +143,6 @@ export function BalanceMovementsPage() {
 
   useAutoRefresh(refresh, { enabled: autoRefresh, intervalSec: autoRefreshSec });
 
-  const colSpan = 9;
   const sumAmount = data.sumAmount ?? 0;
 
   const hasFilters = Boolean(
@@ -288,117 +282,94 @@ export function BalanceMovementsPage() {
           />
         }
       >
-        <table
-          className="w-full table-fixed border-collapse text-left"
-          style={{ minWidth: TABLE_MIN_WIDTH }}
-        >
-          <colgroup>
-            <col style={{ width: `${COL_MIN.stt}px` }} />
-            <col style={{ width: `${COL_MIN.created}px` }} />
-            <col style={{ width: `${COL_MIN.direction}px` }} />
-            <col style={{ width: `${COL_MIN.amount}px` }} />
-            <col />
-            <col style={{ width: `${COL_MIN.account}px` }} />
-            <col style={{ width: `${COL_MIN.status}px` }} />
-            <col style={{ width: `${COL_MIN.device}px` }} />
-            <col style={{ width: `${COL_MIN.payin}px` }} />
-          </colgroup>
-          <thead>
-            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-              <th className="px-3 py-2.5 text-center">
-                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
-                  {t("balanceMovements.colStt")}
-                </ColumnHeader>
-              </th>
-              <th className="px-3 py-2.5 text-center">
-                <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
-                  {t("balanceMovements.colCreatedAt")}
-                </ColumnHeader>
-              </th>
-              <th className="px-3 py-2.5 text-center">
-                <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
-                  {t("balanceMovements.colDirection")}
-                </ColumnHeader>
-              </th>
-              <th className="px-3 py-2.5 text-right">
-                <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
-                  {t("balanceMovements.colAmount")}
-                </ColumnHeader>
-              </th>
-              <th className="min-w-0 px-3 py-2.5">
-                <ColumnHeader icon={<IconFileText width={14} height={14} />}>
-                  {t("balanceMovements.colContent")}
-                </ColumnHeader>
-              </th>
-              <th className="px-3 py-2.5">
-                <ColumnHeader icon={<IconBank width={14} height={14} />}>
-                  {t("balanceMovements.colAccount")}
-                </ColumnHeader>
-              </th>
-              <th className="px-3 py-2.5 text-center">
-                <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
-                  {t("balanceMovements.colStatus")}
-                </ColumnHeader>
-              </th>
-              <th className="px-3 py-2.5">
-                <ColumnHeader icon={<IconSmartphone width={14} height={14} />}>
-                  {t("balanceMovements.colDevice")}
-                </ColumnHeader>
-              </th>
-              <th className="px-3 py-2.5">
-                <ColumnHeader icon={<IconHash width={14} height={14} />}>
-                  {t("balanceMovements.colPayin")}
-                </ColumnHeader>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && rows.length === 0 ? (
-              <tr>
-                <td colSpan={colSpan} className="px-3 py-16 text-center text-label text-muted">
-                  {t("balanceMovements.loading")}
-                </td>
-              </tr>
-            ) : null}
+        <div className="w-full" style={{ minWidth: TABLE_MIN_WIDTH }}>
+          <div
+            role="row"
+            className="grid border-b border-edge bg-surface text-label font-medium text-muted"
+            style={{ gridTemplateColumns: GRID_COLS }}
+          >
+            <div className={`${HEAD_CELL} justify-center`}>
+              <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                {t("balanceMovements.colStt")}
+              </ColumnHeader>
+            </div>
+            <div className={`${HEAD_CELL} justify-center`}>
+              <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
+                {t("balanceMovements.colCreatedAt")}
+              </ColumnHeader>
+            </div>
+            <div className={`${HEAD_CELL} justify-center`}>
+              <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
+                {t("balanceMovements.colDirection")}
+              </ColumnHeader>
+            </div>
+            <div className={`${HEAD_CELL} justify-end`}>
+              <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                {t("balanceMovements.colAmount")}
+              </ColumnHeader>
+            </div>
+            <div className={HEAD_CELL}>
+              <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                {t("balanceMovements.colContent")}
+              </ColumnHeader>
+            </div>
+            <div className={HEAD_CELL}>
+              <ColumnHeader icon={<IconBank width={14} height={14} />}>
+                {t("balanceMovements.colAccount")}
+              </ColumnHeader>
+            </div>
+            <div className={`${HEAD_CELL} justify-center`}>
+              <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
+                {t("balanceMovements.colStatus")}
+              </ColumnHeader>
+            </div>
+            <div className={HEAD_CELL}>
+              <ColumnHeader icon={<IconSmartphone width={14} height={14} />}>
+                {t("balanceMovements.colDevice")}
+              </ColumnHeader>
+            </div>
+            <div className={HEAD_CELL}>
+              <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                {t("balanceMovements.colPayin")}
+              </ColumnHeader>
+            </div>
+          </div>
 
-            {!loading && rows.length === 0 ? (
-              <tr>
-                <td colSpan={colSpan} className="px-3 py-16">
-                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
-                    <span
-                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
-                      aria-hidden
-                    >
-                      <IconInbox width={28} height={28} />
-                    </span>
-                    <p className="text-label text-muted">
-                      {error
-                        ? t("balanceMovements.loadError")
-                        : hasFilters
-                          ? t("balanceMovements.emptyFiltered")
-                          : t("balanceMovements.empty")}
-                    </p>
-                    {!error && hasFilters ? (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="md"
-                        leftIcon={<IconRefresh width={15} height={15} />}
-                        onClick={onReset}
-                      >
-                        {t("balanceMovements.reset")}
-                      </Button>
-                    ) : null}
-                  </div>
-                </td>
-              </tr>
+          {rows.map((row, idx) => (
+            <MovementRow key={row.id} row={row} index={page * size + idx + 1} />
+          ))}
+        </div>
+        {loading && rows.length === 0 ? (
+          <p className="px-3 py-16 text-center text-label text-muted">{t("balanceMovements.loading")}</p>
+        ) : null}
+        {!loading && rows.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 px-3 py-16 text-center">
+            <span
+              className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+              aria-hidden
+            >
+              <IconInbox width={28} height={28} />
+            </span>
+            <p className="text-label text-muted">
+              {error
+                ? t("balanceMovements.loadError")
+                : hasFilters
+                  ? t("balanceMovements.emptyFiltered")
+                  : t("balanceMovements.empty")}
+            </p>
+            {!error && hasFilters ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                leftIcon={<IconRefresh width={15} height={15} />}
+                onClick={onReset}
+              >
+                {t("balanceMovements.reset")}
+              </Button>
             ) : null}
-
-            {rows.map((row, idx) => (
-              <MovementRow key={row.id} row={row} index={page * size + idx + 1} />
-            ))}
-          </tbody>
-        </table>
+          </div>
+        ) : null}
       </TableCard>
     </div>
   );
@@ -415,22 +386,26 @@ function MovementRow({
   const isOut = row.direction === "OUT";
 
   return (
-    <tr className="border-b border-edge hover:bg-surface/70">
-      <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
+    <div
+      role="row"
+      className="grid border-b border-edge hover:bg-surface/70"
+      style={{ gridTemplateColumns: GRID_COLS }}
+    >
+      <div className={`${BODY_CELL} justify-center font-mono text-caption tabular-nums text-muted`}>
         {index}
-      </td>
-      <td className="whitespace-nowrap px-3 py-2.5 text-center text-label text-muted">
+      </div>
+      <div className={`${BODY_CELL} justify-center whitespace-nowrap text-label text-muted`}>
         <DateTimeText value={row.createdAt} />
-      </td>
-      <td className="px-3 py-2.5 text-center">
+      </div>
+      <div className={`${BODY_CELL} justify-center`}>
         <StatusBadge tone={isOut ? "danger" : "info"}>
           {isOut ? t("balanceMovements.directionOut") : t("balanceMovements.directionIn")}
         </StatusBadge>
-      </td>
-      <td className="px-3 py-2.5 text-right">
+      </div>
+      <div className={`${BODY_CELL} justify-end`}>
         <MoneyAmount value={row.amount} />
-      </td>
-      <td className="px-3 py-2.5">
+      </div>
+      <div className={BODY_CELL}>
         {row.transferContent ? (
           <div className="flex min-w-0 items-center gap-1.5">
             <span
@@ -444,8 +419,8 @@ function MovementRow({
         ) : (
           <span className="text-label text-muted">—</span>
         )}
-      </td>
-      <td className="px-3 py-2.5">
+      </div>
+      <div className={BODY_CELL}>
         {row.bankCode || row.bankAccountNumber ? (
           <div
             className="flex min-w-0 items-center gap-1.5"
@@ -465,11 +440,11 @@ function MovementRow({
         ) : (
           <span className="text-label text-muted">—</span>
         )}
-      </td>
-      <td className="px-3 py-2.5 text-center">
+      </div>
+      <div className={`${BODY_CELL} justify-center overflow-visible`}>
         <ProcessStatusCell row={row} />
-      </td>
-      <td className="px-3 py-2.5">
+      </div>
+      <div className={BODY_CELL}>
         {row.deviceId ? (
           <span
             className="block truncate font-mono text-caption text-muted"
@@ -480,8 +455,8 @@ function MovementRow({
         ) : (
           <span className="text-label text-muted">—</span>
         )}
-      </td>
-      <td className="px-3 py-2.5">
+      </div>
+      <div className={BODY_CELL}>
         {row.payinRequestId ? (
           <Link
             href={`${ROUTES.payin}?q=${encodeURIComponent(row.payinRequestId)}`}
@@ -493,8 +468,8 @@ function MovementRow({
         ) : (
           <span className="text-label text-muted">—</span>
         )}
-      </td>
-    </tr>
+      </div>
+    </div>
   );
 }
 

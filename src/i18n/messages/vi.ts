@@ -1765,6 +1765,7 @@ export const vi = {
     statusError: "Lỗi",
     directionIn: "Vào",
     directionOut: "Ra",
+    colStt: "STT",
     colCreatedAt: "Thời gian",
     colDirection: "Chiều",
     colAmount: "Số tiền",
