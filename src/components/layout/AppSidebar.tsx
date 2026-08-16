@@ -261,14 +261,14 @@ const NAV: NavEntry[] = [
             icon: <IconBell />,
           },
           {
-            href: ROUTES.blockedAccounts,
-            labelKey: "nav.blockedAccounts",
-            icon: <IconBan />,
-          },
-          {
             href: ROUTES.bankBalances,
             labelKey: "nav.bankBalances",
             icon: <IconWallet />,
+          },
+          {
+            href: ROUTES.blockedAccounts,
+            labelKey: "nav.blockedAccounts",
+            icon: <IconBan />,
           },
         ],
       },

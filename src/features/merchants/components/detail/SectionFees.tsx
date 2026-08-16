@@ -9,14 +9,14 @@ import type { MerchantDetail, MerchantFee, UpdateFeeItem } from "@/features/merc
 import { useI18n } from "@/i18n/use-i18n";
 import { ApiError } from "@/lib/types/api";
 import { bps } from "@/features/merchants/components/detail/bps";
+import { isFeeChannelEditable } from "@/features/merchants/fee-channels";
 
-/** Phase 1: only QR Bank fee is editable on merchant detail; other channels stay visible but locked. */
-const FEE_EDITABLE_CHANNEL_ID = "qr_bank";
+const PAYIN_FEE_SORT_FIRST = "qr_bank";
 
 export function sortFeesQrBankFirst(rows: MerchantFee[]): MerchantFee[] {
   return [...rows].sort((a, b) => {
-    if (a.channelId === FEE_EDITABLE_CHANNEL_ID) return -1;
-    if (b.channelId === FEE_EDITABLE_CHANNEL_ID) return 1;
+    if (a.channelId === PAYIN_FEE_SORT_FIRST) return -1;
+    if (b.channelId === PAYIN_FEE_SORT_FIRST) return 1;
     return 0;
   });
 }
@@ -124,7 +124,7 @@ export function SectionFees({
                 <tbody>
                   {groupFees.map((fee) => {
                     const draftIdx = draft.findIndex((d) => d.channelId === fee.channelId);
-                    const editable = fee.channelId === FEE_EDITABLE_CHANNEL_ID;
+                    const editable = isFeeChannelEditable(fee.channelId);
                     return (
                       <tr
                         key={fee.channelId}

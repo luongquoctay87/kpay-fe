@@ -7,6 +7,7 @@ import { ColumnHeader, PageHeader } from "@/components/common";
 import { Button, Field, Input, toast } from "@/components/ui";
 import { merchantApi } from "@/features/merchants/api";
 import { MerchantCredentialsModal } from "@/features/merchants/components/MerchantCredentialsModal";
+import { isFeeChannelEditable } from "@/features/merchants/fee-channels";
 import { invalidateActiveMerchantOptionsCache } from "@/features/merchants/options-cache";
 import type { CreateMerchantResp, FeeItem, FeeItemReq } from "@/features/merchants/types";
 import { percentToBps } from "@/features/merchants/types";
@@ -16,9 +17,6 @@ import { ROUTES } from "@/lib/constants/routes";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
 import { generateLoginPassword } from "@/lib/password/generate-login-password";
 import { ApiError } from "@/lib/types/api";
-
-/** Phase 1: only QR Bank fee is editable; other channels stay visible but locked. */
-const FEE_EDITABLE_CHANNEL_ID = "qr_bank";
 
 type FeeGroup = {
   key: "payinFees" | "payoutFees" | "cardFeesMerchant" | "cardFeesMember" | "cryptoFees";
@@ -156,7 +154,7 @@ export function MerchantCreatePage() {
 
   function handleFeeChange(groupKey: FeeGroup["key"], idx: number, value: string) {
     const channelId = FEE_GROUPS.find((g) => g.key === groupKey)?.channels[idx]?.key;
-    if (channelId !== FEE_EDITABLE_CHANNEL_ID) return;
+    if (!channelId || !isFeeChannelEditable(channelId)) return;
     setFees((prev) => {
       const next = { ...prev, [groupKey]: [...prev[groupKey]] };
       next[groupKey][idx] = { ...next[groupKey][idx], rate: value };
@@ -374,7 +372,7 @@ export function MerchantCreatePage() {
                     <tbody>
                       {fees[group.key].map((fee, idx) => {
                         const ch = group.channels[idx];
-                        const editable = fee.channel === FEE_EDITABLE_CHANNEL_ID;
+                        const editable = isFeeChannelEditable(fee.channel);
                         return (
                           <tr
                             key={fee.channel}

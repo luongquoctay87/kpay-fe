@@ -73,26 +73,17 @@ export function PayoutConfigModal({
 
     setSaving(true);
     try {
-      const updated: UpdateChannelItem[] = allChannels.map((c) => {
-        if (c.channelId !== channel.channelId) {
-          return {
-            channelId: c.channelId,
-            enabled: c.enabled,
-            payoutMode: c.payoutMode ?? undefined,
-            minAmount: c.minAmount ?? undefined,
-            maxAmount: c.maxAmount ?? undefined,
-            dailyLimit: c.dailyLimit ?? undefined,
-          };
-        }
-        return {
-          channelId: c.channelId,
-          enabled: mode !== "off",
-          payoutMode: mode,
-          minAmount: min ?? undefined,
-          maxAmount: max ?? undefined,
-          dailyLimit: c.dailyLimit ?? undefined,
-        };
-      });
+      const updated: UpdateChannelItem[] = allChannels.map((c) =>
+        c.channelId !== channel.channelId
+          ? toUpdateChannelItem(c)
+          : {
+              ...toUpdateChannelItem(c),
+              enabled: mode !== "off",
+              payoutMode: mode,
+              minAmount: min ?? undefined,
+              maxAmount: max ?? undefined,
+            },
+      );
       const res = await merchantApi.updateChannels(merchantId, updated);
       onSaved(res);
       toast.success(t("common.saved"));
@@ -235,9 +226,38 @@ export function payoutModeLabel(
   return t("merchantDetail.payoutModeOffShort");
 }
 
+export function isPayoutChannelOn(ch: MerchantChannelConfig): boolean {
+  return Boolean(ch.enabled) && ch.payoutMode != null && ch.payoutMode !== "off";
+}
+
+export function toUpdateChannelItem(c: MerchantChannelConfig): UpdateChannelItem {
+  return {
+    channelId: c.channelId,
+    enabled: c.enabled,
+    payoutMode: c.payoutMode ?? undefined,
+    minAmount: c.minAmount ?? undefined,
+    maxAmount: c.maxAmount ?? undefined,
+    dailyLimit: c.dailyLimit ?? undefined,
+  };
+}
+
+/** Backend requires both `enabled` and `payoutMode !== off` for HMAC payout. */
+export function payoutTogglePatch(
+  ch: MerchantChannelConfig,
+  nextOn: boolean,
+): Pick<UpdateChannelItem, "enabled" | "payoutMode"> {
+  if (!nextOn) {
+    return { enabled: false, payoutMode: "off" };
+  }
+  const keepMode = ch.payoutMode === "auto" || ch.payoutMode === "manual" ? ch.payoutMode : "manual";
+  return { enabled: true, payoutMode: keepMode };
+}
+
 /* ─── Section: Channels ────────────────────────────────────────────────── */
 /** Phase 1: only QR Bank can be toggled under Payin channels. */
 const PAYIN_EDITABLE_CHANNEL_ID = "qr_bank";
+/** Payout channel that HMAC create (`POST /api/v1/payout/bank`) checks. */
+const PAYOUT_EDITABLE_CHANNEL_ID = "bank_transfer";
 
 export function sortPayinChannelsQrBankFirst(rows: MerchantChannelConfig[]): MerchantChannelConfig[] {
   return [...rows].sort((a, b) => {
@@ -261,28 +281,46 @@ export function SectionChannels({
     channels.filter((c) => c.flow === "payin" || c.flow === "card" || c.flow === "crypto"),
   );
   const payout = channels.filter((c) => c.flow === "payout");
+  const payoutConfigChannel =
+    payout.find((c) => c.channelId === PAYOUT_EDITABLE_CHANNEL_ID) ?? payout[0] ?? null;
   const [saving, setSaving] = useState(false);
   const [configChannel, setConfigChannel] = useState<MerchantChannelConfig | null>(null);
 
-  async function toggle(ch: MerchantChannelConfig) {
-    if (ch.channelId !== PAYIN_EDITABLE_CHANNEL_ID) return;
+  async function persistChannels(updated: UpdateChannelItem[]) {
     setSaving(true);
     try {
-      // BE overwrites every field it receives, so resend limits for untouched channels too.
-      const updated: UpdateChannelItem[] = channels.map((c) => ({
-        channelId: c.channelId,
-        enabled: c.channelId === ch.channelId ? !c.enabled : c.enabled,
-        payoutMode: c.payoutMode ?? undefined,
-        minAmount: c.minAmount ?? undefined,
-        maxAmount: c.maxAmount ?? undefined,
-        dailyLimit: c.dailyLimit ?? undefined,
-      }));
       const res = await merchantApi.updateChannels(merchantId, updated);
       onUpdated(res);
       toast.success(t("common.saved"));
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : t("merchantDetail.saveError");
+      toast.error(t("common.saveFailed"), msg);
     } finally {
       setSaving(false);
     }
+  }
+
+  async function togglePayin(ch: MerchantChannelConfig) {
+    if (ch.channelId !== PAYIN_EDITABLE_CHANNEL_ID) return;
+    // BE overwrites every field it receives, so resend limits for untouched channels too.
+    await persistChannels(
+      channels.map((c) => ({
+        ...toUpdateChannelItem(c),
+        enabled: c.channelId === ch.channelId ? !c.enabled : c.enabled,
+      })),
+    );
+  }
+
+  async function togglePayout(ch: MerchantChannelConfig) {
+    if (ch.channelId !== PAYOUT_EDITABLE_CHANNEL_ID) return;
+    const nextOn = !isPayoutChannelOn(ch);
+    await persistChannels(
+      channels.map((c) =>
+        c.channelId === ch.channelId
+          ? { ...toUpdateChannelItem(c), ...payoutTogglePatch(c, nextOn) }
+          : toUpdateChannelItem(c),
+      ),
+    );
   }
 
   function ChannelTable({
@@ -317,8 +355,9 @@ export function SectionChannels({
                 </div>
                 <Switch
                   checked={ch.enabled}
-                  onChange={() => void toggle(ch)}
+                  onChange={() => void togglePayin(ch)}
                   disabled={saving || !editable}
+                  aria-label={ch.channelName}
                 />
               </div>
             );
@@ -334,13 +373,13 @@ export function SectionChannels({
       <div className="flex min-w-0 flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="kpay-text-title font-semibold">{t("merchantDetail.sectionPayoutChannels")}</p>
-          {payout[0] ? (
+          {payoutConfigChannel ? (
             <Button
               type="button"
               variant="secondary"
               size="sm"
               disabled={saving}
-              onClick={() => setConfigChannel(payout[0]!)}
+              onClick={() => setConfigChannel(payoutConfigChannel)}
               leftIcon={<IconSettings width={15} height={15} />}
             >
               {t("merchantDetail.btnConfigChannels")}
@@ -351,35 +390,49 @@ export function SectionChannels({
           {payout.length === 0 ? (
             <p className="px-4 py-3 text-label text-muted">{t("merchantDetail.payoutEmpty")}</p>
           ) : (
-            payout.map((ch) => (
-              <div
-                key={ch.channelId}
-                className="border-b border-edge px-3 py-3 last:border-0 sm:px-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="text-label font-medium text-ink">{ch.channelName}</span>
-                    <StatusBadge tone={ch.enabled && ch.payoutMode !== "off" ? "active" : "disabled"}>
-                      {ch.enabled && ch.payoutMode !== "off"
-                        ? t("merchantDetail.channelEnabled")
-                        : t("merchantDetail.channelDisabled")}
-                    </StatusBadge>
+            payout.map((ch) => {
+              const editable = ch.channelId === PAYOUT_EDITABLE_CHANNEL_ID;
+              const on = isPayoutChannelOn(ch);
+              return (
+                <div
+                  key={ch.channelId}
+                  className={`border-b border-edge px-3 py-3 last:border-0 sm:px-4 ${
+                    editable ? "" : "bg-surface/60"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className={`text-label font-medium ${editable ? "text-ink" : "text-muted"}`}>
+                        {ch.channelName}
+                      </span>
+                      <StatusBadge tone={on ? "active" : "disabled"}>
+                        {on
+                          ? t("merchantDetail.channelEnabled")
+                          : t("merchantDetail.channelDisabled")}
+                      </StatusBadge>
+                    </div>
+                    <Switch
+                      checked={on}
+                      onChange={() => void togglePayout(ch)}
+                      disabled={saving || !editable}
+                      aria-label={ch.channelName}
+                    />
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 gap-1 text-label text-muted min-[400px]:grid-cols-2">
+                    <span>{t("merchantDetail.payoutMode")}</span>
+                    <span className="text-ink">{payoutModeLabel(ch.payoutMode, t)}</span>
+                    <span>{t("merchantDetail.payoutMin")}</span>
+                    <span className="tabular-nums text-ink">
+                      {formatMoney(ch.minAmount ?? 0)}
+                    </span>
+                    <span>{t("merchantDetail.payoutMax")}</span>
+                    <span className="tabular-nums text-ink">
+                      {formatMoney(ch.maxAmount ?? 0)}
+                    </span>
                   </div>
                 </div>
-                <div className="mt-2 grid grid-cols-1 gap-1 text-label text-muted min-[400px]:grid-cols-2">
-                  <span>{t("merchantDetail.payoutMode")}</span>
-                  <span className="text-ink">{payoutModeLabel(ch.payoutMode, t)}</span>
-                  <span>{t("merchantDetail.payoutMin")}</span>
-                  <span className="tabular-nums text-ink">
-                    {formatMoney(ch.minAmount ?? 0)}
-                  </span>
-                  <span>{t("merchantDetail.payoutMax")}</span>
-                  <span className="tabular-nums text-ink">
-                    {formatMoney(ch.maxAmount ?? 0)}
-                  </span>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
