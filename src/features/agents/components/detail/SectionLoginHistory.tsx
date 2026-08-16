@@ -23,7 +23,7 @@ export function SectionLoginHistory({ rows }: { rows: AgentLoginHistoryItem[] })
         {rows.length === 0 ? (
           <p className="py-8 text-center text-label text-muted">{t("agentDetail.loginHistoryEmpty")}</p>
         ) : (
-          <table className="w-full min-w-[720px] text-left text-label">
+          <table className="w-full min-w-[720px] border-collapse text-left text-label">
             <thead>
               <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
                 <th className="px-3 py-2.5">
@@ -65,14 +65,14 @@ export function SectionLoginHistory({ rows }: { rows: AgentLoginHistoryItem[] })
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="border-b border-edge">
-                  <td className="px-3 py-2 font-mono text-caption">{row.ipAddress ?? "—"}</td>
-                  <td className="px-3 py-2">{row.device ?? "—"}</td>
-                  <td className="px-3 py-2">{row.browser ?? "—"}</td>
-                  <td className="px-3 py-2">{row.os ?? "—"}</td>
-                  <td className="px-3 py-2">{row.status ?? "—"}</td>
-                  <td className="px-3 py-2">{row.failureReason ?? "—"}</td>
-                  <td className="px-3 py-2 text-muted"><DateTimeText value={row.loginAt} /></td>
+                <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
+                  <td className="px-3 py-2.5 font-mono text-caption">{row.ipAddress ?? "—"}</td>
+                  <td className="px-3 py-2.5">{row.device ?? "—"}</td>
+                  <td className="px-3 py-2.5">{row.browser ?? "—"}</td>
+                  <td className="px-3 py-2.5">{row.os ?? "—"}</td>
+                  <td className="px-3 py-2.5">{row.status ?? "—"}</td>
+                  <td className="px-3 py-2.5">{row.failureReason ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-muted"><DateTimeText value={row.loginAt} /></td>
                 </tr>
               ))}
             </tbody>

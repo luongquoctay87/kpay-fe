@@ -220,23 +220,23 @@ export function AgentCommissionListPage() {
                 return (
                   <tr
                     key={row.ledgerId}
-                    className="cursor-pointer border-b border-edge-soft hover:bg-hover"
+                    className="cursor-pointer border-b border-edge last:border-b-0 hover:bg-surface/70"
                     onClick={() => setDetailRow(row)}
                   >
-                    <td className="whitespace-nowrap px-3 py-2 text-caption text-muted">
+                    <td className="whitespace-nowrap px-3 py-2.5 text-caption text-muted">
                       <DateTimeText value={row.createdAt} />
                     </td>
-                    <td className="max-w-[9rem] truncate px-3 py-2 font-mono text-caption sm:max-w-none">
+                    <td className="max-w-[9rem] truncate px-3 py-2.5 font-mono text-caption sm:max-w-none">
                       {row.requestId ?? "—"}
                     </td>
-                    <td className="hidden max-w-[10rem] truncate px-3 py-2 md:table-cell">
+                    <td className="hidden max-w-[10rem] truncate px-3 py-2.5 md:table-cell">
                       {merchantLabel || "—"}
                     </td>
-                    <td className="hidden px-3 py-2 lg:table-cell">{row.channelId ?? "—"}</td>
-                    <td className="hidden px-3 py-2 tabular-nums sm:table-cell">
+                    <td className="hidden px-3 py-2.5 lg:table-cell">{row.channelId ?? "—"}</td>
+                    <td className="hidden px-3 py-2.5 tabular-nums sm:table-cell">
                       {formatMoney(row.acceptedAmount ?? 0)}
                     </td>
-                    <td className="px-3 py-2 tabular-nums font-medium">
+                    <td className="px-3 py-2.5 tabular-nums font-medium">
                       {formatMoney(row.commissionAmount)}
                     </td>
                   </tr>

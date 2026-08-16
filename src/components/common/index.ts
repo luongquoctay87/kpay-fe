@@ -3,6 +3,13 @@ export { Breadcrumbs, type BreadcrumbItem } from "@/components/common/Breadcrumb
 export { FilterBar } from "@/components/common/FilterBar";
 export { SearchInput } from "@/components/common/SearchInput";
 export { TableCard } from "@/components/common/TableCard";
+export {
+  tableBodyCellClassName,
+  tableBodyRowClassName,
+  tableClassName,
+  tableHeadCellClassName,
+  tableHeadRowClassName,
+} from "@/components/common/table-styles";
 export { Pagination } from "@/components/common/Pagination";
 export { LoadingScreen } from "@/components/common/LoadingScreen";
 export { ColumnHeader } from "@/components/common/ColumnHeader";

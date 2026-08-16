@@ -38,6 +38,9 @@ import {
   StatCard,
   TableCard,
   filterControlClass,
+  tableBodyRowClassName,
+  tableClassName,
+  tableHeadRowClassName,
 } from "@/components/common";
 import { Button, Select, StatusBadge, Switch, toast } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
@@ -46,7 +49,9 @@ import { ColumnPicker } from "@/features/bank-accounts/components/ColumnPicker";
 import { CreateBankAccountModal } from "@/features/bank-accounts/components/CreateBankAccountModal";
 import {
   BANK_ACCOUNT_COLUMN_ALIGN,
+  BANK_ACCOUNT_COLUMN_MIN_PX,
   BANK_ACCOUNT_COLUMN_WIDTH,
+  BANK_ACCOUNT_COLUMNS,
   bankAccountsTableMinWidth,
   defaultColumnVisibility,
   loadColumnVisibility,
@@ -526,14 +531,21 @@ export function BankAccountsPage() {
         }
       >
         <table
-          className="w-full table-fixed border-collapse text-left"
+          className={tableClassName}
           style={{ minWidth: bankAccountsTableMinWidth(columnVisibility) }}
         >
+          <colgroup>
+            {BANK_ACCOUNT_COLUMNS.map((col) =>
+              show[col] ? (
+                <col key={col} style={{ width: BANK_ACCOUNT_COLUMN_MIN_PX[col] }} />
+              ) : null,
+            )}
+          </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+            <tr className={tableHeadRowClassName}>
               {show.account ? (
                 <th
-                  className={`sticky left-0 z-[2] border-r border-edge bg-surface shadow-[2px_0_6px_-2px_rgba(24,24,27,0.12)] ${BANK_ACCOUNT_COLUMN_WIDTH.account} ${BANK_ACCOUNT_COLUMN_ALIGN.account} px-3 py-1.5`}
+                  className={`sticky left-0 z-[2] bg-surface ${BANK_ACCOUNT_COLUMN_WIDTH.account} ${BANK_ACCOUNT_COLUMN_ALIGN.account} px-3 py-2.5`}
                 >
                   <ColumnHeader icon={<IconHash width={14} height={14} />}>
                     {t("bankAccounts.colAccount")}
@@ -542,7 +554,7 @@ export function BankAccountsPage() {
               ) : null}
               {show.holder ? (
                 <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.holder} ${BANK_ACCOUNT_COLUMN_ALIGN.holder} px-3 py-1.5`}
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.holder} ${BANK_ACCOUNT_COLUMN_ALIGN.holder} px-3 py-2.5`}
                 >
                   <ColumnHeader icon={<IconUser width={14} height={14} />}>
                     {t("bankAccounts.colHolder")}
@@ -551,7 +563,7 @@ export function BankAccountsPage() {
               ) : null}
               {show.bank ? (
                 <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.bank} ${BANK_ACCOUNT_COLUMN_ALIGN.bank} px-3 py-1.5`}
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.bank} ${BANK_ACCOUNT_COLUMN_ALIGN.bank} px-3 py-2.5`}
                 >
                   <ColumnHeader icon={<IconBank width={14} height={14} />}>
                     {t("bankAccounts.colBank")}
@@ -560,7 +572,7 @@ export function BankAccountsPage() {
               ) : null}
               {show.accountType ? (
                 <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.accountType} ${BANK_ACCOUNT_COLUMN_ALIGN.accountType} px-3 py-1.5`}
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.accountType} ${BANK_ACCOUNT_COLUMN_ALIGN.accountType} px-3 py-2.5`}
                 >
                   <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
                     {t("bankAccounts.colAccountType")}
@@ -569,7 +581,7 @@ export function BankAccountsPage() {
               ) : null}
               {show.status ? (
                 <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.status} ${BANK_ACCOUNT_COLUMN_ALIGN.status} px-3 py-1.5`}
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.status} ${BANK_ACCOUNT_COLUMN_ALIGN.status} px-3 py-2.5`}
                 >
                   <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
                     {t("bankAccounts.colStatus")}
@@ -578,7 +590,7 @@ export function BankAccountsPage() {
               ) : null}
               {show.collect ? (
                 <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.collect} ${BANK_ACCOUNT_COLUMN_ALIGN.collect} px-3 py-1.5`}
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.collect} ${BANK_ACCOUNT_COLUMN_ALIGN.collect} px-3 py-2.5`}
                 >
                   <ColumnHeader align="center" icon={<IconArrowIn width={14} height={14} />}>
                     {t("bankAccounts.colCollect")}
@@ -587,7 +599,7 @@ export function BankAccountsPage() {
               ) : null}
               {show.rotation ? (
                 <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.rotation} ${BANK_ACCOUNT_COLUMN_ALIGN.rotation} px-3 py-1.5`}
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.rotation} ${BANK_ACCOUNT_COLUMN_ALIGN.rotation} px-3 py-2.5`}
                 >
                   <ColumnHeader align="center" icon={<IconRefresh width={14} height={14} />}>
                     {t("bankAccounts.colRotation")}
@@ -596,7 +608,7 @@ export function BankAccountsPage() {
               ) : null}
               {show.disburse ? (
                 <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.disburse} ${BANK_ACCOUNT_COLUMN_ALIGN.disburse} px-3 py-1.5`}
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.disburse} ${BANK_ACCOUNT_COLUMN_ALIGN.disburse} px-3 py-2.5`}
                 >
                   <ColumnHeader align="center" icon={<IconArrowOut width={14} height={14} />}>
                     {t("bankAccounts.colDisburse")}
@@ -605,7 +617,7 @@ export function BankAccountsPage() {
               ) : null}
               {show.coverage ? (
                 <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.coverage} ${BANK_ACCOUNT_COLUMN_ALIGN.coverage} px-3 py-1.5`}
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.coverage} ${BANK_ACCOUNT_COLUMN_ALIGN.coverage} px-3 py-2.5`}
                 >
                   <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
                     {t("bankAccounts.colCoverage")}
@@ -614,7 +626,7 @@ export function BankAccountsPage() {
               ) : null}
               {show.web ? (
                 <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.web} ${BANK_ACCOUNT_COLUMN_ALIGN.web} px-3 py-1.5`}
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.web} ${BANK_ACCOUNT_COLUMN_ALIGN.web} px-3 py-2.5`}
                 >
                   <ColumnHeader align="center" icon={<IconGlobe width={14} height={14} />}>
                     {t("bankAccounts.colWeb")}
@@ -623,7 +635,7 @@ export function BankAccountsPage() {
               ) : null}
               {show.app ? (
                 <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.app} ${BANK_ACCOUNT_COLUMN_ALIGN.app} px-3 py-1.5`}
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.app} ${BANK_ACCOUNT_COLUMN_ALIGN.app} px-3 py-2.5`}
                 >
                   <ColumnHeader align="center" icon={<IconSmartphone width={14} height={14} />}>
                     {t("bankAccounts.colApp")}
@@ -632,7 +644,7 @@ export function BankAccountsPage() {
               ) : null}
               {show.notif ? (
                 <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.notif} ${BANK_ACCOUNT_COLUMN_ALIGN.notif} px-3 py-1.5`}
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.notif} ${BANK_ACCOUNT_COLUMN_ALIGN.notif} px-3 py-2.5`}
                 >
                   <ColumnHeader align="center" icon={<IconBell width={14} height={14} />}>
                     {t("bankAccounts.colNotif")}
@@ -661,10 +673,10 @@ export function BankAccountsPage() {
             {rows.map((row) => (
               <tr
                 key={row.id}
-                className="group border-b border-edge hover:bg-surface/70"
+                className={`group ${tableBodyRowClassName}`}
               >
                 {show.account ? (
-                  <td className="sticky left-0 z-[1] border-r border-edge bg-elevated px-3 py-1.5 shadow-[2px_0_6px_-2px_rgba(24,24,27,0.12)] group-hover:bg-surface/70">
+                  <td className="sticky left-0 z-[1] bg-elevated px-3 py-2.5 group-hover:bg-surface/70">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <button
                         type="button"
@@ -691,7 +703,7 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.holder ? (
-                  <td className="truncate px-3 py-1.5" title={row.accountHolder}>
+                  <td className="truncate px-3 py-2.5" title={row.accountHolder}>
                     <button
                       type="button"
                       className="max-w-full truncate text-left text-label font-medium text-ink transition hover:text-link-hover hover:underline"
@@ -702,7 +714,7 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.bank ? (
-                  <td className="px-3 py-1.5">
+                  <td className="px-3 py-2.5">
                     <span
                       className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
                       title={row.bankName}
@@ -712,21 +724,21 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.accountType ? (
-                  <td className="px-3 py-1.5 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <StatusBadge tone={BANK_ACCOUNT_TYPE_TONE[row.accountType]}>
                       {t(BANK_ACCOUNT_TYPE_LABEL_KEY[row.accountType])}
                     </StatusBadge>
                   </td>
                 ) : null}
                 {show.status ? (
-                  <td className="px-3 py-1.5 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <StatusBadge tone={BANK_ACCOUNT_STATUS_TONE[row.status]}>
                       {t(BANK_ACCOUNT_STATUS_LABEL_KEY[row.status])}
                     </StatusBadge>
                   </td>
                 ) : null}
                 {show.collect ? (
-                  <td className="px-3 py-1.5 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <div className="inline-flex items-center justify-center">
                       <Switch
                         checked={row.canCollect}
@@ -738,12 +750,12 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.rotation ? (
-                  <td className="px-3 py-1.5 text-center font-mono text-label tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-center font-mono text-label tabular-nums text-ink">
                     {row.rotationGroup != null ? row.rotationGroup : "—"}
                   </td>
                 ) : null}
                 {show.disburse ? (
-                  <td className="px-3 py-1.5 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <div className="inline-flex items-center justify-center">
                       <Switch
                         checked={row.canDisburse}
@@ -756,13 +768,13 @@ export function BankAccountsPage() {
                 ) : null}
                 {show.coverage ? (
                   <td
-                    className={`px-3 py-1.5 text-center font-mono text-label font-semibold tabular-nums ${coverageClass(row.configuredSourceCount)}`}
+                    className={`px-3 py-2.5 text-center font-mono text-label font-semibold tabular-nums ${coverageClass(row.configuredSourceCount)}`}
                   >
                     {row.configuredSourceCount}/3
                   </td>
                 ) : null}
                 {show.web ? (
-                  <td className="px-3 py-1.5 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <SourceMark
                       configured={row.webConfigured}
                       configuredLabel={t("bankAccounts.sourceConfigured")}
@@ -771,7 +783,7 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.app ? (
-                  <td className="px-3 py-1.5 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <SourceMark
                       configured={row.appConfigured}
                       configuredLabel={t("bankAccounts.sourceConfigured")}
@@ -780,7 +792,7 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.notif ? (
-                  <td className="px-3 py-1.5 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <SourceMark
                       configured={row.notificationConfigured}
                       configuredLabel={t("bankAccounts.sourceConfigured")}

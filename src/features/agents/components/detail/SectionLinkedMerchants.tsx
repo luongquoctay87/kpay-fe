@@ -211,7 +211,7 @@ export function SectionLinkedMerchants({
         {(agent.linkedMerchants ?? []).length === 0 ? (
           <p className="text-label text-muted">{t("agentDetail.linkedEmpty")}</p>
         ) : (
-          <table className="w-full text-left text-label">
+          <table className="w-full border-collapse text-left text-label">
             <thead>
               <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
                 <th className="px-3 py-2.5">
@@ -228,8 +228,8 @@ export function SectionLinkedMerchants({
             </thead>
             <tbody>
               {(agent.linkedMerchants ?? []).map((row) => (
-                <tr key={row.merchantId} className="border-b border-edge">
-                  <td className="py-2.5">
+                <tr key={row.merchantId} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
+                  <td className="px-3 py-2.5">
                     <Link
                       href={ROUTES.merchantDetail(row.merchantId)}
                       className="font-medium text-ink transition hover:text-link-hover hover:underline"
@@ -237,7 +237,7 @@ export function SectionLinkedMerchants({
                       {row.merchantName ?? row.merchantCode ?? row.merchantId}
                     </Link>
                   </td>
-                  <td className="py-2.5 text-right">
+                  <td className="px-3 py-2.5 text-right">
                     <span className="group relative inline-flex">
                       <Button
                         type="button"

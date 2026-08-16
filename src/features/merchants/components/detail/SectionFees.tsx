@@ -128,7 +128,7 @@ export function SectionFees({
                     return (
                       <tr
                         key={fee.channelId}
-                        className={`border-b border-edge last:border-0 ${editable ? "" : "bg-surface/60"}`}
+                        className={`border-b border-edge last:border-b-0 hover:bg-surface/70 ${editable ? "" : "bg-surface/60"}`}
                       >
                         <td
                           className={`px-3 py-2.5 text-label sm:px-4 ${editable ? "text-ink" : "text-muted"}`}

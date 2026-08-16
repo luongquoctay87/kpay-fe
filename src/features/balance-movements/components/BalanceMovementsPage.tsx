@@ -34,6 +34,11 @@ import {
   StatCard,
   TableCard,
   filterControlClass,
+  tableBodyCellClassName,
+  tableBodyRowClassName,
+  tableClassName,
+  tableHeadCellClassName,
+  tableHeadRowClassName,
   type DateRangeValue,
 } from "@/components/common";
 import { Button, Select, StatusBadge } from "@/components/ui";
@@ -65,14 +70,21 @@ const EMPTY_LIST = {
   sumAmount: 0,
 };
 
-/** CSS grid tracks — headers cannot collapse/overlap when the body is empty. */
-const GRID_COLS =
-  "72px 168px 100px 140px minmax(220px,1fr) 180px 152px 148px 176px";
-const TABLE_MIN_WIDTH = 72 + 168 + 100 + 140 + 220 + 180 + 152 + 148 + 176;
+/** Pixel tracks — every column has a width so table-fixed cannot collapse the thead. */
+const COL_W = {
+  stt: 72,
+  created: 168,
+  direction: 100,
+  amount: 140,
+  content: 220,
+  account: 180,
+  status: 152,
+  device: 148,
+  payin: 176,
+} as const;
 
-const HEAD_CELL =
-  "flex min-w-0 items-center overflow-hidden px-3 py-2.5";
-const BODY_CELL = "flex min-w-0 items-center px-3 py-2.5";
+const TABLE_MIN_WIDTH = Object.values(COL_W).reduce((a, b) => a + b, 0);
+const COL_SPAN = 9;
 
 export function BalanceMovementsPage() {
   const { t } = useI18n();
@@ -282,94 +294,115 @@ export function BalanceMovementsPage() {
           />
         }
       >
-        <div className="w-full" style={{ minWidth: TABLE_MIN_WIDTH }}>
-          <div
-            role="row"
-            className="grid border-b border-edge bg-surface text-label font-medium text-muted"
-            style={{ gridTemplateColumns: GRID_COLS }}
-          >
-            <div className={`${HEAD_CELL} justify-center`}>
-              <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
-                {t("balanceMovements.colStt")}
-              </ColumnHeader>
-            </div>
-            <div className={`${HEAD_CELL} justify-center`}>
-              <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
-                {t("balanceMovements.colCreatedAt")}
-              </ColumnHeader>
-            </div>
-            <div className={`${HEAD_CELL} justify-center`}>
-              <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
-                {t("balanceMovements.colDirection")}
-              </ColumnHeader>
-            </div>
-            <div className={`${HEAD_CELL} justify-end`}>
-              <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
-                {t("balanceMovements.colAmount")}
-              </ColumnHeader>
-            </div>
-            <div className={HEAD_CELL}>
-              <ColumnHeader icon={<IconFileText width={14} height={14} />}>
-                {t("balanceMovements.colContent")}
-              </ColumnHeader>
-            </div>
-            <div className={HEAD_CELL}>
-              <ColumnHeader icon={<IconBank width={14} height={14} />}>
-                {t("balanceMovements.colAccount")}
-              </ColumnHeader>
-            </div>
-            <div className={`${HEAD_CELL} justify-center`}>
-              <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
-                {t("balanceMovements.colStatus")}
-              </ColumnHeader>
-            </div>
-            <div className={HEAD_CELL}>
-              <ColumnHeader icon={<IconSmartphone width={14} height={14} />}>
-                {t("balanceMovements.colDevice")}
-              </ColumnHeader>
-            </div>
-            <div className={HEAD_CELL}>
-              <ColumnHeader icon={<IconHash width={14} height={14} />}>
-                {t("balanceMovements.colPayin")}
-              </ColumnHeader>
-            </div>
-          </div>
-
-          {rows.map((row, idx) => (
-            <MovementRow key={row.id} row={row} index={page * size + idx + 1} />
-          ))}
-        </div>
-        {loading && rows.length === 0 ? (
-          <p className="px-3 py-16 text-center text-label text-muted">{t("balanceMovements.loading")}</p>
-        ) : null}
-        {!loading && rows.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 px-3 py-16 text-center">
-            <span
-              className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
-              aria-hidden
-            >
-              <IconInbox width={28} height={28} />
-            </span>
-            <p className="text-label text-muted">
-              {error
-                ? t("balanceMovements.loadError")
-                : hasFilters
-                  ? t("balanceMovements.emptyFiltered")
-                  : t("balanceMovements.empty")}
-            </p>
-            {!error && hasFilters ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                leftIcon={<IconRefresh width={15} height={15} />}
-                onClick={onReset}
-              >
-                {t("balanceMovements.reset")}
-              </Button>
+        <table
+          className={tableClassName}
+          style={{ minWidth: TABLE_MIN_WIDTH }}
+        >
+          <colgroup>
+            <col style={{ width: COL_W.stt }} />
+            <col style={{ width: COL_W.created }} />
+            <col style={{ width: COL_W.direction }} />
+            <col style={{ width: COL_W.amount }} />
+            <col style={{ width: COL_W.content }} />
+            <col style={{ width: COL_W.account }} />
+            <col style={{ width: COL_W.status }} />
+            <col style={{ width: COL_W.device }} />
+            <col style={{ width: COL_W.payin }} />
+          </colgroup>
+          <thead>
+            <tr className={tableHeadRowClassName}>
+              <th className={`${tableHeadCellClassName} text-center`}>
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("balanceMovements.colStt")}
+                </ColumnHeader>
+              </th>
+              <th className={`${tableHeadCellClassName} text-center`}>
+                <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
+                  {t("balanceMovements.colCreatedAt")}
+                </ColumnHeader>
+              </th>
+              <th className={`${tableHeadCellClassName} text-center`}>
+                <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
+                  {t("balanceMovements.colDirection")}
+                </ColumnHeader>
+              </th>
+              <th className={`${tableHeadCellClassName} text-right`}>
+                <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                  {t("balanceMovements.colAmount")}
+                </ColumnHeader>
+              </th>
+              <th className={tableHeadCellClassName}>
+                <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                  {t("balanceMovements.colContent")}
+                </ColumnHeader>
+              </th>
+              <th className={tableHeadCellClassName}>
+                <ColumnHeader icon={<IconBank width={14} height={14} />}>
+                  {t("balanceMovements.colAccount")}
+                </ColumnHeader>
+              </th>
+              <th className={`${tableHeadCellClassName} text-center`}>
+                <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
+                  {t("balanceMovements.colStatus")}
+                </ColumnHeader>
+              </th>
+              <th className={tableHeadCellClassName}>
+                <ColumnHeader icon={<IconSmartphone width={14} height={14} />}>
+                  {t("balanceMovements.colDevice")}
+                </ColumnHeader>
+              </th>
+              <th className={tableHeadCellClassName}>
+                <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                  {t("balanceMovements.colPayin")}
+                </ColumnHeader>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && rows.length === 0 ? (
+              <tr>
+                <td colSpan={COL_SPAN} className={`${tableBodyCellClassName} text-center text-label text-muted`}>
+                  {t("balanceMovements.loading")}
+                </td>
+              </tr>
             ) : null}
-          </div>
-        ) : null}
+            {!loading && rows.length === 0 ? (
+              <tr>
+                <td colSpan={COL_SPAN} className={`${tableBodyCellClassName} py-16`}>
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                    <span
+                      className="flex size-14 items-center justify-center rounded-full bg-surface text-muted ring-1 ring-edge"
+                      aria-hidden
+                    >
+                      <IconInbox width={28} height={28} />
+                    </span>
+                    <p className="text-label text-muted">
+                      {error
+                        ? t("balanceMovements.loadError")
+                        : hasFilters
+                          ? t("balanceMovements.emptyFiltered")
+                          : t("balanceMovements.empty")}
+                    </p>
+                    {!error && hasFilters ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        leftIcon={<IconRefresh width={15} height={15} />}
+                        onClick={onReset}
+                      >
+                        {t("balanceMovements.reset")}
+                      </Button>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            ) : null}
+            {rows.map((row, idx) => (
+              <MovementRow key={row.id} row={row} index={page * size + idx + 1} />
+            ))}
+          </tbody>
+        </table>
       </TableCard>
     </div>
   );
@@ -386,26 +419,22 @@ function MovementRow({
   const isOut = row.direction === "OUT";
 
   return (
-    <div
-      role="row"
-      className="grid border-b border-edge hover:bg-surface/70"
-      style={{ gridTemplateColumns: GRID_COLS }}
-    >
-      <div className={`${BODY_CELL} justify-center font-mono text-caption tabular-nums text-muted`}>
+    <tr className={tableBodyRowClassName}>
+      <td className={`${tableBodyCellClassName} text-center font-mono text-caption tabular-nums text-muted`}>
         {index}
-      </div>
-      <div className={`${BODY_CELL} justify-center whitespace-nowrap text-label text-muted`}>
+      </td>
+      <td className={`${tableBodyCellClassName} whitespace-nowrap text-center text-label text-muted`}>
         <DateTimeText value={row.createdAt} />
-      </div>
-      <div className={`${BODY_CELL} justify-center`}>
+      </td>
+      <td className={`${tableBodyCellClassName} text-center`}>
         <StatusBadge tone={isOut ? "danger" : "info"}>
           {isOut ? t("balanceMovements.directionOut") : t("balanceMovements.directionIn")}
         </StatusBadge>
-      </div>
-      <div className={`${BODY_CELL} justify-end`}>
+      </td>
+      <td className={`${tableBodyCellClassName} text-right`}>
         <MoneyAmount value={row.amount} />
-      </div>
-      <div className={BODY_CELL}>
+      </td>
+      <td className={tableBodyCellClassName}>
         {row.transferContent ? (
           <div className="flex min-w-0 items-center gap-1.5">
             <span
@@ -419,8 +448,8 @@ function MovementRow({
         ) : (
           <span className="text-label text-muted">—</span>
         )}
-      </div>
-      <div className={BODY_CELL}>
+      </td>
+      <td className={tableBodyCellClassName}>
         {row.bankCode || row.bankAccountNumber ? (
           <div
             className="flex min-w-0 items-center gap-1.5"
@@ -440,11 +469,11 @@ function MovementRow({
         ) : (
           <span className="text-label text-muted">—</span>
         )}
-      </div>
-      <div className={`${BODY_CELL} justify-center overflow-visible`}>
+      </td>
+      <td className={`${tableBodyCellClassName} text-center`}>
         <ProcessStatusCell row={row} />
-      </div>
-      <div className={BODY_CELL}>
+      </td>
+      <td className={tableBodyCellClassName}>
         {row.deviceId ? (
           <span
             className="block truncate font-mono text-caption text-muted"
@@ -455,8 +484,8 @@ function MovementRow({
         ) : (
           <span className="text-label text-muted">—</span>
         )}
-      </div>
-      <div className={BODY_CELL}>
+      </td>
+      <td className={tableBodyCellClassName}>
         {row.payinRequestId ? (
           <Link
             href={`${ROUTES.payin}?q=${encodeURIComponent(row.payinRequestId)}`}
@@ -468,8 +497,8 @@ function MovementRow({
         ) : (
           <span className="text-label text-muted">—</span>
         )}
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 }
 

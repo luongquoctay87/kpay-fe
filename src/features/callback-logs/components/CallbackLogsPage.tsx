@@ -682,7 +682,7 @@ export function CallbackLogsPage() {
             ) : null}
 
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
+              <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
                 {show.externalId ? (
                   <td className="px-3 py-2.5">
                     <IdCell

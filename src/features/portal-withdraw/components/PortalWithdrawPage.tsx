@@ -434,7 +434,7 @@ export function PortalWithdrawPage() {
         }
       >
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-body">
+          <table className="w-full min-w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
                 <th className="px-3 py-2.5">
@@ -499,22 +499,22 @@ export function PortalWithdrawPage() {
                 </tr>
               ) : (
                 rows.map((row, idx) => (
-                  <tr key={row.id} className="border-b border-edge-soft">
-                    <td className="px-3 py-2">{page * size + idx + 1}</td>
-                    <td className="px-3 py-2">
+                  <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
+                    <td className="px-3 py-2.5">{page * size + idx + 1}</td>
+                    <td className="px-3 py-2.5">
                       <StatusBadge tone={WITHDRAW_STATUS_TONE[row.status]}>
                         {t(WITHDRAW_STATUS_LABEL_KEY[row.status])}
                       </StatusBadge>
                     </td>
-                    <td className="px-3 py-2 font-medium">{formatMoney(row.amount)}</td>
-                    <td className="px-3 py-2">{row.bankName ?? row.bankCode}</td>
-                    <td className="px-3 py-2">{row.beneficiaryName}</td>
-                    <td className="px-3 py-2 font-mono text-caption">{row.accountNumber}</td>
-                    <td className="px-3 py-2 max-w-[14rem] truncate">{row.transferContent}</td>
-                    <td className="px-3 py-2 max-w-[12rem] truncate text-danger">
+                    <td className="px-3 py-2.5 font-medium">{formatMoney(row.amount)}</td>
+                    <td className="px-3 py-2.5">{row.bankName ?? row.bankCode}</td>
+                    <td className="px-3 py-2.5">{row.beneficiaryName}</td>
+                    <td className="px-3 py-2.5 font-mono text-caption">{row.accountNumber}</td>
+                    <td className="px-3 py-2.5 max-w-[14rem] truncate">{row.transferContent}</td>
+                    <td className="px-3 py-2.5 max-w-[12rem] truncate text-danger">
                       {row.rejectReason}
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
+                    <td className="px-3 py-2.5 whitespace-nowrap">
                       <DateTimeText value={row.createdAt} />
                     </td>
                   </tr>

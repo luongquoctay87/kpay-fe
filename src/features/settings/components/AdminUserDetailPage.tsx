@@ -692,28 +692,28 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
             </colgroup>
             <thead>
               <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-                <th className="w-12 px-3 py-3 text-center">
+                <th className="w-12 px-3 py-2.5 text-center">
                   <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
                     {t("settings.colStt")}
                   </ColumnHeader>
                 </th>
-                <th className="px-3 py-3">
+                <th className="px-3 py-2.5">
                   <ColumnHeader icon={<IconGlobe width={14} height={14} />}>
                     {t("settings.labelCidr")}
                   </ColumnHeader>
                 </th>
-                <th className="min-w-0 px-3 py-3">
+                <th className="min-w-0 px-3 py-2.5">
                   <ColumnHeader icon={<IconFileText width={14} height={14} />}>
                     {t("settings.labelIpNote")}
                   </ColumnHeader>
                 </th>
-                <th className="px-3 py-3">
+                <th className="px-3 py-2.5">
                   <ColumnHeader icon={<IconClock width={14} height={14} />}>
                     {t("settings.colCreatedAt")}
                   </ColumnHeader>
                 </th>
                 {canWrite ? (
-                  <th className="px-3 py-3 text-right">
+                  <th className="px-3 py-2.5 text-right">
                     <ColumnHeader align="right" icon={<IconSettings width={14} height={14} />}>
                       {t("settings.colActions")}
                     </ColumnHeader>
@@ -733,19 +733,19 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
                 </tr>
               ) : (
                 ips.map((ip, idx) => (
-                  <tr key={ip.id} className="border-b border-edge hover:bg-surface/70">
-                    <td className="px-3 py-3 text-center font-mono text-caption tabular-nums text-muted">
+                  <tr key={ip.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
+                    <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                       {idx + 1}
                     </td>
-                    <td className="px-3 py-3 font-mono text-label text-ink">{ip.cidr}</td>
-                    <td className="min-w-0 truncate px-3 py-3 text-label text-muted">
+                    <td className="px-3 py-2.5 font-mono text-label text-ink">{ip.cidr}</td>
+                    <td className="min-w-0 truncate px-3 py-2.5 text-label text-muted">
                       {ip.note || "—"}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-label text-muted">
+                    <td className="whitespace-nowrap px-3 py-2.5 text-label text-muted">
                       <DateTimeText value={ip.createdAt} />
                     </td>
                     {canWrite ? (
-                      <td className="px-3 py-3 text-right">
+                      <td className="px-3 py-2.5 text-right">
                         <Button
                           type="button"
                           variant="secondary"

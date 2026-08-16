@@ -211,7 +211,7 @@ export function SectionCommissions({
                       return (
                         <tr
                           key={row.channelId}
-                          className={`border-b border-edge last:border-0 ${
+                          className={`border-b border-edge last:border-b-0 hover:bg-surface/70 ${
                             editable ? "" : "bg-surface/60"
                           }`}
                         >

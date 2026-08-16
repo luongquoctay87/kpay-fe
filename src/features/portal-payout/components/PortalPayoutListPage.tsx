@@ -384,31 +384,31 @@ export function PortalPayoutListPage() {
                 rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="cursor-pointer border-b border-edge-soft hover:bg-hover"
+                    className="cursor-pointer border-b border-edge last:border-b-0 hover:bg-surface/70"
                     onClick={() => setDetailRow(row)}
                   >
-                    <td className="px-3 py-2 font-mono text-caption">{row.requestId}</td>
-                    <td className="hidden px-3 py-2 font-mono text-caption sm:table-cell">
+                    <td className="px-3 py-2.5 font-mono text-caption">{row.requestId}</td>
+                    <td className="hidden px-3 py-2.5 font-mono text-caption sm:table-cell">
                       {row.accountNumber ?? "—"}
                     </td>
                     <td
-                      className="hidden max-w-[10rem] truncate px-3 py-2 text-ink-secondary md:table-cell md:max-w-[14rem]"
+                      className="hidden max-w-[10rem] truncate px-3 py-2.5 text-ink-secondary md:table-cell md:max-w-[14rem]"
                       title={row.transferContent ?? undefined}
                     >
                       {row.transferContent ?? "—"}
                     </td>
-                    <td className="px-3 py-2 tabular-nums">{formatMoney(row.amount)}</td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2.5 tabular-nums">{formatMoney(row.amount)}</td>
+                    <td className="px-3 py-2.5">
                       <StatusBadge tone={PAYOUT_STATUS_TONE[row.status]}>
                         {t(PAYOUT_STATUS_LABEL_KEY[row.status])}
                       </StatusBadge>
                     </td>
-                    <td className="hidden px-3 py-2 md:table-cell">
+                    <td className="hidden px-3 py-2.5 md:table-cell">
                       <StatusBadge tone={CALLBACK_STATUS_TONE[row.callbackStatus]}>
                         {t(CALLBACK_STATUS_LABEL_KEY[row.callbackStatus])}
                       </StatusBadge>
                     </td>
-                    <td className="hidden px-3 py-2 text-caption text-muted lg:table-cell">
+                    <td className="hidden px-3 py-2.5 text-caption text-muted lg:table-cell">
                       <DateTimeText value={row.createdAt} />
                     </td>
                   </tr>

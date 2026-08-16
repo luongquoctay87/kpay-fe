@@ -334,7 +334,7 @@ export function BlockedAccountsPage() {
             ) : null}
 
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
+              <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
                 <td className="px-3 py-2.5">
                   <div className="min-w-0" title={row.bankName ?? row.bankCode}>
                     <span className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge">

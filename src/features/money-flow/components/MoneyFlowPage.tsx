@@ -578,7 +578,7 @@ export function MoneyFlowPage() {
               return (
                 <tr
                   key={row.id}
-                  className={`cursor-pointer border-b border-edge hover:bg-surface/70 ${
+                  className={`cursor-pointer border-b border-edge last:border-b-0 hover:bg-surface/70 ${
                     row.direction === "out" ? "bg-amber-50/70" : ""
                   }`}
                   onClick={() => setTimelineSeed(row)}

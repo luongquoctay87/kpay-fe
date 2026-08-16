@@ -378,18 +378,18 @@ export function MerchantCreatePage() {
                         return (
                           <tr
                             key={fee.channel}
-                            className={`border-b border-edge last:border-0 ${
+                            className={`border-b border-edge last:border-b-0 hover:bg-surface/70 ${
                               editable ? "" : "bg-surface/60"
                             }`}
                           >
                             <td
-                              className={`px-3 py-2 text-label ${
+                              className={`px-3 py-2.5 text-label ${
                                 editable ? "text-ink" : "text-muted"
                               }`}
                             >
                               {t(ch.labelKey)}
                             </td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-2.5">
                               <div className="flex items-center gap-1">
                                 <input
                                   type="number"

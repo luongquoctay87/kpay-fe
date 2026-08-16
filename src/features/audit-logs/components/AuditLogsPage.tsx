@@ -569,7 +569,7 @@ export function AuditLogsPage() {
               return (
                 <tr
                   key={row.id}
-                  className={`cursor-pointer border-b border-edge hover:bg-surface/70 ${
+                  className={`cursor-pointer border-b border-edge last:border-b-0 hover:bg-surface/70 ${
                     row.success ? "" : "bg-danger-bg/30"
                   }`}
                   onClick={() => setDetail(row)}

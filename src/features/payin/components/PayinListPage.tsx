@@ -791,7 +791,7 @@ export function PayinListPage() {
             ) : null}
 
             {rows.map((row, index) => (
-              <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
+              <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
                 <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                   {page * size + index + 1}
                 </td>

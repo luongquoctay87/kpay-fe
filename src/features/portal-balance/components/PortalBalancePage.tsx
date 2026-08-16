@@ -342,11 +342,11 @@ export function PortalBalancePage() {
                   </tr>
                 ) : (
                   rows.map((row) => (
-                    <tr key={row.id} className="border-b border-edge-soft">
-                      <td className="whitespace-nowrap px-3 py-2 text-caption text-muted">
+                    <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
+                      <td className="whitespace-nowrap px-3 py-2.5 text-caption text-muted">
                         <DateTimeText value={row.createdAt} />
                       </td>
-                      <td className="max-w-[12rem] px-3 py-2 sm:max-w-none">
+                      <td className="max-w-[12rem] px-3 py-2.5 sm:max-w-none">
                         {row.entryType in LEDGER_ENTRY_LABEL_KEY ? (
                           <StatusBadge tone={LEDGER_ENTRY_TONE[row.entryType]}>
                             {t(LEDGER_ENTRY_LABEL_KEY[row.entryType])}
@@ -356,20 +356,20 @@ export function PortalBalancePage() {
                         )}
                       </td>
                       <td
-                        className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${amountToneClass(row.amount)}`}
+                        className={`whitespace-nowrap px-3 py-2.5 text-right tabular-nums ${amountToneClass(row.amount)}`}
                       >
                         {formatMoney(row.amount)}
                       </td>
-                      <td className="hidden max-w-[12rem] truncate px-3 py-2 text-muted md:table-cell">
+                      <td className="hidden max-w-[12rem] truncate px-3 py-2.5 text-muted md:table-cell">
                         {row.note?.trim() ? row.note : "—"}
                       </td>
-                      <td className="hidden whitespace-nowrap px-3 py-2 text-right tabular-nums sm:table-cell">
+                      <td className="hidden whitespace-nowrap px-3 py-2.5 text-right tabular-nums sm:table-cell">
                         {formatMoney(row.availableAfter)}
                       </td>
-                      <td className="hidden whitespace-nowrap px-3 py-2 text-right tabular-nums lg:table-cell">
+                      <td className="hidden whitespace-nowrap px-3 py-2.5 text-right tabular-nums lg:table-cell">
                         {formatMoney(row.reservedAfter)}
                       </td>
-                      <td className="hidden max-w-[8rem] truncate px-3 py-2 font-mono text-caption lg:table-cell">
+                      <td className="hidden max-w-[8rem] truncate px-3 py-2.5 font-mono text-caption lg:table-cell">
                         {row.refType && row.refId
                           ? `${row.refType}:${row.refId.slice(0, 8)}…`
                           : "—"}

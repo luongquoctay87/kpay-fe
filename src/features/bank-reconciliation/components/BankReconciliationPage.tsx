@@ -695,7 +695,7 @@ export function BankReconciliationPage() {
             ) : null}
 
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
+              <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
                 {show.postedAt ? (
                   <td className="whitespace-nowrap px-3 py-2.5 text-label text-ink">
                     <DateTimeText value={row.postedAt} />

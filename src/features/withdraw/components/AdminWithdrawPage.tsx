@@ -633,7 +633,7 @@ export function AdminWithdrawPage() {
               const meta = actionMeta(row);
 
               return (
-                <tr key={row.id} className="border-b border-edge hover:bg-surface/70">
+                <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
                   <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                     {page * size + idx + 1}
                   </td>

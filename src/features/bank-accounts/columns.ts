@@ -37,20 +37,20 @@ export const BANK_ACCOUNT_COLUMN_LABEL_KEY: Record<BankAccountColumn, MessageKey
   notif: "bankAccounts.colNotif",
 };
 
-/** Widths tuned for the default visible set. */
+/** Widths as px — table-fixed distributes leftover so the row fills the card (no empty right gap). */
 export const BANK_ACCOUNT_COLUMN_WIDTH: Record<BankAccountColumn, string> = {
-  account: "w-[14%]",
-  holder: "w-[18%]",
-  bank: "w-[8%]",
-  accountType: "w-[10%]",
-  status: "w-[10%]",
-  collect: "w-[8%]",
-  rotation: "w-[7%]",
-  disburse: "w-[8%]",
-  coverage: "w-[7%]",
-  web: "w-[5%]",
-  app: "w-[5%]",
-  notif: "w-[6%]",
+  account: "w-[200px]",
+  holder: "w-[160px]",
+  bank: "w-[88px]",
+  accountType: "w-[104px]",
+  status: "w-[112px]",
+  collect: "w-[96px]",
+  rotation: "w-[88px]",
+  disburse: "w-[96px]",
+  coverage: "w-[80px]",
+  web: "w-[64px]",
+  app: "w-[64px]",
+  notif: "w-[72px]",
 };
 
 /** Pixel mins — drives horizontal scroll when the table is wider than the viewport. */

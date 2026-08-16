@@ -414,7 +414,7 @@ export function BankBalancesPage() {
               return (
                 <tr
                   key={row.bankAccountId}
-                  className="border-b border-edge hover:bg-surface/70"
+                  className="border-b border-edge last:border-b-0 hover:bg-surface/70"
                 >
                   <td className="px-3 py-2.5">
                     <div className="min-w-0" title={row.bankName ?? row.bankCode}>

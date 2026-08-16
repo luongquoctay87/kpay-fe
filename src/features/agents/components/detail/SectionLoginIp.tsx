@@ -199,7 +199,7 @@ export function SectionLoginIp({
         {entries.length === 0 ? (
           <p className="py-8 text-center text-label text-muted">{t("agentDetail.ipEmpty")}</p>
         ) : (
-          <table className="w-full text-left text-label">
+          <table className="w-full border-collapse text-left text-label">
             <thead>
               <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
                 <th className="px-3 py-2.5">
@@ -221,10 +221,10 @@ export function SectionLoginIp({
             </thead>
             <tbody>
               {entries.map((row) => (
-                <tr key={row.id} className="border-b border-edge">
-                  <td className="py-2 font-mono text-caption">{row.id.slice(0, 8)}…</td>
-                  <td className="py-2 font-mono">{row.cidr}</td>
-                  <td className="py-2 text-right">
+                <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
+                  <td className="px-3 py-2.5 font-mono text-caption">{row.id.slice(0, 8)}…</td>
+                  <td className="px-3 py-2.5 font-mono">{row.cidr}</td>
+                  <td className="px-3 py-2.5 text-right">
                     <Button
                       type="button"
                       variant="ghost"
