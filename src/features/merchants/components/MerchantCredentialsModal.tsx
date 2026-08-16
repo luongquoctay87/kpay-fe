@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/common";
 import { IconCheckCircle, IconDownload } from "@/components/icons/NavIcons";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, PasswordVisibilityToggle } from "@/components/ui";
 import { useI18n } from "@/i18n/use-i18n";
 import { formatDateTime } from "@/lib/format/datetime";
 
@@ -17,6 +17,7 @@ function CredentialRow({
   value: string;
 }) {
   const { t } = useI18n();
+  const [visible, setVisible] = useState(true);
 
   return (
     <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
@@ -26,11 +27,20 @@ function CredentialRow({
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
         <Input
           id={id}
+          type={visible ? "text" : "password"}
           value={value}
           readOnly
           size="sm"
           className="min-w-0 font-mono"
           onFocus={(e) => e.currentTarget.select()}
+          rightAddon={
+            <PasswordVisibilityToggle
+              visible={visible}
+              onToggle={() => setVisible((v) => !v)}
+              showLabel={t("common.showPassword")}
+              hideLabel={t("common.hidePassword")}
+            />
+          }
         />
         <CopyButton
           value={value}

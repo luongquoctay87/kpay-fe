@@ -121,6 +121,66 @@ export function CredentialsStepUpModal({
   );
 }
 
+const MASKED_KEY = "••••••••••••••••••••••••";
+
+const credIconBtnClass =
+  "mt-0.5 inline-flex shrink-0 items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink";
+
+function CredentialField({
+  label,
+  value,
+  onReveal,
+  revealLabel,
+  copyLabel,
+  showLabel,
+  hideLabel,
+}: {
+  label: string;
+  value: string | null;
+  onReveal: () => void;
+  revealLabel: string;
+  copyLabel: string;
+  showLabel: string;
+  hideLabel: string;
+}) {
+  const [visible, setVisible] = useState(true);
+
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <span className="text-label text-muted">{label}</span>
+      {value ? (
+        <div className="flex w-fit max-w-full items-start gap-1">
+          <span className="min-w-0 break-all font-mono text-label text-ink">
+            {visible ? value : MASKED_KEY}
+          </span>
+          <PasswordVisibilityToggle
+            visible={visible}
+            onToggle={() => setVisible((v) => !v)}
+            showLabel={showLabel}
+            hideLabel={hideLabel}
+          />
+          <CopyButton
+            value={value}
+            label={copyLabel}
+            showCheck
+            className={credIconBtnClass}
+          />
+        </div>
+      ) : (
+        <div className="flex min-w-0 items-center gap-1">
+          <span className="font-mono text-label text-ink">{MASKED_KEY}</span>
+          <PasswordVisibilityToggle
+            visible={false}
+            onToggle={onReveal}
+            showLabel={revealLabel}
+            hideLabel={revealLabel}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Section: Credentials ─────────────────────────────────────────────── */
 
 export function SectionCredentials({
@@ -214,57 +274,30 @@ export function SectionCredentials({
         </div>
       </div>
       <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <span className="text-label text-muted">{t("merchantDetail.labelMerchantKey")}</span>
-          {creds ? (
-            <div className="flex w-fit max-w-full items-start gap-1.5">
-              <span className="min-w-0 break-all font-mono text-label text-ink">
-                {creds.merchantKey}
-              </span>
-              <CopyButton
-                value={creds.merchantKey}
-                label={t("common.copy")}
-                showCheck
-                className="mt-0.5 inline-flex shrink-0 items-center gap-0.5 rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
-              />
-            </div>
-          ) : (
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="font-mono text-label text-ink">••••••••••••••••••••••••</span>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="shrink-0"
-                onClick={() => {
-                  setStepUpError(null);
-                  setStepUpMode("reveal");
-                }}
-                leftIcon={<IconEye width={15} height={15} />}
-              >
-                {t("merchantDetail.btnReveal")}
-              </Button>
-            </div>
-          )}
-        </div>
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <span className="text-label text-muted">{t("merchantDetail.labelSecretKey")}</span>
-          {creds ? (
-            <div className="flex w-fit max-w-full items-start gap-1.5">
-              <span className="min-w-0 break-all font-mono text-label text-ink">
-                {creds.merchantSecret}
-              </span>
-              <CopyButton
-                value={creds.merchantSecret}
-                label={t("common.copy")}
-                showCheck
-                className="mt-0.5 inline-flex shrink-0 items-center gap-0.5 rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
-              />
-            </div>
-          ) : (
-            <span className="font-mono text-label text-ink">••••••••••••••••••••••••</span>
-          )}
-        </div>
+        <CredentialField
+          label={t("merchantDetail.labelMerchantKey")}
+          value={creds?.merchantKey ?? null}
+          onReveal={() => {
+            setStepUpError(null);
+            setStepUpMode("reveal");
+          }}
+          revealLabel={t("merchantDetail.btnReveal")}
+          copyLabel={t("common.copy")}
+          showLabel={t("common.showPassword")}
+          hideLabel={t("common.hidePassword")}
+        />
+        <CredentialField
+          label={t("merchantDetail.labelSecretKey")}
+          value={creds?.merchantSecret ?? null}
+          onReveal={() => {
+            setStepUpError(null);
+            setStepUpMode("reveal");
+          }}
+          revealLabel={t("merchantDetail.btnReveal")}
+          copyLabel={t("common.copy")}
+          showLabel={t("common.showPassword")}
+          hideLabel={t("common.hidePassword")}
+        />
       </div>
       {stepUpMode ? (
         <CredentialsStepUpModal
