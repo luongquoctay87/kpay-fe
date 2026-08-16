@@ -12,13 +12,12 @@ import {
   MoneyInput,
   Select,
   StatusBadge,
-  Switch,
   Textarea,
   toast,
 } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { bankAccountApi } from "@/features/bank-accounts/api";
-import { AcbCredentialsStepUpModal } from "@/features/bank-accounts/components/AcbCredentialsStepUpModal";
+import { BankAccountAcbKeysPanel } from "@/features/bank-accounts/components/BankAccountAcbKeysPanel";
 import {
   BANK_ACCOUNT_STATUS_LABEL_KEY,
   BANK_ACCOUNT_STATUS_TONE,
@@ -27,7 +26,6 @@ import {
 import {
   BANK_ACCOUNT_STATUS_OPTIONS,
   BANK_ACCOUNT_TYPE_OPTIONS,
-  type BankAccountAcbCredentialsStatus,
   type BankAccountListItem,
   type BankAccountStatus,
   type BankAccountType,
@@ -37,7 +35,6 @@ import { useI18n } from "@/i18n/use-i18n";
 import { useAsyncLoad } from "@/lib/async/use-async-load";
 import { ROUTES } from "@/lib/constants/routes";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
-import { formatDateTime } from "@/lib/format/datetime";
 import { parseMoneyNumber } from "@/lib/format/money";
 import { ApiError } from "@/lib/types/api";
 
@@ -57,7 +54,6 @@ function applyAccountToForm(
     setWebConfigured: (v: boolean) => void;
     setAppConfigured: (v: boolean) => void;
     setNotificationConfigured: (v: boolean) => void;
-    setAcbConfigured: (v: boolean) => void;
   },
 ) {
   setters.setAccountHolder(account.accountHolder);
@@ -77,13 +73,11 @@ function applyAccountToForm(
   setters.setWebConfigured(account.webConfigured);
   setters.setAppConfigured(account.appConfigured);
   setters.setNotificationConfigured(account.notificationConfigured);
-  setters.setAcbConfigured(account.acbConfigured);
 }
 
 export function BankAccountDetailPage({ id }: { id: string }) {
   const { t } = useI18n();
   const router = useRouter();
-  const totpRequired = useAuthStore((s) => Boolean(s.user?.totpEnabled));
   const permissions = useAuthStore((s) => s.user?.permissions);
   const canWrite =
     permissions == null ||
@@ -103,26 +97,10 @@ export function BankAccountDetailPage({ id }: { id: string }) {
   const [webConfigured, setWebConfigured] = useState(false);
   const [appConfigured, setAppConfigured] = useState(false);
   const [notificationConfigured, setNotificationConfigured] = useState(false);
-  const [acbConfigured, setAcbConfigured] = useState(false);
-  const [acbStatus, setAcbStatus] = useState<BankAccountAcbCredentialsStatus | null>(null);
-  const [acbStatusLoading, setAcbStatusLoading] = useState(true);
-
-  const [credentialsJson, setCredentialsJson] = useState("");
-  const [proxyUrl, setProxyUrl] = useState("");
-  const [workerEnabled, setWorkerEnabled] = useState(true);
-  const [showAcbStepUp, setShowAcbStepUp] = useState(false);
-  const [pendingAcbSave, setPendingAcbSave] = useState<{
-    credentialsJson: string;
-    proxyUrl?: string;
-    workerEnabled: boolean;
-  } | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
-  const [acbSubmitting, setAcbSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [acbError, setAcbError] = useState<string | null>(null);
   const fieldsLocked = !canWrite || submitting;
-  const acbLocked = !canWrite || acbSubmitting;
 
   const loadDetail = useCallback(() => bankAccountApi.getById(id), [id]);
   const mapError = useCallback(
@@ -134,26 +112,7 @@ export function BankAccountDetailPage({ id }: { id: string }) {
     setData: setAccount,
     loading,
     error,
-    refresh,
   } = useAsyncLoad({ load: loadDetail, mapError });
-
-  const loadAcbStatus = useCallback(async () => {
-    setAcbStatusLoading(true);
-    try {
-      const next = await bankAccountApi.getAcbCredentialsStatus(id);
-      setAcbStatus(next);
-      setAcbConfigured(next.configured);
-      setWorkerEnabled(next.configured ? next.workerEnabled : true);
-    } catch {
-      setAcbStatus(null);
-    } finally {
-      setAcbStatusLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    void loadAcbStatus();
-  }, [loadAcbStatus]);
 
   useEffect(() => {
     if (!account) return;
@@ -171,7 +130,6 @@ export function BankAccountDetailPage({ id }: { id: string }) {
       setWebConfigured,
       setAppConfigured,
       setNotificationConfigured,
-      setAcbConfigured,
     });
   }, [account]);
 
@@ -203,8 +161,9 @@ export function BankAccountDetailPage({ id }: { id: string }) {
     [t],
   );
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function saveAccount(e?: FormEvent) {
+    e?.preventDefault();
+    e?.stopPropagation();
     if (!account || !canWrite) return;
     setFormError(null);
 
@@ -273,71 +232,6 @@ export function BankAccountDetailPage({ id }: { id: string }) {
     }
   }
 
-  function onSubmitAcb(e: FormEvent) {
-    e.preventDefault();
-    if (!canWrite) return;
-    setAcbError(null);
-
-    const json = credentialsJson.trim();
-    if (!json) {
-      setAcbError(t("bankAccounts.acbErrorJsonRequired"));
-      return;
-    }
-    try {
-      const parsed: unknown = JSON.parse(json);
-      if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
-        setAcbError(t("bankAccounts.acbErrorJsonInvalid"));
-        return;
-      }
-    } catch {
-      setAcbError(t("bankAccounts.acbErrorJsonInvalid"));
-      return;
-    }
-
-    setPendingAcbSave({
-      credentialsJson: json,
-      proxyUrl: proxyUrl.trim() || undefined,
-      workerEnabled,
-    });
-    setShowAcbStepUp(true);
-  }
-
-  async function confirmAcbStepUp(password: string, totpCode?: string) {
-    if (!pendingAcbSave) {
-      setAcbError(t("bankAccounts.acbErrorSaveFailed"));
-      return;
-    }
-
-    setAcbError(null);
-    setAcbSubmitting(true);
-    try {
-      const next = await bankAccountApi.upsertAcbCredentials(id, {
-        password,
-        totpCode,
-        credentialsJson: pendingAcbSave.credentialsJson,
-        proxyUrl: pendingAcbSave.proxyUrl,
-        workerEnabled: pendingAcbSave.workerEnabled,
-      });
-      setAcbStatus(next);
-      setAcbConfigured(next.configured);
-      setWorkerEnabled(next.workerEnabled);
-      setCredentialsJson("");
-      setProxyUrl("");
-      setPendingAcbSave(null);
-      setShowAcbStepUp(false);
-      toast.success(t("bankAccounts.acbSuccessSaved"));
-      void refresh();
-      void loadAcbStatus();
-    } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : t("bankAccounts.acbErrorSaveFailed");
-      setAcbError(msg);
-      toast.error(t("bankAccounts.acbErrorSaveFailed"), msg);
-    } finally {
-      setAcbSubmitting(false);
-    }
-  }
-
   if (loading && !account) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -388,7 +282,7 @@ export function BankAccountDetailPage({ id }: { id: string }) {
           variant="secondary"
           size="md"
           className="w-full shrink-0 sm:mt-1 sm:w-auto"
-          disabled={submitting || acbSubmitting}
+          disabled={submitting}
           onClick={() => router.push(ROUTES.bankAccounts)}
           leftIcon={<IconChevronLeft width={15} height={15} />}
         >
@@ -398,8 +292,8 @@ export function BankAccountDetailPage({ id }: { id: string }) {
 
       <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-5">
         <form
-          id="ba-detail-form"
-          onSubmit={onSubmit}
+          id="ba-account-form"
+          onSubmit={saveAccount}
           noValidate
           className="flex min-w-0 flex-col rounded-lg border border-edge bg-elevated"
         >
@@ -436,6 +330,7 @@ export function BankAccountDetailPage({ id }: { id: string }) {
             >
               <Input
                 id="ba-detail-holder"
+                form="ba-account-form"
                 value={accountHolder}
                 onChange={(e) => setAccountHolder(e.target.value)}
                 required
@@ -514,6 +409,7 @@ export function BankAccountDetailPage({ id }: { id: string }) {
               <Field label={t("bankAccounts.labelWeight")} htmlFor="ba-detail-weight">
                 <Input
                   id="ba-detail-weight"
+                  form="ba-account-form"
                   type="number"
                   min={0}
                   max={100}
@@ -529,6 +425,7 @@ export function BankAccountDetailPage({ id }: { id: string }) {
               >
                 <Input
                   id="ba-detail-rotation"
+                  form="ba-account-form"
                   type="number"
                   min={0}
                   max={3}
@@ -544,6 +441,7 @@ export function BankAccountDetailPage({ id }: { id: string }) {
             <Field label={t("bankAccounts.labelNote")} htmlFor="ba-detail-note">
               <Textarea
                 id="ba-detail-note"
+                form="ba-account-form"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
@@ -600,12 +498,14 @@ export function BankAccountDetailPage({ id }: { id: string }) {
           {canWrite ? (
             <div className="mt-auto border-t border-edge px-3 py-3 sm:flex sm:justify-end sm:px-5">
               <Button
-                type="submit"
+                type="button"
+                form="ba-account-form"
                 variant="primary"
                 size="md"
                 className="w-full sm:w-auto"
                 loading={submitting}
-                disabled={acbLocked}
+                disabled={submitting}
+                onClick={() => void saveAccount()}
                 leftIcon={<IconSave width={15} height={15} />}
               >
                 {t("bankAccounts.btnSave")}
@@ -614,146 +514,8 @@ export function BankAccountDetailPage({ id }: { id: string }) {
           ) : null}
         </form>
 
-        <form
-          onSubmit={onSubmitAcb}
-          className="flex min-w-0 flex-col rounded-lg border border-edge bg-elevated lg:sticky lg:top-4"
-        >
-          <div className="border-b border-edge px-3 py-3 sm:px-5">
-            <p className="kpay-text-title font-semibold">{t("bankAccounts.sectionAcb")}</p>
-            <p className="mt-1 text-caption text-muted">{t("bankAccounts.hintAcb")}</p>
-          </div>
-
-          <div className="flex flex-1 flex-col gap-3.5 p-3 sm:gap-4 sm:p-5">
-            {acbStatusLoading ? (
-              <p className="text-caption text-muted">{t("common.loading")}</p>
-            ) : (
-              <dl className="grid grid-cols-1 gap-x-4 gap-y-2.5 rounded-lg border border-edge bg-surface px-3 py-3 text-caption sm:grid-cols-2 sm:px-3.5">
-                <div className="flex min-w-0 items-baseline justify-between gap-2 sm:block">
-                  <dt className="shrink-0 text-muted">{t("bankAccounts.acbStatusConfigured")}</dt>
-                  <dd className="break-words text-right font-medium text-ink sm:mt-0.5 sm:text-left">
-                    {acbConfigured
-                      ? t("bankAccounts.acbConfiguredYes")
-                      : t("bankAccounts.acbConfiguredNo")}
-                  </dd>
-                </div>
-                <div className="flex min-w-0 items-baseline justify-between gap-2 sm:block">
-                  <dt className="shrink-0 text-muted">{t("bankAccounts.acbStatusWorker")}</dt>
-                  <dd className="text-right font-medium text-ink sm:mt-0.5 sm:text-left">
-                    {acbStatus?.configured
-                      ? acbStatus.workerEnabled
-                        ? t("bankAccounts.yes")
-                        : t("bankAccounts.no")
-                      : "—"}
-                  </dd>
-                </div>
-                <div className="flex min-w-0 items-baseline justify-between gap-2 sm:block">
-                  <dt className="shrink-0 text-muted">{t("bankAccounts.acbStatusProxy")}</dt>
-                  <dd className="text-right font-medium text-ink sm:mt-0.5 sm:text-left">
-                    {acbStatus?.configured
-                      ? acbStatus.hasProxy
-                        ? t("bankAccounts.yes")
-                        : t("bankAccounts.no")
-                      : "—"}
-                  </dd>
-                </div>
-                <div className="flex min-w-0 items-baseline justify-between gap-2 sm:block">
-                  <dt className="shrink-0 text-muted">{t("bankAccounts.acbStatusUpdated")}</dt>
-                  <dd className="break-words text-right font-medium text-ink sm:mt-0.5 sm:text-left">
-                    {acbStatus?.updatedAt ? formatDateTime(acbStatus.updatedAt) : "—"}
-                  </dd>
-                </div>
-              </dl>
-            )}
-
-            <Field
-              label={t("bankAccounts.acbLabelJson")}
-              htmlFor="ba-acb-json"
-              required
-              hint={t("bankAccounts.acbHintJson")}
-            >
-              <Textarea
-                id="ba-acb-json"
-                value={credentialsJson}
-                onChange={(e) => setCredentialsJson(e.target.value)}
-                rows={6}
-                className="min-h-[9rem] font-mono text-caption sm:min-h-[12rem]"
-                placeholder={t("bankAccounts.acbPlaceholderJson")}
-                disabled={acbLocked}
-                spellCheck={false}
-              />
-            </Field>
-
-            <Field
-              label={t("bankAccounts.acbLabelProxy")}
-              htmlFor="ba-acb-proxy"
-              hint={t("bankAccounts.acbHintProxy")}
-            >
-              <Input
-                id="ba-acb-proxy"
-                value={proxyUrl}
-                onChange={(e) => setProxyUrl(e.target.value)}
-                placeholder={t("bankAccounts.acbPlaceholderProxy")}
-                disabled={acbLocked}
-                autoComplete="off"
-              />
-            </Field>
-
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-edge bg-surface px-3 py-2.5 sm:px-3.5">
-              <div className="min-w-0">
-                <p className="inline-flex items-center gap-1.5 text-label font-medium text-ink">
-                  {t("bankAccounts.acbLabelWorker")}
-                  <HintTooltip text={t("bankAccounts.acbHintWorker")} />
-                </p>
-              </div>
-              <Switch
-                checked={workerEnabled}
-                onChange={setWorkerEnabled}
-                disabled={acbLocked}
-                aria-label={t("bankAccounts.acbLabelWorker")}
-              />
-            </div>
-
-            {acbError && !showAcbStepUp ? (
-              <p
-                role="alert"
-                className="rounded-lg border border-danger-edge bg-danger-bg px-3 py-2.5 text-label text-danger"
-              >
-                {acbError}
-              </p>
-            ) : null}
-          </div>
-
-          {canWrite ? (
-            <div className="mt-auto border-t border-edge px-3 py-3 sm:flex sm:justify-end sm:px-5">
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                className="w-full sm:w-auto"
-                disabled={submitting || acbSubmitting}
-                leftIcon={<IconSave width={15} height={15} />}
-              >
-                {t("bankAccounts.acbBtnSave")}
-              </Button>
-            </div>
-          ) : null}
-        </form>
+        <BankAccountAcbKeysPanel bankAccountId={account.id} canWrite={canWrite} />
       </div>
-
-      {showAcbStepUp ? (
-        <AcbCredentialsStepUpModal
-          totpRequired={totpRequired}
-          saving={acbSubmitting}
-          error={acbError}
-          onClose={() => {
-            if (acbSubmitting) return;
-            setShowAcbStepUp(false);
-            setPendingAcbSave(null);
-            setAcbError(null);
-          }}
-          onConfirm={confirmAcbStepUp}
-        />
-      ) : null}
     </div>
   );
 }

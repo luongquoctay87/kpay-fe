@@ -1516,7 +1516,7 @@ export const en = {
     acbStatusProxy: "Proxy",
     acbStatusUpdated: "Updated at",
     acbLabelJson: "credentialsJson",
-    acbHintJson: "AccountKeys JSON object. Required on every save (overwrites ciphertext).",
+    acbHintJson: "AccountKeys JSON object. Sent only by Save AccountKeys (overwrites ciphertext).",
     acbPlaceholderJson: '{\n  "username": "…",\n  "password": "…",\n  …\n}',
     acbLabelProxy: "Proxy URL",
     acbHintProxy: "Optional. Leave empty for no proxy.",

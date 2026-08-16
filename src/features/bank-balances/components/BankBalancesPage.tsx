@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
   IconActivity,
   IconBank,
@@ -58,6 +58,20 @@ function checkTone(status: string): "active" | "danger" | "disabled" | "neutral"
   if (s === "ok") return "active";
   if (s === "error") return "danger";
   return "disabled";
+}
+
+function ActionTooltip({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span className="group relative inline-flex">
+      {children}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+      >
+        {label}
+      </span>
+    </span>
+  );
 }
 
 export function BankBalancesPage() {
@@ -144,7 +158,7 @@ export function BankBalancesPage() {
   const canReset = hasFilters || draftsDirty;
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
-  const colSpan = 7;
+  const colSpan = 8;
 
   function applyFilters(
     overrides?: Partial<{ status: string | null; check: string | null }>,
@@ -212,6 +226,8 @@ export function BankBalancesPage() {
           { label: t("bankBalances.breadcrumbCurrent"), icon: <IconWallet /> },
         ]}
       />
+
+      <p className="text-sm text-muted">{t("bankBalances.listHint")}</p>
 
       <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4">
         <StatCard label={t("bankBalances.statTotal")} value={String(total)} />
@@ -310,15 +326,16 @@ export function BankBalancesPage() {
           ) : null
         }
       >
-        <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 900 }}>
+        <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 1020 }}>
           <colgroup>
-            <col style={{ width: "12%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "16%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "13%" }} />
             <col style={{ width: "14%" }} />
-            <col style={{ width: "18%" }} />
             <col style={{ width: "12%" }} />
-            <col style={{ width: "12%" }} />
-            <col style={{ width: "14%" }} />
-            <col style={{ width: "18%" }} />
           </colgroup>
           <thead>
             <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
@@ -355,6 +372,11 @@ export function BankBalancesPage() {
               <th className="px-3 py-2.5">
                 <ColumnHeader icon={<IconActivity width={14} height={14} />}>
                   {t("bankBalances.colCheckStatus")}
+                </ColumnHeader>
+              </th>
+              <th className="px-3 py-2.5">
+                <ColumnHeader icon={<IconRefresh width={14} height={14} />}>
+                  {t("bankBalances.colActions")}
                 </ColumnHeader>
               </th>
             </tr>
@@ -421,36 +443,12 @@ export function BankBalancesPage() {
                     </div>
                   </td>
                   <td className="px-3 py-2.5">
-                    <div className="flex min-w-0 items-center gap-2">
-                      {canSync ? (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="md"
-                          iconOnly
-                          className="shrink-0"
-                          leftIcon={<IconRefresh width={15} height={15} />}
-                          disabled={!canRowSync || syncing || loading}
-                          aria-label={
-                            syncing ? t("bankBalances.syncing") : t("bankBalances.sync")
-                          }
-                          title={
-                            !row.workerConfigured || !row.workerEnabled
-                              ? t("bankBalances.syncDisabledHint")
-                              : syncing
-                                ? t("bankBalances.syncing")
-                                : t("bankBalances.sync")
-                          }
-                          onClick={() => void onSync(row)}
-                        />
-                      ) : null}
-                      <p
-                        className="min-w-0 flex-1 truncate text-label text-ink"
-                        title={row.accountHolder}
-                      >
-                        {row.accountHolder}
-                      </p>
-                    </div>
+                    <p
+                      className="min-w-0 truncate text-label text-ink"
+                      title={row.accountHolder}
+                    >
+                      {row.accountHolder}
+                    </p>
                   </td>
                   <td className="px-3 py-2.5">
                     <StatusBadge tone={row.status === "active" ? "active" : "disabled"}>
@@ -479,6 +477,37 @@ export function BankBalancesPage() {
                         </p>
                       ) : null}
                     </div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {canSync ? (
+                      <ActionTooltip
+                        label={
+                          !row.workerConfigured || !row.workerEnabled
+                            ? t("bankBalances.syncDisabledHint")
+                            : syncing
+                              ? t("bankBalances.syncing")
+                              : t("bankBalances.sync")
+                        }
+                      >
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="shrink-0"
+                          leftIcon={<IconRefresh width={14} height={14} />}
+                          disabled={!canRowSync || syncing}
+                          loading={syncing}
+                          aria-label={
+                            syncing ? t("bankBalances.syncing") : t("bankBalances.sync")
+                          }
+                          onClick={() => void onSync(row)}
+                        >
+                          {t("bankBalances.sync")}
+                        </Button>
+                      </ActionTooltip>
+                    ) : (
+                      <span className="text-caption text-subtle">—</span>
+                    )}
                   </td>
                 </tr>
               );

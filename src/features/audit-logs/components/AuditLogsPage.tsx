@@ -596,17 +596,17 @@ export function AuditLogsPage() {
                   ) : null}
                   {show.actor ? (
                     <td className="px-3 py-2.5">
-                      <div className="flex min-w-0 flex-col gap-1">
+                      <div className="flex min-w-0 items-center gap-1.5">
                         {!show.actorType && isAuditActorType(row.actorType) ? (
-                          <StatusBadge tone={AUDIT_ACTOR_TONE[row.actorType]} className="w-fit gap-1">
+                          <StatusBadge tone={AUDIT_ACTOR_TONE[row.actorType]} className="w-fit shrink-0 gap-1">
                             {actorIcon(row.actorType)}
                             {t(AUDIT_ACTOR_LABEL_KEY[row.actorType])}
                           </StatusBadge>
                         ) : !show.actorType ? (
-                          <span className="text-caption text-muted">{row.actorType}</span>
+                          <span className="shrink-0 text-caption text-muted">{row.actorType}</span>
                         ) : null}
                         <span
-                          className="truncate text-label font-medium text-ink"
+                          className="min-w-0 truncate text-label font-medium text-ink"
                           title={row.actorUsername ?? undefined}
                         >
                           {row.actorUsername ?? "—"}

@@ -1513,7 +1513,7 @@ export const vi = {
     acbStatusProxy: "Proxy",
     acbStatusUpdated: "Cập nhật lúc",
     acbLabelJson: "credentialsJson",
-    acbHintJson: "Object JSON AccountKeys. Bắt buộc mỗi lần lưu (ghi đè ciphertext cũ).",
+    acbHintJson: "Object JSON AccountKeys. Chỉ gửi khi bấm Lưu AccountKeys (ghi đè ciphertext cũ).",
     acbPlaceholderJson: '{\n  "username": "…",\n  "password": "…",\n  …\n}',
     acbLabelProxy: "Proxy URL",
     acbHintProxy: "Tuỳ chọn. Để trống = không dùng proxy.",
