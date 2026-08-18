@@ -514,7 +514,11 @@ export function BankAccountDetailPage({ id }: { id: string }) {
           ) : null}
         </form>
 
-        <BankAccountAcbKeysPanel bankAccountId={account.id} canWrite={canWrite} />
+        <BankAccountAcbKeysPanel
+          bankAccountId={account.id}
+          accountNumber={account.accountNumber}
+          canWrite={canWrite}
+        />
       </div>
     </div>
   );

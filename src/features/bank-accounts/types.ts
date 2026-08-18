@@ -45,13 +45,11 @@ export interface BankAccountAcbCredentialsStatus {
   updatedAt?: string | null;
 }
 
-export interface UpsertBankAccountAcbCredentialsBody {
-  password: string;
-  totpCode?: string;
-  credentialsJson: string;
-  proxyUrl?: string;
-  workerEnabled?: boolean;
-}
+export type {
+  AcbAccountKeysInput,
+  AcbVendorCsvPreview,
+  UpsertBankAccountAcbCredentialsBody,
+} from "@/features/bank-accounts/acb-account-keys-input";
 
 export interface BankAccountListResp {
   items: BankAccountListItem[];

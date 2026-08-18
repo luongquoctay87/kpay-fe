@@ -19,6 +19,7 @@ import { Button, Select, StatusBadge } from "@/components/ui";
 import {
   IconActivity,
   IconArrowOut,
+  IconBank,
   IconChevron,
   IconClock,
   IconFileText,
@@ -28,6 +29,7 @@ import {
   IconWebhook,
 } from "@/components/icons/NavIcons";
 import { PayoutDetailDrawer } from "@/features/payout/components/PayoutDetailDrawer";
+import { isAwaitingReconciliation, realStatusLabel } from "@/features/payout/real-status";
 import {
   CALLBACK_STATUS_LABEL_KEY,
   CALLBACK_STATUS_TONE,
@@ -327,7 +329,7 @@ export function PortalPayoutListPage() {
         }
       >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-left text-label">
+          <table className="w-full min-w-[760px] border-collapse text-left text-label">
             <thead>
               <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
                 <th className="px-3 py-2.5">
@@ -355,6 +357,11 @@ export function PortalPayoutListPage() {
                     {t("payout.colStatus")}
                   </ColumnHeader>
                 </th>
+                <th className="px-3 py-2.5">
+                  <ColumnHeader icon={<IconBank width={14} height={14} />}>
+                    {t("payout.colRealStatus")}
+                  </ColumnHeader>
+                </th>
                 <th className="hidden px-3 py-2.5 md:table-cell">
                   <ColumnHeader icon={<IconWebhook width={14} height={14} />}>
                     {t("payout.colCallback")}
@@ -370,13 +377,13 @@ export function PortalPayoutListPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-muted">
+                  <td colSpan={8} className="px-3 py-8 text-center text-muted">
                     {t("common.loading")}
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-muted">
+                  <td colSpan={8} className="px-3 py-8 text-center text-muted">
                     {t("common.noData")}
                   </td>
                 </tr>
@@ -402,6 +409,13 @@ export function PortalPayoutListPage() {
                       <StatusBadge tone={PAYOUT_STATUS_TONE[row.status]}>
                         {t(PAYOUT_STATUS_LABEL_KEY[row.status])}
                       </StatusBadge>
+                    </td>
+                    <td className="px-3 py-2.5" title={realStatusLabel(row)}>
+                      {isAwaitingReconciliation(row) ? (
+                        <StatusBadge tone="pending">{t("payout.badgeAwaitingRecon")}</StatusBadge>
+                      ) : (
+                        <span className="truncate text-ink-secondary">{realStatusLabel(row)}</span>
+                      )}
                     </td>
                     <td className="hidden px-3 py-2.5 md:table-cell">
                       <StatusBadge tone={CALLBACK_STATUS_TONE[row.callbackStatus]}>
