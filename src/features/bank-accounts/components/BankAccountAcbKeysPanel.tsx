@@ -311,7 +311,6 @@ export function BankAccountAcbKeysPanel({
   return (
     <>
       <form
-        id="ba-acb-form"
         onSubmit={startAcbSave}
         className="flex min-w-0 flex-col rounded-lg border border-edge bg-elevated lg:sticky lg:top-4"
       >
@@ -457,7 +456,6 @@ export function BankAccountAcbKeysPanel({
                   >
                     <Input
                       id="ba-acb-encryption-key"
-                      form="ba-acb-form"
                       value={encryptionKeyHex}
                       onChange={(e) => setEncryptionKeyHex(e.target.value)}
                       placeholder={t("bankAccounts.acbPlaceholderEncryptionKey")}
@@ -502,7 +500,6 @@ export function BankAccountAcbKeysPanel({
               >
                 <Textarea
                   id="ba-acb-credentials-json"
-                  form="ba-acb-form"
                   value={credentialsJson}
                   onChange={(e) => setCredentialsJson(e.target.value)}
                   placeholder={t("bankAccounts.acbPlaceholderCredentialsJson")}
@@ -527,7 +524,6 @@ export function BankAccountAcbKeysPanel({
               >
                 <Input
                   id="ba-acb-user-id"
-                  form="ba-acb-form"
                   value={form.userId ?? ""}
                   onChange={(e) => setField("userId", e.target.value)}
                   placeholder={t("bankAccounts.acbPlaceholderUserId")}
@@ -543,7 +539,6 @@ export function BankAccountAcbKeysPanel({
               >
                 <Input
                   id="ba-acb-device-id"
-                  form="ba-acb-form"
                   value={form.deviceId ?? ""}
                   onChange={(e) => setField("deviceId", e.target.value)}
                   placeholder={t("bankAccounts.acbPlaceholderDeviceId")}
@@ -559,7 +554,6 @@ export function BankAccountAcbKeysPanel({
               >
                 <Input
                   id="ba-acb-android-id"
-                  form="ba-acb-form"
                   value={form.acbAndroidId ?? ""}
                   onChange={(e) => setField("acbAndroidId", e.target.value)}
                   placeholder={t("bankAccounts.acbPlaceholderAndroidId")}
@@ -575,7 +569,6 @@ export function BankAccountAcbKeysPanel({
               >
                 <Input
                   id="ba-acb-safekey-prefix"
-                  form="ba-acb-form"
                   value={form.safekeyDevicePrefix ?? ""}
                   onChange={(e) => setField("safekeyDevicePrefix", e.target.value)}
                   placeholder={t("bankAccounts.acbPlaceholderSafekeyPrefix")}
@@ -594,7 +587,6 @@ export function BankAccountAcbKeysPanel({
               <Field label={t("bankAccounts.acbLabelProxy")} htmlFor="ba-acb-proxy">
                 <Input
                   id="ba-acb-proxy"
-                  form="ba-acb-form"
                   value={proxyUrl}
                   onChange={(e) => {
                     setClearProxy(false);
