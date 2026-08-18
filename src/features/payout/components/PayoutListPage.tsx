@@ -30,6 +30,7 @@ import {
 } from "@/components/icons/NavIcons";
 import {
   DateTimeText,
+  AutoRefreshControl,
   ColumnHeader,
   CopyButton,
   DateRangeFilter,
@@ -84,6 +85,10 @@ import {
   PAYOUT_STATUS_OPTIONS,
 } from "@/features/payout/types";
 import { useI18n } from "@/i18n/use-i18n";
+import {
+  useAutoRefresh,
+  type AutoRefreshSeconds,
+} from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { formatMoney } from "@/lib/format/datetime";
 import { ROUTES } from "@/lib/constants/routes";
@@ -108,6 +113,8 @@ export function PayoutListPage() {
   const [exporting, setExporting] = useState(false);
   const [detailRow, setDetailRow] = useState<PayoutOrderListItem | null>(null);
   const [finalizeRow, setFinalizeRow] = useState<PayoutOrderListItem | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
 
   const [qDraft, setQDraft] = useState("");
   const [merchantDraft, setMerchantDraft] = useState<string | null>(null);
@@ -228,6 +235,8 @@ export function PayoutListPage() {
   });
   const stats = data.stats;
 
+  useAutoRefresh(refresh, { enabled: autoRefresh, intervalSec: autoRefreshSec });
+
   const hasFilters = Boolean(
     filters.q ||
       filters.merchantId ||
@@ -324,7 +333,18 @@ export function PayoutListPage() {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-8 lg:px-10">
-      <PageHeader title={t("payout.listTitle")} />
+      <PageHeader
+        title={t("payout.listTitle")}
+        actions={
+          <AutoRefreshControl
+            enabled={autoRefresh}
+            intervalSec={autoRefreshSec}
+            onEnabledChange={setAutoRefresh}
+            onIntervalChange={setAutoRefreshSec}
+            size="sm"
+          />
+        }
+      />
 
       <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4">
         <StatCard
