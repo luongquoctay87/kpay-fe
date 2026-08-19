@@ -49,7 +49,7 @@ export const payoutApi = {
 
   finalize(
     id: string,
-    body: { outcome: PayoutFinalizeOutcome },
+    body: { outcome: PayoutFinalizeOutcome; reason?: string },
   ): Promise<PayoutOrderListItem> {
     return unwrap(apiClient.post(`/payout-orders/${id}/finalize`, body));
   },

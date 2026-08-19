@@ -10,6 +10,7 @@ export const MONEY_FLOW_DIRECTION_OPTIONS: MoneyFlowDirection[] = [
 /** MVP stages from LOGS.md §4.2. */
 export const MONEY_FLOW_STAGE_OPTIONS = [
   "payin.created",
+  "payin.rejected",
   "bank.inbound",
   "payin.unmatched",
   "bank.outbound",
@@ -20,6 +21,7 @@ export const MONEY_FLOW_STAGE_OPTIONS = [
   "wallet.reserve",
   "wallet.capture",
   "wallet.release",
+  "payout.rejected",
   "payout.disburse",
   "withdraw.disburse",
   "withdraw.approved",

@@ -20,7 +20,7 @@ export type PipelineStepView = PipelineStepDef & {
 };
 
 const PAYIN_STEPS: readonly PipelineStepDef[] = [
-  { stage: "payin.created" },
+  { stage: "payin.created", errorAlts: ["payin.rejected"] },
   { stage: "bank.inbound", optional: true, errorAlts: ["payin.unmatched"] },
   { stage: "payin.matched" },
   { stage: "wallet.credit" },
@@ -28,7 +28,7 @@ const PAYIN_STEPS: readonly PipelineStepDef[] = [
 ];
 
 const PAYOUT_STEPS: readonly PipelineStepDef[] = [
-  { stage: "wallet.reserve" },
+  { stage: "wallet.reserve", errorAlts: ["payout.rejected"] },
   { stage: "payout.disburse" },
   { stage: "bank.outbound", optional: true },
   { stage: "wallet.capture", alts: ["wallet.release"] },
