@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   IconActivity,
   IconArrowOut,
@@ -35,6 +36,7 @@ import {
   CopyButton,
   DateRangeFilter,
   dateRangeToIsoBounds,
+  isoBoundsToDateRange,
   FilterField,
   PageHeader,
   Pagination,
@@ -93,6 +95,12 @@ import { usePagedList } from "@/lib/async/use-paged-list";
 import { formatMoney } from "@/lib/format/datetime";
 import { ROUTES } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
+import {
+  buildQueryString,
+  oneOf,
+  parseNonNegInt,
+  parsePageSize,
+} from "@/lib/url/list-search-params";
 
 const EMPTY_PAYOUT_LIST = {
   rows: [] as PayoutOrderListItem[],
@@ -100,31 +108,95 @@ const EMPTY_PAYOUT_LIST = {
   stats: EMPTY_PAYOUT_STATS,
 };
 
+type PayoutFilters = Omit<PayoutOrderListParams, "page" | "size">;
+
+function hasAdvancedPayoutFilters(f: PayoutFilters): boolean {
+  return Boolean(
+    f.merchantId ||
+      f.sourceBankAccountId ||
+      f.status ||
+      f.callbackStatus ||
+      f.createdFrom ||
+      f.createdTo ||
+      f.updatedFrom ||
+      f.updatedTo,
+  );
+}
+
+function readPayoutStateFromSearch(searchParams: {
+  get(name: string): string | null;
+}): {
+  filters: PayoutFilters;
+  page: number;
+  size: number;
+  createdRange: DateRangeValue;
+  updatedRange: DateRangeValue;
+} {
+  const createdFrom = searchParams.get("createdFrom") || undefined;
+  const createdTo = searchParams.get("createdTo") || undefined;
+  const updatedFrom = searchParams.get("updatedFrom") || undefined;
+  const updatedTo = searchParams.get("updatedTo") || undefined;
+  const filters: PayoutFilters = {
+    q: searchParams.get("q")?.trim() || undefined,
+    merchantId: searchParams.get("merchantId") || undefined,
+    sourceBankAccountId: searchParams.get("sourceBankAccountId") || undefined,
+    status: oneOf(searchParams.get("status"), PAYOUT_STATUS_OPTIONS) ?? undefined,
+    callbackStatus:
+      oneOf(searchParams.get("callbackStatus"), CALLBACK_STATUS_OPTIONS) ?? undefined,
+    createdFrom,
+    createdTo,
+    updatedFrom,
+    updatedTo,
+  };
+  return {
+    filters,
+    page: parseNonNegInt(searchParams.get("page"), 0),
+    size: parsePageSize(searchParams.get("size"), 20),
+    createdRange: isoBoundsToDateRange(createdFrom, createdTo),
+    updatedRange: isoBoundsToDateRange(updatedFrom, updatedTo),
+  };
+}
+
 export function PayoutListPage() {
   const { t } = useI18n();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [boot] = useState(() => readPayoutStateFromSearch(searchParams));
   const permissions = useAuthStore((s) => s.user?.permissions);
   const canWrite =
     permissions == null ||
     permissions.length === 0 ||
     permissions.includes("payout:write");
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
-  const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState(boot.page);
+  const [size, setSize] = useState(boot.size);
+  const [expanded, setExpanded] = useState(() => hasAdvancedPayoutFilters(boot.filters));
   const [exporting, setExporting] = useState(false);
   const [detailRow, setDetailRow] = useState<PayoutOrderListItem | null>(null);
   const [finalizeRow, setFinalizeRow] = useState<PayoutOrderListItem | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
 
-  const [qDraft, setQDraft] = useState("");
-  const [merchantDraft, setMerchantDraft] = useState<string | null>(null);
-  const [sourceAccountDraft, setSourceAccountDraft] = useState<string | null>(null);
-  const [statusDraft, setStatusDraft] = useState<PayoutStatus | null>(null);
-  const [callbackDraft, setCallbackDraft] = useState<OrderCallbackStatus | null>(null);
-  const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(null);
-  const [updatedRangeDraft, setUpdatedRangeDraft] = useState<DateRangeValue>(null);
+  const [qDraft, setQDraft] = useState(boot.filters.q ?? "");
+  const [merchantDraft, setMerchantDraft] = useState<string | null>(
+    boot.filters.merchantId ?? null,
+  );
+  const [sourceAccountDraft, setSourceAccountDraft] = useState<string | null>(
+    boot.filters.sourceBankAccountId ?? null,
+  );
+  const [statusDraft, setStatusDraft] = useState<PayoutStatus | null>(
+    boot.filters.status ?? null,
+  );
+  const [callbackDraft, setCallbackDraft] = useState<OrderCallbackStatus | null>(
+    boot.filters.callbackStatus ?? null,
+  );
+  const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(
+    boot.createdRange,
+  );
+  const [updatedRangeDraft, setUpdatedRangeDraft] = useState<DateRangeValue>(
+    boot.updatedRange,
+  );
 
-  const [filters, setFilters] = useState<Omit<PayoutOrderListParams, "page" | "size">>({});
+  const [filters, setFilters] = useState<PayoutFilters>(boot.filters);
 
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
     defaultColumnVisibility,
@@ -287,10 +359,29 @@ export function PayoutListPage() {
     };
   }
 
+  function syncUrl(next: PayoutFilters, nextPage: number, nextSize: number) {
+    const qs = buildQueryString({
+      q: next.q,
+      merchantId: next.merchantId,
+      sourceBankAccountId: next.sourceBankAccountId,
+      status: next.status,
+      callbackStatus: next.callbackStatus,
+      createdFrom: next.createdFrom,
+      createdTo: next.createdTo,
+      updatedFrom: next.updatedFrom,
+      updatedTo: next.updatedTo,
+      page: nextPage > 0 ? nextPage : undefined,
+      size: nextSize !== 20 ? nextSize : undefined,
+    });
+    router.replace(qs ? `${ROUTES.payout}?${qs}` : ROUTES.payout);
+  }
+
   function applyFilters() {
     const next = buildFiltersFromDraft();
     setPage(0);
     setFilters(next);
+    if (hasAdvancedPayoutFilters(next)) setExpanded(true);
+    syncUrl(next, 0, size);
   }
 
   function onSearch(e: FormEvent) {
@@ -314,6 +405,18 @@ export function PayoutListPage() {
     setUpdatedRangeDraft(null);
     setFilters({});
     setPage(0);
+    syncUrl({}, 0, size);
+  }
+
+  function onPageChange(nextPage: number) {
+    setPage(nextPage);
+    syncUrl(filters, nextPage, size);
+  }
+
+  function onPageSizeChange(nextSize: number) {
+    setSize(nextSize);
+    setPage(0);
+    syncUrl(filters, 0, nextSize);
   }
 
   async function onExport() {
@@ -573,11 +676,8 @@ export function PayoutListPage() {
             pageSize={size}
             total={total}
             loading={loading}
-            onPageChange={setPage}
-            onPageSizeChange={(s) => {
-              setSize(s);
-              setPage(0);
-            }}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
             rangeLabel={t("payout.range", { from, to, total })}
           />
         }

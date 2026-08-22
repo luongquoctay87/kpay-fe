@@ -33,15 +33,45 @@ import { EditBlockedAccountModal } from "@/features/blocked-accounts/components/
 import type { BlockedAccountListItem } from "@/features/blocked-accounts/types";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
+import { ROUTES } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
+import {
+  buildQueryString,
+  isActiveDraftFromFlag,
+  parseIsActiveFlag,
+  parseNonNegInt,
+  parsePageSize,
+} from "@/lib/url/list-search-params";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const EMPTY_LIST = {
   rows: [] as BlockedAccountListItem[],
   total: 0,
 };
 
+type BlockedAccountFilters = {
+  q?: string;
+  isActive?: boolean;
+};
+
+function readBlockedAccountsStateFromSearch(searchParams: {
+  get(name: string): string | null;
+}): { filters: BlockedAccountFilters; page: number; size: number } {
+  return {
+    filters: {
+      q: searchParams.get("q")?.trim() || undefined,
+      isActive: parseIsActiveFlag(searchParams.get("isActive")),
+    },
+    page: parseNonNegInt(searchParams.get("page"), 0),
+    size: parsePageSize(searchParams.get("size"), 20),
+  };
+}
+
 export function BlockedAccountsPage() {
   const { t } = useI18n();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [boot] = useState(() => readBlockedAccountsStateFromSearch(searchParams));
   const permissions = useAuthStore((s) => s.user?.permissions);
   /** Fail-open when permissions not loaded yet. */
   const canWrite =
@@ -49,20 +79,18 @@ export function BlockedAccountsPage() {
     permissions.length === 0 ||
     permissions.includes("blocked_accounts:write");
 
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const [page, setPage] = useState(boot.page);
+  const [size, setSize] = useState(boot.size);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<BlockedAccountListItem | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const [qDraft, setQDraft] = useState("");
-  const [activeDraft, setActiveDraft] = useState<string | null>(null);
+  const [qDraft, setQDraft] = useState(boot.filters.q ?? "");
+  const [activeDraft, setActiveDraft] = useState<string | null>(
+    isActiveDraftFromFlag(boot.filters.isActive),
+  );
 
-  const [filters, setFilters] = useState<{
-    q?: string;
-    isActive?: boolean;
-  }>({});
-
+  const [filters, setFilters] = useState<BlockedAccountFilters>(boot.filters);
   const statusOptions = useMemo(
     () => [
       { value: "true", label: t("blockedAccounts.statusActive") },
@@ -111,11 +139,23 @@ export function BlockedAccountsPage() {
   const colSpan = 6;
 
   function applyFilters() {
-    setPage(0);
-    setFilters({
+    const next: BlockedAccountFilters = {
       q: qDraft.trim() || undefined,
       isActive: activeDraft != null ? activeDraft === "true" : undefined,
+    };
+    setPage(0);
+    setFilters(next);
+    syncUrl(next, 0, size);
+  }
+
+  function syncUrl(next: BlockedAccountFilters, nextPage: number, nextSize: number) {
+    const qs = buildQueryString({
+      q: next.q,
+      isActive: next.isActive === undefined ? undefined : String(next.isActive),
+      page: nextPage > 0 ? nextPage : undefined,
+      size: nextSize !== 20 ? nextSize : undefined,
     });
+    router.replace(qs ? `${ROUTES.blockedAccounts}?${qs}` : ROUTES.blockedAccounts);
   }
 
   function onSearch(e: FormEvent) {
@@ -128,6 +168,18 @@ export function BlockedAccountsPage() {
     setActiveDraft(null);
     setPage(0);
     setFilters({});
+    syncUrl({}, 0, size);
+  }
+
+  function onPageChange(nextPage: number) {
+    setPage(nextPage);
+    syncUrl(filters, nextPage, size);
+  }
+
+  function onPageSizeChange(nextSize: number) {
+    setSize(nextSize);
+    setPage(0);
+    syncUrl(filters, 0, nextSize);
   }
 
   async function onToggleActive(row: BlockedAccountListItem, next: boolean) {
@@ -239,11 +291,8 @@ export function BlockedAccountsPage() {
             pageSize={size}
             total={total}
             loading={loading}
-            onPageChange={setPage}
-            onPageSizeChange={(s: number) => {
-              setSize(s);
-              setPage(0);
-            }}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
             rangeLabel={t("blockedAccounts.range", { from, to, total })}
           />
         }

@@ -12,9 +12,9 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   IconActivity,
-  IconChevronRight,
   IconClock,
   IconDownload,
+  IconFileText,
   IconHash,
   IconHeadset,
   IconInbox,
@@ -25,6 +25,7 @@ import {
   IconStore,
   IconUsers,
   IconWallet,
+  IconWebhook,
 } from "@/components/icons/NavIcons";
 import {
   DateTimeText,
@@ -58,6 +59,11 @@ import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
+import {
+  buildQueryString,
+  parseNonNegInt,
+  parsePageSize,
+} from "@/lib/url/list-search-params";
 
 /**
  * Explicit widths so `table-fixed` scales every column (no leftover dump into Name).
@@ -72,7 +78,7 @@ const CUSTOMER_COLUMN_WIDTH = {
   status: "w-[140px]",
   activity: "w-[168px]",
   created: "w-[168px]",
-  actions: "w-[108px]",
+  actions: "w-[96px]",
 } as const;
 
 const CUSTOMER_COLUMN_MIN_PX = {
@@ -84,7 +90,7 @@ const CUSTOMER_COLUMN_MIN_PX = {
   status: 140,
   activity: 168,
   created: 168,
-  actions: 108,
+  actions: 96,
 } as const;
 
 const TABLE_MIN_WIDTH = Object.values(CUSTOMER_COLUMN_MIN_PX).reduce((a, b) => a + b, 0);
@@ -109,6 +115,19 @@ function detailHref(row: CustomerListItem): string {
     : ROUTES.agentDetail(row.id);
 }
 
+function callbackLogsHref(row: CustomerListItem): string | null {
+  if (row.ownerType !== "merchant") return null;
+  return `${ROUTES.callbackLogs}?${buildQueryString({ merchantId: row.id })}`;
+}
+
+function ledgerHref(row: CustomerListItem): string {
+  const qs =
+    row.ownerType === "merchant"
+      ? buildQueryString({ ownerType: "merchant", merchantId: row.id })
+      : buildQueryString({ ownerType: "agent", agentId: row.id });
+  return `${ROUTES.customerLedgers}?${qs}`;
+}
+
 function ActionTooltip({ label, children }: { label: string; children: ReactNode }) {
   return (
     <span className="group relative inline-flex">
@@ -128,8 +147,8 @@ export function CustomersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const [page, setPage] = useState(() => parseNonNegInt(searchParams.get("page"), 0));
+  const [size, setSize] = useState(() => parsePageSize(searchParams.get("size"), 20));
   const [exporting, setExporting] = useState(false);
 
   const [qDraft, setQDraft] = useState(() => searchParams.get("q")?.trim() ?? "");
@@ -209,28 +228,34 @@ export function CustomersPage() {
     return { merchants, agents, pageBalance };
   }, [rows]);
 
-  function syncUrl(next: {
-    q?: string;
-    ownerType?: CustomerOwnerType;
-    status?: CustomerStatus;
-  }) {
-    const params = new URLSearchParams();
-    if (next.ownerType) params.set("ownerType", next.ownerType);
-    if (next.status) params.set("status", next.status);
-    if (next.q) params.set("q", next.q);
-    const qs = params.toString();
+  function syncUrl(
+    next: {
+      q?: string;
+      ownerType?: CustomerOwnerType;
+      status?: CustomerStatus;
+    },
+    nextPage: number,
+    nextSize: number,
+  ) {
+    const qs = buildQueryString({
+      ownerType: next.ownerType,
+      status: next.status,
+      q: next.q,
+      page: nextPage > 0 ? nextPage : undefined,
+      size: nextSize !== 20 ? nextSize : undefined,
+    });
     router.replace(qs ? `${ROUTES.customers}?${qs}` : ROUTES.customers);
   }
 
   function applyFilters() {
-    setPage(0);
     const applied = {
       q: qDraft.trim() || undefined,
       ownerType: ownerDraft ?? undefined,
       status: statusDraft ?? undefined,
     };
+    setPage(0);
     setFilters(applied);
-    syncUrl(applied);
+    syncUrl(applied, 0, size);
   }
 
   function onSearch(e: FormEvent) {
@@ -250,7 +275,18 @@ export function CustomersPage() {
     setStatusDraft(null);
     setFilters({});
     setPage(0);
-    router.replace(ROUTES.customers);
+    syncUrl({}, 0, size);
+  }
+
+  function onPageChange(nextPage: number) {
+    setPage(nextPage);
+    syncUrl(filters, nextPage, size);
+  }
+
+  function onPageSizeChange(nextSize: number) {
+    setSize(nextSize);
+    setPage(0);
+    syncUrl(filters, 0, nextSize);
   }
 
   async function onExport() {
@@ -405,11 +441,8 @@ export function CustomersPage() {
             pageSize={size}
             total={total}
             loading={loading}
-            onPageChange={setPage}
-            onPageSizeChange={(s) => {
-              setSize(s);
-              setPage(0);
-            }}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
             rangeLabel={t("customers.range", { from, to, total })}
           />
         }
@@ -585,16 +618,29 @@ export function CustomersPage() {
                     <DateTimeText value={row.createdAt} />
                   </td>
                   <td className="px-3 py-2.5 text-center">
-                    <ActionTooltip label={t("customers.detail")}>
-                      <Button
-                        href={href}
-                        variant="ghost"
-                        size="sm"
-                        iconOnly
-                        aria-label={t("customers.detail")}
-                        leftIcon={<IconChevronRight width={15} height={15} />}
-                      />
-                    </ActionTooltip>
+                    <div className="inline-flex items-center justify-center gap-0.5">
+                      <ActionTooltip label={t("customers.actionCallbackLogs")}>
+                        <Button
+                          href={callbackLogsHref(row) ?? undefined}
+                          variant="ghost"
+                          size="sm"
+                          iconOnly
+                          disabled={row.ownerType !== "merchant"}
+                          aria-label={t("customers.actionCallbackLogs")}
+                          leftIcon={<IconWebhook width={15} height={15} />}
+                        />
+                      </ActionTooltip>
+                      <ActionTooltip label={t("customers.actionLedger")}>
+                        <Button
+                          href={ledgerHref(row)}
+                          variant="ghost"
+                          size="sm"
+                          iconOnly
+                          aria-label={t("customers.actionLedger")}
+                          leftIcon={<IconFileText width={15} height={15} />}
+                        />
+                      </ActionTooltip>
+                    </div>
                   </td>
                 </tr>
               );

@@ -8,6 +8,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AutoRefreshControl,
   ColumnHeader,
@@ -20,6 +21,7 @@ import {
   StatCard,
   TableCard,
   dateRangeToIsoBounds,
+  isoBoundsToDateRange,
   filterControlClass,
   type DateRangeValue,
 } from "@/components/common";
@@ -76,14 +78,65 @@ import {
   type AutoRefreshSeconds,
 } from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
+import { ROUTES } from "@/lib/constants/routes";
 import { formatMoney } from "@/lib/format/datetime";
 import { useMerchantAgentFilterOptions } from "@/lib/options/use-merchant-agent-filter-options";
 import { ApiError } from "@/lib/types/api";
+import {
+  buildQueryString,
+  oneOf,
+  parseNonNegInt,
+  parsePageSize,
+} from "@/lib/url/list-search-params";
 
 const EMPTY = {
   rows: [] as MoneyFlowEventListItem[],
   total: 0,
 };
+
+type MoneyFlowFilters = {
+  q?: string;
+  stage?: string;
+  direction?: MoneyFlowDirection;
+  merchantId?: string;
+  agentId?: string;
+  from?: string;
+  to?: string;
+};
+
+function hasAdvancedMoneyFlowFilters(f: MoneyFlowFilters): boolean {
+  return Boolean(f.stage || f.direction || f.merchantId || f.agentId || f.from || f.to);
+}
+
+function readMoneyFlowStateFromSearch(searchParams: {
+  get(name: string): string | null;
+}): {
+  filters: MoneyFlowFilters;
+  page: number;
+  size: number;
+  range: DateRangeValue;
+} {
+  const from = searchParams.get("from") || undefined;
+  const to = searchParams.get("to") || undefined;
+  const directionRaw = searchParams.get("direction");
+  const stage = oneOf(searchParams.get("stage"), MONEY_FLOW_STAGE_OPTIONS) ?? undefined;
+  const filters: MoneyFlowFilters = {
+    q: searchParams.get("q")?.trim() || undefined,
+    stage,
+    direction:
+      directionRaw && isMoneyFlowDirection(directionRaw) ? directionRaw : undefined,
+    merchantId: searchParams.get("merchantId") || undefined,
+    agentId: searchParams.get("agentId") || undefined,
+    from,
+    to,
+  };
+  return {
+    filters,
+    page: parseNonNegInt(searchParams.get("page"), 0),
+    size: parsePageSize(searchParams.get("size"), 20),
+    range: isoBoundsToDateRange(from, to),
+  };
+}
 
 function correlationLabel(row: MoneyFlowEventListItem): string {
   if (row.correlationType && row.correlationId) {
@@ -94,11 +147,15 @@ function correlationLabel(row: MoneyFlowEventListItem): string {
 
 export function MoneyFlowPage() {
   const { t } = useI18n();
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [boot] = useState(() => readMoneyFlowStateFromSearch(searchParams));
+
+  const [page, setPage] = useState(boot.page);
+  const [size, setSize] = useState(boot.size);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => hasAdvancedMoneyFlowFilters(boot.filters));
   const [exporting, setExporting] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
     defaultColumnVisibility,
@@ -127,22 +184,18 @@ export function MoneyFlowPage() {
     return `${MONEY_FLOW_COLUMN_MIN_PX[col]}px`;
   }
 
-  const [qDraft, setQDraft] = useState("");
-  const [stageDraft, setStageDraft] = useState<string | null>(null);
-  const [directionDraft, setDirectionDraft] = useState<MoneyFlowDirection | null>(null);
-  const [merchantDraft, setMerchantDraft] = useState<string | null>(null);
-  const [agentDraft, setAgentDraft] = useState<string | null>(null);
-  const [rangeDraft, setRangeDraft] = useState<DateRangeValue>(null);
+  const [qDraft, setQDraft] = useState(boot.filters.q ?? "");
+  const [stageDraft, setStageDraft] = useState<string | null>(boot.filters.stage ?? null);
+  const [directionDraft, setDirectionDraft] = useState<MoneyFlowDirection | null>(
+    boot.filters.direction ?? null,
+  );
+  const [merchantDraft, setMerchantDraft] = useState<string | null>(
+    boot.filters.merchantId ?? null,
+  );
+  const [agentDraft, setAgentDraft] = useState<string | null>(boot.filters.agentId ?? null);
+  const [rangeDraft, setRangeDraft] = useState<DateRangeValue>(boot.range);
 
-  const [filters, setFilters] = useState<{
-    q?: string;
-    stage?: string;
-    direction?: MoneyFlowDirection;
-    merchantId?: string;
-    agentId?: string;
-    from?: string;
-    to?: string;
-  }>({});
+  const [filters, setFilters] = useState<MoneyFlowFilters>(boot.filters);
 
   const [timelineSeed, setTimelineSeed] = useState<MoneyFlowEventListItem | null>(null);
   const { merchantOpts, agentOpts } = useMerchantAgentFilterOptions();
@@ -207,8 +260,7 @@ export function MoneyFlowPage() {
 
   function applyFilters() {
     const bounds = dateRangeToIsoBounds(rangeDraft);
-    setPage(0);
-    setFilters({
+    const next: MoneyFlowFilters = {
       q: qDraft.trim() || undefined,
       stage: stageDraft ?? undefined,
       direction: directionDraft ?? undefined,
@@ -216,7 +268,26 @@ export function MoneyFlowPage() {
       agentId: agentDraft ?? undefined,
       from: bounds.from,
       to: bounds.to,
+    };
+    setPage(0);
+    setFilters(next);
+    if (hasAdvancedMoneyFlowFilters(next)) setExpanded(true);
+    syncUrl(next, 0, size);
+  }
+
+  function syncUrl(next: MoneyFlowFilters, nextPage: number, nextSize: number) {
+    const qs = buildQueryString({
+      q: next.q,
+      stage: next.stage,
+      direction: next.direction,
+      merchantId: next.merchantId,
+      agentId: next.agentId,
+      from: next.from,
+      to: next.to,
+      page: nextPage > 0 ? nextPage : undefined,
+      size: nextSize !== 20 ? nextSize : undefined,
     });
+    router.replace(qs ? `${ROUTES.moneyFlowLogs}?${qs}` : ROUTES.moneyFlowLogs);
   }
 
   function onSearch(e: FormEvent) {
@@ -239,6 +310,18 @@ export function MoneyFlowPage() {
     setRangeDraft(null);
     setPage(0);
     setFilters({});
+    syncUrl({}, 0, size);
+  }
+
+  function onPageChange(nextPage: number) {
+    setPage(nextPage);
+    syncUrl(filters, nextPage, size);
+  }
+
+  function onPageSizeChange(nextSize: number) {
+    setSize(nextSize);
+    setPage(0);
+    syncUrl(filters, 0, nextSize);
   }
 
   async function onExport() {
@@ -453,11 +536,8 @@ export function MoneyFlowPage() {
             pageSize={size}
             total={total}
             loading={loading}
-            onPageChange={setPage}
-            onPageSizeChange={(n) => {
-              setSize(n);
-              setPage(0);
-            }}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
             rangeLabel={t("moneyFlow.range", { from, to, total })}
           />
         }

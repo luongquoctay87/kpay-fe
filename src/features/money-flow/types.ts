@@ -26,6 +26,8 @@ export const MONEY_FLOW_STAGE_OPTIONS = [
   "withdraw.disburse",
   "withdraw.approved",
   "withdraw.rejected",
+  "callback.outbound",
+  "callback.failed",
 ] as const;
 
 export type MoneyFlowStage = (typeof MONEY_FLOW_STAGE_OPTIONS)[number];

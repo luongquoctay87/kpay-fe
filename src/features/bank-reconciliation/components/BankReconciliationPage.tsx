@@ -31,6 +31,7 @@ import {
   DateRangeFilter,
   dateRangeToIsoBounds,
   FilterField,
+  isoBoundsToDateRange,
   MoneyAmount,
   PageHeader,
   Pagination,
@@ -71,15 +72,83 @@ import {
 import { useAuthStore } from "@/features/auth/store";
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
+import { ROUTES } from "@/lib/constants/routes";
 import { formatMoney } from "@/lib/format/datetime";
 import { parseMoneyDigits, parseMoneyNumber } from "@/lib/format/money";
 import { ApiError } from "@/lib/types/api";
+import {
+  buildQueryString,
+  oneOf,
+  parseNonNegInt,
+  parsePageSize,
+} from "@/lib/url/list-search-params";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const EMPTY_LIST = {
   rows: [] as BankReconciliationListItem[],
   total: 0,
   stats: EMPTY_BANK_RECONCILIATION_STATS,
 };
+
+type BankReconciliationFilters = {
+  q?: string;
+  bankAccountId?: string;
+  direction?: BankReconciliationDirection;
+  toolName?: string;
+  amountFrom?: number;
+  amountTo?: number;
+  from?: string;
+  to?: string;
+};
+
+function parseOptionalAmount(raw: string | null): number | undefined {
+  if (raw == null || raw.trim() === "") return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function hasAdvancedBankReconciliationFilters(f: BankReconciliationFilters): boolean {
+  return Boolean(
+    f.bankAccountId ||
+      f.direction ||
+      f.toolName ||
+      f.amountFrom != null ||
+      f.amountTo != null ||
+      f.from ||
+      f.to,
+  );
+}
+
+function readBankReconciliationStateFromSearch(searchParams: {
+  get(name: string): string | null;
+}): {
+  filters: BankReconciliationFilters;
+  page: number;
+  size: number;
+  range: DateRangeValue;
+} {
+  const from = searchParams.get("from") || undefined;
+  const to = searchParams.get("to") || undefined;
+  const filters: BankReconciliationFilters = {
+    q: searchParams.get("q")?.trim() || undefined,
+    bankAccountId: searchParams.get("bankAccountId")?.trim() || undefined,
+    direction:
+      oneOf(searchParams.get("direction"), BANK_RECONCILIATION_DIRECTION_OPTIONS) ??
+      undefined,
+    toolName:
+      oneOf(searchParams.get("toolName"), BANK_RECONCILIATION_TOOL_OPTIONS) ?? undefined,
+    amountFrom: parseOptionalAmount(searchParams.get("amountFrom")),
+    amountTo: parseOptionalAmount(searchParams.get("amountTo")),
+    from,
+    to,
+  };
+  return {
+    filters,
+    page: parseNonNegInt(searchParams.get("page"), 0),
+    size: parsePageSize(searchParams.get("size"), 20),
+    range: isoBoundsToDateRange(from, to),
+  };
+}
 
 function CounterpartyCell({ row }: { row: BankReconciliationListItem }) {
   const name = row.counterpartyName?.trim();
@@ -105,6 +174,9 @@ function CounterpartyCell({ row }: { row: BankReconciliationListItem }) {
 
 export function BankReconciliationPage() {
   const { t } = useI18n();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [boot] = useState(() => readBankReconciliationStateFromSearch(searchParams));
   const permissions = useAuthStore((s) => s.user?.permissions);
   /** Fail-closed only when permissions are loaded and omit pull. */
   const canPull =
@@ -112,33 +184,31 @@ export function BankReconciliationPage() {
     permissions.length === 0 ||
     permissions.includes("bank_reconciliations:pull");
 
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
-  const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState(boot.page);
+  const [size, setSize] = useState(boot.size);
+  const [expanded, setExpanded] = useState(() =>
+    hasAdvancedBankReconciliationFilters(boot.filters),
+  );
   const [exporting, setExporting] = useState(false);
   const [showPull, setShowPull] = useState(false);
 
-  const [qDraft, setQDraft] = useState("");
-  const [accountDraft, setAccountDraft] = useState<string | null>(null);
-  const [directionDraft, setDirectionDraft] = useState<BankReconciliationDirection | null>(
-    null,
+  const [qDraft, setQDraft] = useState(boot.filters.q ?? "");
+  const [accountDraft, setAccountDraft] = useState<string | null>(
+    boot.filters.bankAccountId ?? null,
   );
-  const [toolDraft, setToolDraft] = useState<string | null>(null);
-  const [amountFromDraft, setAmountFromDraft] = useState("");
-  const [amountToDraft, setAmountToDraft] = useState("");
-  const [postedRangeDraft, setPostedRangeDraft] = useState<DateRangeValue>(null);
+  const [directionDraft, setDirectionDraft] = useState<BankReconciliationDirection | null>(
+    boot.filters.direction ?? null,
+  );
+  const [toolDraft, setToolDraft] = useState<string | null>(boot.filters.toolName ?? null);
+  const [amountFromDraft, setAmountFromDraft] = useState(
+    boot.filters.amountFrom != null ? String(boot.filters.amountFrom) : "",
+  );
+  const [amountToDraft, setAmountToDraft] = useState(
+    boot.filters.amountTo != null ? String(boot.filters.amountTo) : "",
+  );
+  const [postedRangeDraft, setPostedRangeDraft] = useState<DateRangeValue>(boot.range);
 
-  const [filters, setFilters] = useState<{
-    q?: string;
-    bankAccountId?: string;
-    direction?: BankReconciliationDirection;
-    toolName?: string;
-    amountFrom?: number;
-    amountTo?: number;
-    from?: string;
-    to?: string;
-  }>({});
-
+  const [filters, setFilters] = useState<BankReconciliationFilters>(boot.filters);
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
     defaultColumnVisibility,
   );
@@ -243,7 +313,7 @@ export function BankReconciliationPage() {
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
 
-  function buildFiltersFromDraft() {
+  function buildFiltersFromDraft(): BankReconciliationFilters {
     const posted = dateRangeToIsoBounds(postedRangeDraft);
     const amountFromRaw = parseMoneyDigits(amountFromDraft);
     const amountToRaw = parseMoneyDigits(amountToDraft);
@@ -267,6 +337,30 @@ export function BankReconciliationPage() {
     const next = buildFiltersFromDraft();
     setPage(0);
     setFilters(next);
+    if (hasAdvancedBankReconciliationFilters(next)) setExpanded(true);
+    syncUrl(next, 0, size);
+  }
+
+  function syncUrl(
+    next: BankReconciliationFilters,
+    nextPage: number,
+    nextSize: number,
+  ) {
+    const qs = buildQueryString({
+      q: next.q,
+      bankAccountId: next.bankAccountId,
+      direction: next.direction,
+      toolName: next.toolName,
+      amountFrom: next.amountFrom,
+      amountTo: next.amountTo,
+      from: next.from,
+      to: next.to,
+      page: nextPage > 0 ? nextPage : undefined,
+      size: nextSize !== 20 ? nextSize : undefined,
+    });
+    router.replace(
+      qs ? `${ROUTES.bankReconciliations}?${qs}` : ROUTES.bankReconciliations,
+    );
   }
 
   function onSearch(e: FormEvent) {
@@ -290,6 +384,18 @@ export function BankReconciliationPage() {
     setPostedRangeDraft(null);
     setFilters({});
     setPage(0);
+    syncUrl({}, 0, size);
+  }
+
+  function onPageChange(nextPage: number) {
+    setPage(nextPage);
+    syncUrl(filters, nextPage, size);
+  }
+
+  function onPageSizeChange(nextSize: number) {
+    setSize(nextSize);
+    setPage(0);
+    syncUrl(filters, 0, nextSize);
   }
 
   async function onExport() {
@@ -548,11 +654,8 @@ export function BankReconciliationPage() {
             pageSize={size}
             total={total}
             loading={loading}
-            onPageChange={setPage}
-            onPageSizeChange={(s) => {
-              setSize(s);
-              setPage(0);
-            }}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
             rangeLabel={t("bankReconciliation.range", { from, to, total })}
           />
         }

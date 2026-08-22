@@ -38,6 +38,7 @@ export interface CallbackLogListParams {
   type?: CallbackType;
   direction?: CallbackDirection;
   status?: CallbackDeliveryStatus;
+  merchantId?: string;
   page?: number;
   size?: number;
 }

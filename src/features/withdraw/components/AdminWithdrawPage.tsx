@@ -10,12 +10,14 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   DateTimeText,
   ColumnHeader,
   CopyButton,
   DateRangeFilter,
   dateRangeToIsoBounds,
+  isoBoundsToDateRange,
   FilterField,
   PageHeader,
   Pagination,
@@ -83,6 +85,12 @@ import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
+import {
+  buildQueryString,
+  oneOf,
+  parseNonNegInt,
+  parsePageSize,
+} from "@/lib/url/list-search-params";
 
 const EMPTY_LIST = {
   rows: [] as WithdrawOrderListItem[],
@@ -90,17 +98,57 @@ const EMPTY_LIST = {
   pendingCount: 0,
 };
 
+type WithdrawFilters = {
+  q?: string;
+  status?: WithdrawStatus;
+  ownerType?: WithdrawOwnerType;
+  createdFrom?: string;
+  createdTo?: string;
+};
+
+function hasAdvancedWithdrawFilters(f: WithdrawFilters): boolean {
+  return Boolean(f.status || f.ownerType || f.createdFrom || f.createdTo);
+}
+
+function readWithdrawStateFromSearch(searchParams: {
+  get(name: string): string | null;
+}): {
+  filters: WithdrawFilters;
+  page: number;
+  size: number;
+  createdRange: DateRangeValue;
+} {
+  const createdFrom = searchParams.get("createdFrom") || undefined;
+  const createdTo = searchParams.get("createdTo") || undefined;
+  const filters: WithdrawFilters = {
+    q: searchParams.get("q")?.trim() || undefined,
+    status: oneOf(searchParams.get("status"), WITHDRAW_STATUS_OPTIONS) ?? undefined,
+    ownerType: oneOf(searchParams.get("ownerType"), WITHDRAW_OWNER_OPTIONS) ?? undefined,
+    createdFrom,
+    createdTo,
+  };
+  return {
+    filters,
+    page: parseNonNegInt(searchParams.get("page"), 0),
+    size: parsePageSize(searchParams.get("size"), 20),
+    createdRange: isoBoundsToDateRange(createdFrom, createdTo),
+  };
+}
+
 export function AdminWithdrawPage() {
   const { t } = useI18n();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [boot] = useState(() => readWithdrawStateFromSearch(searchParams));
   const permissions = useAuthStore((s) => s.user?.permissions);
   const canWrite =
     permissions == null ||
     permissions.length === 0 ||
     permissions.includes("withdraw:write");
 
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
-  const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState(boot.page);
+  const [size, setSize] = useState(boot.size);
+  const [expanded, setExpanded] = useState(() => hasAdvancedWithdrawFilters(boot.filters));
   const [exporting, setExporting] = useState(false);
   const [approveRow, setApproveRow] = useState<WithdrawOrderListItem | null>(null);
   const [rejectRow, setRejectRow] = useState<WithdrawOrderListItem | null>(null);
@@ -128,17 +176,17 @@ export function AdminWithdrawPage() {
     return `${WITHDRAW_COLUMN_WIDTH[col]} ${WITHDRAW_COLUMN_ALIGN[col]} whitespace-nowrap px-3 py-2.5`;
   }
 
-  const [qDraft, setQDraft] = useState("");
-  const [statusDraft, setStatusDraft] = useState<WithdrawStatus | null>(null);
-  const [ownerDraft, setOwnerDraft] = useState<WithdrawOwnerType | null>(null);
-  const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(null);
-  const [filters, setFilters] = useState<{
-    q?: string;
-    status?: WithdrawStatus;
-    ownerType?: WithdrawOwnerType;
-    createdFrom?: string;
-    createdTo?: string;
-  }>({});
+  const [qDraft, setQDraft] = useState(boot.filters.q ?? "");
+  const [statusDraft, setStatusDraft] = useState<WithdrawStatus | null>(
+    boot.filters.status ?? null,
+  );
+  const [ownerDraft, setOwnerDraft] = useState<WithdrawOwnerType | null>(
+    boot.filters.ownerType ?? null,
+  );
+  const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(
+    boot.createdRange,
+  );
+  const [filters, setFilters] = useState<WithdrawFilters>(boot.filters);
 
   const statusOptions = useMemo(
     () =>
@@ -217,10 +265,25 @@ export function AdminWithdrawPage() {
     };
   }
 
+  function syncUrl(next: WithdrawFilters, nextPage: number, nextSize: number) {
+    const qs = buildQueryString({
+      q: next.q,
+      status: next.status,
+      ownerType: next.ownerType,
+      createdFrom: next.createdFrom,
+      createdTo: next.createdTo,
+      page: nextPage > 0 ? nextPage : undefined,
+      size: nextSize !== 20 ? nextSize : undefined,
+    });
+    router.replace(qs ? `${ROUTES.withdraw}?${qs}` : ROUTES.withdraw);
+  }
+
   function applyFilters() {
     const next = buildFiltersFromDraft();
     setPage(0);
     setFilters(next);
+    if (hasAdvancedWithdrawFilters(next)) setExpanded(true);
+    syncUrl(next, 0, size);
   }
 
   function onSearch(e: FormEvent) {
@@ -241,6 +304,18 @@ export function AdminWithdrawPage() {
     setCreatedRangeDraft(null);
     setPage(0);
     setFilters({});
+    syncUrl({}, 0, size);
+  }
+
+  function onPageChange(nextPage: number) {
+    setPage(nextPage);
+    syncUrl(filters, nextPage, size);
+  }
+
+  function onPageSizeChange(nextSize: number) {
+    setSize(nextSize);
+    setPage(0);
+    syncUrl(filters, 0, nextSize);
   }
 
   async function onExport() {
@@ -492,11 +567,8 @@ export function AdminWithdrawPage() {
             pageSize={size}
             total={total}
             loading={loading}
-            onPageChange={setPage}
-            onPageSizeChange={(n) => {
-              setSize(n);
-              setPage(0);
-            }}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
             rangeLabel={t("withdraw.range", { from, to, total })}
           />
         }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   IconActivity,
   IconArrowIn,
@@ -75,8 +76,16 @@ import {
   type AutoRefreshSeconds,
 } from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
+import { ROUTES } from "@/lib/constants/routes";
+import { useMerchantAgentFilterOptions } from "@/lib/options/use-merchant-agent-filter-options";
 import { ApiError } from "@/lib/types/api";
 import { useAuthStore } from "@/features/auth/store";
+import {
+  buildQueryString,
+  oneOf,
+  parseNonNegInt,
+  parsePageSize,
+} from "@/lib/url/list-search-params";
 
 type JsonModalState = {
   title: string;
@@ -87,6 +96,35 @@ const EMPTY_CALLBACK_LIST = {
   rows: [] as CallbackLogListItem[],
   total: 0,
 };
+
+type CallbackFilters = {
+  externalRequestId?: string;
+  type?: CallbackType;
+  direction?: CallbackDirection;
+  status?: CallbackDeliveryStatus;
+  merchantId?: string;
+};
+
+function readCallbackStateFromSearch(searchParams: {
+  get(name: string): string | null;
+}): {
+  filters: CallbackFilters;
+  page: number;
+  size: number;
+} {
+  const filters: CallbackFilters = {
+    externalRequestId: searchParams.get("externalRequestId")?.trim() || undefined,
+    type: oneOf(searchParams.get("type"), CALLBACK_TYPE_OPTIONS) ?? undefined,
+    direction: oneOf(searchParams.get("direction"), CALLBACK_DIRECTION_OPTIONS) ?? undefined,
+    status: oneOf(searchParams.get("status"), CALLBACK_STATUS_OPTIONS) ?? undefined,
+    merchantId: searchParams.get("merchantId")?.trim() || undefined,
+  };
+  return {
+    filters,
+    page: parseNonNegInt(searchParams.get("page"), 0),
+    size: parsePageSize(searchParams.get("size"), 20),
+  };
+}
 
 function HttpStatusCell({ status }: { status?: number | null }) {
   if (status == null) return <span className="text-label text-muted">—</span>;
@@ -138,6 +176,7 @@ function IdCell({
   compact = false,
   onOpen,
   openLabel,
+  opening = false,
 }: {
   value: string;
   copyLabel: string;
@@ -145,20 +184,22 @@ function IdCell({
   compact?: boolean;
   onOpen?: () => void;
   openLabel?: string;
+  opening?: boolean;
 }) {
   const display = compact ? shortId(value) : value;
   const textClass = mono
-    ? "truncate font-mono text-label text-ink-secondary"
-    : "truncate text-label font-medium text-ink";
+    ? "min-w-0 truncate font-mono text-label text-ink-secondary"
+    : "min-w-0 truncate text-label font-medium text-ink";
 
   return (
-    <div className="flex min-w-0 items-center gap-1.5">
+    <div className="flex min-w-0 items-center gap-1">
       {onOpen ? (
         <button
           type="button"
-          className={`${textClass} text-left transition hover:text-link-hover hover:underline`}
+          className={`${textClass} text-left transition hover:text-link-hover hover:underline disabled:opacity-60`}
           title={openLabel ? `${openLabel}: ${value}` : value}
           onClick={onOpen}
+          disabled={opening}
         >
           {display}
         </button>
@@ -167,7 +208,7 @@ function IdCell({
           {display}
         </span>
       )}
-      <CopyButton value={value} label={copyLabel} />
+      <CopyButton value={value} label={copyLabel} size="sm" />
     </div>
   );
 }
@@ -188,6 +229,9 @@ function callbackTypeLabel(
 
 export function CallbackLogsPage() {
   const { t } = useI18n();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [boot] = useState(() => readCallbackStateFromSearch(searchParams));
   const permissions = useAuthStore((s) => s.user?.permissions);
   // Fail-closed: missing permissions means no privileged actions.
   const canResend = Boolean(permissions?.includes("callbacks:resend"));
@@ -197,22 +241,29 @@ export function CallbackLogsPage() {
   const [payoutDetail, setPayoutDetail] = useState<PayoutOrderListItem | null>(null);
   const [finalizePayin, setFinalizePayin] = useState<PayinOrderListItem | null>(null);
   const [finalizePayout, setFinalizePayout] = useState<PayoutOrderListItem | null>(null);
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const [page, setPage] = useState(boot.page);
+  const [size, setSize] = useState(boot.size);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
 
-  const [externalIdDraft, setExternalIdDraft] = useState("");
-  const [typeDraft, setTypeDraft] = useState<CallbackType | null>(null);
-  const [directionDraft, setDirectionDraft] = useState<CallbackDirection | null>(null);
-  const [statusDraft, setStatusDraft] = useState<CallbackDeliveryStatus | null>(null);
+  const [externalIdDraft, setExternalIdDraft] = useState(
+    boot.filters.externalRequestId ?? "",
+  );
+  const [typeDraft, setTypeDraft] = useState<CallbackType | null>(
+    boot.filters.type ?? null,
+  );
+  const [directionDraft, setDirectionDraft] = useState<CallbackDirection | null>(
+    boot.filters.direction ?? null,
+  );
+  const [statusDraft, setStatusDraft] = useState<CallbackDeliveryStatus | null>(
+    boot.filters.status ?? null,
+  );
+  const [merchantDraft, setMerchantDraft] = useState<string | null>(
+    boot.filters.merchantId ?? null,
+  );
 
-  const [filters, setFilters] = useState<{
-    externalRequestId?: string;
-    type?: CallbackType;
-    direction?: CallbackDirection;
-    status?: CallbackDeliveryStatus;
-  }>({});
+  const [filters, setFilters] = useState<CallbackFilters>(boot.filters);
+  const { merchantOpts } = useMerchantAgentFilterOptions();
 
   const [jsonModal, setJsonModal] = useState<JsonModalState>(null);
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
@@ -280,14 +331,19 @@ export function CallbackLogsPage() {
   useAutoRefresh(refresh, { enabled: autoRefresh, intervalSec: autoRefreshSec });
 
   const hasFilters = Boolean(
-    filters.externalRequestId || filters.type || filters.direction || filters.status,
+    filters.externalRequestId ||
+      filters.type ||
+      filters.direction ||
+      filters.status ||
+      filters.merchantId,
   );
   const canReset =
     hasFilters ||
     Boolean(externalIdDraft) ||
     typeDraft != null ||
     directionDraft != null ||
-    statusDraft != null;
+    statusDraft != null ||
+    merchantDraft != null;
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
 
@@ -300,21 +356,39 @@ export function CallbackLogsPage() {
       type: CallbackType | null;
       direction: CallbackDirection | null;
       status: CallbackDeliveryStatus | null;
+      merchantId: string | null;
     }>,
   ) {
-    const next = {
+    const nextDraft = {
       type: typeDraft,
       direction: directionDraft,
       status: statusDraft,
+      merchantId: merchantDraft,
       ...overrides,
     };
-    setPage(0);
-    setFilters({
+    const next: CallbackFilters = {
       externalRequestId: externalIdDraft.trim() || undefined,
-      type: next.type ?? undefined,
-      direction: next.direction ?? undefined,
-      status: next.status ?? undefined,
+      type: nextDraft.type ?? undefined,
+      direction: nextDraft.direction ?? undefined,
+      status: nextDraft.status ?? undefined,
+      merchantId: nextDraft.merchantId ?? undefined,
+    };
+    setPage(0);
+    setFilters(next);
+    syncUrl(next, 0, size);
+  }
+
+  function syncUrl(next: CallbackFilters, nextPage: number, nextSize: number) {
+    const qs = buildQueryString({
+      externalRequestId: next.externalRequestId,
+      type: next.type,
+      direction: next.direction,
+      status: next.status,
+      merchantId: next.merchantId,
+      page: nextPage > 0 ? nextPage : undefined,
+      size: nextSize !== 20 ? nextSize : undefined,
     });
+    router.replace(qs ? `${ROUTES.callbackLogs}?${qs}` : ROUTES.callbackLogs);
   }
 
   function onSearch(e: FormEvent) {
@@ -327,8 +401,21 @@ export function CallbackLogsPage() {
     setTypeDraft(null);
     setDirectionDraft(null);
     setStatusDraft(null);
+    setMerchantDraft(null);
     setFilters({});
     setPage(0);
+    syncUrl({}, 0, size);
+  }
+
+  function onPageChange(nextPage: number) {
+    setPage(nextPage);
+    syncUrl(filters, nextPage, size);
+  }
+
+  function onPageSizeChange(nextSize: number) {
+    setSize(nextSize);
+    setPage(0);
+    syncUrl(filters, 0, nextSize);
   }
 
   function openRequest(row: CallbackLogListItem) {
@@ -363,46 +450,31 @@ export function CallbackLogsPage() {
   }
 
   async function openOrderDetail(row: CallbackLogListItem) {
-    const orderType = normalizeOrderType(row.type);
-    if (!orderType || openingOrderId) return;
+    const orderType =
+      normalizeOrderType(row.type) ??
+      normalizeOrderType(String(row.requestBody?.type ?? ""));
+    if (!orderType || !row.refId || openingOrderId) return;
 
     setOpeningOrderId(row.id);
     try {
       if (orderType === "payin") {
-        const data = await payinApi.list({
-          q: row.externalRequestId,
-          page: 0,
-          size: 20,
-        });
-        const match =
-          data.items.find((o) => o.id === row.refId) ??
-          data.items.find((o) => o.requestId === row.externalRequestId) ??
-          data.items[0];
-        if (!match) {
-          toast.error(t("callbackLogs.orderNotFound"));
-          return;
-        }
+        const match = await payinApi.get(row.refId);
         setPayoutDetail(null);
         setPayinDetail(match);
         return;
       }
 
-      const data = await payoutApi.list({
-        q: row.externalRequestId,
-        page: 0,
-        size: 20,
-      });
-      const match =
-        data.items.find((o) => o.id === row.refId) ??
-        data.items.find((o) => o.requestId === row.externalRequestId) ??
-        data.items[0];
-      if (!match) {
-        toast.error(t("callbackLogs.orderNotFound"));
-        return;
-      }
+      const match = await payoutApi.get(row.refId);
       setPayinDetail(null);
       setPayoutDetail(match);
     } catch (e) {
+      if (
+        e instanceof ApiError &&
+        (e.code === "PAYIN_NOT_FOUND" || e.code === "PAYOUT_NOT_FOUND")
+      ) {
+        toast.error(t("callbackLogs.orderNotFound"));
+        return;
+      }
       const msg = e instanceof ApiError ? e.message : t("callbackLogs.orderLoadError");
       toast.error(t("callbackLogs.orderLoadError"), msg);
     } finally {
@@ -448,7 +520,7 @@ export function CallbackLogsPage() {
           loading={loading}
           searchLabel={t("callbackLogs.search")}
           resetLabel={t("callbackLogs.reset")}
-          fieldsClassName="lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_repeat(3,minmax(9rem,10rem))]"
+          fieldsClassName="lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_repeat(4,minmax(9rem,11rem))]"
         >
           <div className="min-w-0 sm:col-span-2 xl:col-span-1">
             <SearchInput
@@ -457,6 +529,21 @@ export function CallbackLogsPage() {
               onChange={setExternalIdDraft}
               placeholder={t("callbackLogs.filterExternalIdPlaceholder")}
               label={t("callbackLogs.filterExternalId")}
+            />
+          </div>
+          <div className="min-w-0">
+            <Select
+              id="cb-merchant"
+              size="md"
+              options={merchantOpts}
+              value={merchantDraft}
+              onChange={(v) => {
+                setMerchantDraft(v);
+                applyFilters({ merchantId: v });
+              }}
+              placeholder={t("callbackLogs.filterMerchant")}
+              clearable
+              aria-label={t("callbackLogs.filterMerchant")}
             />
           </div>
           <div className="min-w-0">
@@ -526,11 +613,8 @@ export function CallbackLogsPage() {
             pageSize={size}
             total={total}
             loading={loading}
-            onPageChange={setPage}
-            onPageSizeChange={(s) => {
-              setSize(s);
-              setPage(0);
-            }}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
             rangeLabel={t("callbackLogs.range", { from, to, total })}
           />
         }
@@ -681,7 +765,18 @@ export function CallbackLogsPage() {
               </tr>
             ) : null}
 
-            {rows.map((row) => (
+            {rows.map((row) => {
+              const canOpenOrder = Boolean(
+                row.refId &&
+                  (normalizeOrderType(row.type) ||
+                    normalizeOrderType(String(row.requestBody?.type ?? ""))),
+              );
+              const openOrder = canOpenOrder
+                ? () => void openOrderDetail(row)
+                : undefined;
+              const opening = openingOrderId === row.id;
+
+              return (
               <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
                 {show.externalId ? (
                   <td className="px-3 py-2.5">
@@ -689,11 +784,8 @@ export function CallbackLogsPage() {
                       value={row.externalRequestId}
                       copyLabel={t("callbackLogs.copyExternalId")}
                       openLabel={t("callbackLogs.openOrder")}
-                      onOpen={
-                        normalizeOrderType(row.type)
-                          ? () => void openOrderDetail(row)
-                          : undefined
-                      }
+                      onOpen={openOrder}
+                      opening={opening}
                     />
                   </td>
                 ) : null}
@@ -704,6 +796,9 @@ export function CallbackLogsPage() {
                       copyLabel={t("callbackLogs.copyRefId")}
                       mono
                       compact
+                      openLabel={t("callbackLogs.openOrder")}
+                      onOpen={openOrder}
+                      opening={opening}
                     />
                   </td>
                 ) : null}
@@ -831,7 +926,8 @@ export function CallbackLogsPage() {
                   </td>
                 ) : null}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </TableCard>

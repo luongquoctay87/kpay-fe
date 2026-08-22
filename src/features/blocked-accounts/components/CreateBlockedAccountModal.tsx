@@ -86,9 +86,12 @@ export function CreateBlockedAccountModal({ onClose, onCreated }: CreateBlockedA
       return;
     }
 
-    const digits = accountNumber.trim().replace(/\D/g, "");
-    if (!digits) {
-      setError(t("blockedAccounts.errorDigits"));
+    const digits = accountNumber.trim();
+    // Digits only — do not strip letters (e.g. 12AB34 must fail BLK-007, not become 1234).
+    if (!/^\d+$/.test(digits)) {
+      const msg = t("blockedAccounts.errorDigits");
+      setError(msg);
+      toast.error(msg);
       return;
     }
 

@@ -180,6 +180,12 @@ const NAV: NavEntry[] = [
         icon: <IconUsers />,
       },
       {
+        href: ROUTES.customerTransferContent,
+        labelKey: "nav.settingsTransferContent",
+        icon: <IconFileText />,
+        permission: "settings:read",
+      },
+      {
         href: ROUTES.customerLedgers,
         labelKey: "nav.customerLedgers",
         icon: <IconFileText />,
@@ -215,12 +221,6 @@ const NAV: NavEntry[] = [
     labelKey: "nav.settings",
     icon: <IconSettings />,
     children: [
-      {
-        href: ROUTES.settingsTransferContent,
-        labelKey: "nav.settingsTransferContent",
-        icon: <IconFileText />,
-        permission: "settings:read",
-      },
       {
         href: ROUTES.settingsUsers,
         labelKey: "nav.settingsUsers",
@@ -259,11 +259,6 @@ const NAV: NavEntry[] = [
             href: ROUTES.balanceMovements,
             labelKey: "nav.balanceMovements",
             icon: <IconBell />,
-          },
-          {
-            href: ROUTES.bankBalances,
-            labelKey: "nav.bankBalances",
-            icon: <IconWallet />,
           },
           {
             href: ROUTES.blockedAccounts,

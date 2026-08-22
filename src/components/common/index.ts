@@ -27,6 +27,7 @@ export {
 export {
   DateRangeFilter,
   dateRangeToIsoBounds,
+  isoBoundsToDateRange,
   type DateRangeValue,
 } from "@/components/common/DateRangeFilter";
 export { DateTimeText } from "@/components/common/DateTimeText";

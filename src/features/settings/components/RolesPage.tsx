@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   IconActivity,
@@ -39,11 +39,33 @@ import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
 import { useRequiredFields } from "@/lib/forms/use-required-fields";
 import { ApiError } from "@/lib/types/api";
+import {
+  buildQueryString,
+  isActiveDraftFromFlag,
+  parseIsActiveFlag,
+  parseNonNegInt,
+  parsePageSize,
+} from "@/lib/url/list-search-params";
 
 const EMPTY_LIST = {
   rows: [] as RoleItem[],
   total: 0,
 };
+
+type RolesFilters = { q?: string; isActive?: boolean };
+
+function readRolesStateFromSearch(searchParams: {
+  get(name: string): string | null;
+}): { filters: RolesFilters; page: number; size: number } {
+  return {
+    filters: {
+      q: searchParams.get("q")?.trim() || undefined,
+      isActive: parseIsActiveFlag(searchParams.get("isActive")),
+    },
+    page: parseNonNegInt(searchParams.get("page"), 0),
+    size: parsePageSize(searchParams.get("size"), 20),
+  };
+}
 
 /** Matches CreateRoleReq @Pattern after lowercase. */
 const ROLE_CODE_RE = /^[a-z][a-z0-9_]{1,31}$/;
@@ -224,6 +246,8 @@ function CreateRoleModal({
 export function RolesPage() {
   const { t } = useI18n();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [boot] = useState(() => readRolesStateFromSearch(searchParams));
   const me = useAuthStore((s) => s.user);
   const canAccess = hasAdminStaffRole(me);
 
@@ -233,12 +257,14 @@ export function RolesPage() {
     }
   }, [me, canAccess, router]);
 
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const [page, setPage] = useState(boot.page);
+  const [size, setSize] = useState(boot.size);
   const [showCreate, setShowCreate] = useState(false);
-  const [qDraft, setQDraft] = useState("");
-  const [activeDraft, setActiveDraft] = useState<string | null>(null);
-  const [filters, setFilters] = useState<{ q?: string; isActive?: boolean }>({});
+  const [qDraft, setQDraft] = useState(boot.filters.q ?? "");
+  const [activeDraft, setActiveDraft] = useState<string | null>(
+    isActiveDraftFromFlag(boot.filters.isActive),
+  );
+  const [filters, setFilters] = useState<RolesFilters>(boot.filters);
 
   const statusOptions = useMemo(
     () => [
@@ -294,11 +320,23 @@ export function RolesPage() {
   const inactiveCount = filtered.filter((r) => !r.isActive).length;
 
   function applyFilters() {
-    setPage(0);
-    setFilters({
+    const next: RolesFilters = {
       q: qDraft.trim() || undefined,
       isActive: activeDraft != null ? activeDraft === "true" : undefined,
+    };
+    setPage(0);
+    setFilters(next);
+    syncUrl(next, 0, size);
+  }
+
+  function syncUrl(next: RolesFilters, nextPage: number, nextSize: number) {
+    const qs = buildQueryString({
+      q: next.q,
+      isActive: next.isActive === undefined ? undefined : String(next.isActive),
+      page: nextPage > 0 ? nextPage : undefined,
+      size: nextSize !== 20 ? nextSize : undefined,
     });
+    router.replace(qs ? `${ROUTES.settingsRoles}?${qs}` : ROUTES.settingsRoles);
   }
 
   function onSearch(e: FormEvent) {
@@ -318,6 +356,18 @@ export function RolesPage() {
     setActiveDraft(null);
     setPage(0);
     setFilters({});
+    syncUrl({}, 0, size);
+  }
+
+  function onPageChange(nextPage: number) {
+    setPage(nextPage);
+    syncUrl(filters, nextPage, size);
+  }
+
+  function onPageSizeChange(nextSize: number) {
+    setSize(nextSize);
+    setPage(0);
+    syncUrl(filters, 0, nextSize);
   }
 
   if (!canAccess) {
@@ -424,11 +474,8 @@ export function RolesPage() {
             pageSize={size}
             total={total}
             loading={loading}
-            onPageChange={setPage}
-            onPageSizeChange={(s: number) => {
-              setSize(s);
-              setPage(0);
-            }}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
             rangeLabel={t("settings.range", { from, to, total })}
           />
         }

@@ -1,21 +1,28 @@
 "use client";
 
+import { cn } from "@/lib/cn";
+
 export function PasswordVisibilityToggle({
   visible,
   onToggle,
   showLabel,
   hideLabel,
+  className,
 }: {
   visible: boolean;
   onToggle: () => void;
   showLabel: string;
   hideLabel: string;
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onToggle}
-      className="flex items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink"
+      className={cn(
+        "inline-flex items-center justify-center rounded text-muted transition hover:bg-hover hover:text-ink",
+        className ?? "p-1",
+      )}
       aria-label={visible ? hideLabel : showLabel}
     >
       {visible ? (

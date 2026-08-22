@@ -25,6 +25,7 @@ const PAYIN_STEPS: readonly PipelineStepDef[] = [
   { stage: "payin.matched" },
   { stage: "wallet.credit" },
   { stage: "payin.finalized", optional: true },
+  { stage: "callback.outbound", optional: true, errorAlts: ["callback.failed"] },
 ];
 
 const PAYOUT_STEPS: readonly PipelineStepDef[] = [
@@ -32,6 +33,7 @@ const PAYOUT_STEPS: readonly PipelineStepDef[] = [
   { stage: "payout.disburse" },
   { stage: "bank.outbound", optional: true },
   { stage: "wallet.capture", alts: ["wallet.release"] },
+  { stage: "callback.outbound", optional: true, errorAlts: ["callback.failed"] },
 ];
 
 const WITHDRAW_STEPS: readonly PipelineStepDef[] = [
@@ -74,6 +76,7 @@ export function pipelineKindFromEvent(
   }
   if (row.stage.startsWith("payout.")) return "payout";
   if (row.stage.startsWith("withdraw.")) return "withdraw";
+  // Callback stages alone need order FK / correlation — already handled above.
   return null;
 }
 

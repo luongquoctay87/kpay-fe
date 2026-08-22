@@ -29,6 +29,10 @@ export const payoutApi = {
     );
   },
 
+  get(id: string): Promise<PayoutOrderListItem> {
+    return unwrap(apiClient.get(`/payout-orders/${id}`));
+  },
+
   async export(params: Omit<PayoutOrderListParams, "page" | "size"> = {}): Promise<void> {
     const res = await apiClient.get("/payout-orders/export", {
       params: {

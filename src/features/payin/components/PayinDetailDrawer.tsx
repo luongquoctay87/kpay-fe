@@ -22,6 +22,15 @@ function feePercent(row: PayinOrderListItem): string {
   return ((row.fee / base) * 100).toFixed(2);
 }
 
+/** Strip merchant webhook URL from create-request JSON shown in Admin detail. */
+function sanitizeCreateRequestJson(value: unknown): unknown {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+  const { callbackUrl: _callbackUrl, ...rest } = value as Record<string, unknown>;
+  return rest;
+}
+
 function DetailRow({
   label,
   children,
@@ -191,7 +200,7 @@ export function PayinDetailDrawer({
           <DetailRow label={t("payin.detailCreateRequest")}>
             {row.createRequestJson ? (
               <pre className="max-h-48 overflow-auto rounded border border-edge bg-canvas p-2 font-mono text-caption whitespace-pre-wrap">
-                {JSON.stringify(row.createRequestJson, null, 2)}
+                {JSON.stringify(sanitizeCreateRequestJson(row.createRequestJson), null, 2)}
               </pre>
             ) : (
               "—"

@@ -7,8 +7,9 @@ import {
   useState,
   type FormEvent,
   type KeyboardEvent,
+  type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   IconActivity,
   IconArrowIn,
@@ -16,6 +17,7 @@ import {
   IconBank,
   IconBell,
   IconChevron,
+  IconClock,
   IconGlobe,
   IconHash,
   IconKey,
@@ -27,11 +29,14 @@ import {
   IconSearch,
   IconSmartphone,
   IconUser,
+  IconWallet,
 } from "@/components/icons/NavIcons";
 import {
   ColumnHeader,
   CopyButton,
+  DateTimeText,
   FilterField,
+  MoneyAmount,
   PageHeader,
   Pagination,
   SearchInput,
@@ -76,7 +81,93 @@ import {
 import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
+import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
+import {
+  buildQueryString,
+  isActiveDraftFromFlag,
+  oneOf,
+  parseIsActiveFlag,
+  parseNonNegInt,
+  parsePageSize,
+} from "@/lib/url/list-search-params";
+
+const BALANCE_CHECK_STATUS_OPTIONS = ["ok", "error", "never"] as const;
+
+type BankAccountFilters = {
+  q?: string;
+  status?: BankAccountStatus;
+  accountType?: BankAccountType;
+  canCollect?: boolean;
+  canDisburse?: boolean;
+  balanceCheckStatus?: string;
+};
+
+function hasAdvancedBankAccountFilters(f: BankAccountFilters): boolean {
+  return Boolean(
+    f.status ||
+      f.accountType ||
+      f.canCollect != null ||
+      f.canDisburse != null ||
+      f.balanceCheckStatus,
+  );
+}
+
+function readBankAccountsStateFromSearch(searchParams: {
+  get(name: string): string | null;
+}): { filters: BankAccountFilters; page: number; size: number } {
+  return {
+    filters: {
+      q: searchParams.get("q")?.trim() || undefined,
+      status: oneOf(searchParams.get("status"), BANK_ACCOUNT_STATUS_OPTIONS) ?? undefined,
+      accountType:
+        oneOf(searchParams.get("accountType"), BANK_ACCOUNT_TYPE_OPTIONS) ?? undefined,
+      canCollect: parseIsActiveFlag(searchParams.get("canCollect")),
+      canDisburse: parseIsActiveFlag(searchParams.get("canDisburse")),
+      balanceCheckStatus:
+        oneOf(searchParams.get("balanceCheckStatus"), BALANCE_CHECK_STATUS_OPTIONS) ??
+        undefined,
+    },
+    page: parseNonNegInt(searchParams.get("page"), 0),
+    size: parsePageSize(searchParams.get("size"), 20),
+  };
+}
+
+function syncBalanceErrorMessage(err: unknown, t: (k: string) => string): string {
+  if (err instanceof ApiError) {
+    if (err.code === "ACCOUNT_BUSY") return t("bankBalances.errorBusy");
+    if (err.code === "ACB_CREDENTIALS_MISSING") return t("bankBalances.errorCredentials");
+    if (err.code === "ACB_WORKER_DISABLED") return t("bankBalances.errorWorkerDisabled");
+    if (err.code === "ACB_WORKER_ERROR") return err.message || t("bankBalances.errorWorker");
+    if (err.code === "SERVICE_UNAVAILABLE") return t("bankBalances.errorUnavailable");
+    if (err.code === "FORBIDDEN") return t("bankBalances.errorForbidden");
+    if (err.code === "UNAUTHORIZED") return t("bankBalances.errorUnauthorized");
+    if (err.code === "RATE_LIMIT_EXCEEDED") return t("bankBalances.errorRateLimit");
+    return err.message;
+  }
+  return t("bankBalances.syncError");
+}
+
+function balanceCheckTone(status: string | null | undefined): "active" | "danger" | "disabled" {
+  const s = (status ?? "never").toLowerCase();
+  if (s === "ok") return "active";
+  if (s === "error") return "danger";
+  return "disabled";
+}
+
+function ActionTooltip({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span className="group relative inline-flex">
+      {children}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+      >
+        {label}
+      </span>
+    </span>
+  );
+}
 
 const EMPTY_STATS: BankAccountStats = {
   total: 0,
@@ -158,32 +249,49 @@ function coverageClass(count: number): string {
 export function BankAccountsPage() {
   const { t } = useI18n();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [boot] = useState(() => readBankAccountsStateFromSearch(searchParams));
   const permissions = useAuthStore((s) => s.user?.permissions);
   /** Fail-open when permissions not loaded yet. */
   const canWrite =
     permissions == null ||
     permissions.length === 0 ||
     permissions.includes("bank_accounts:write");
+  /** Fail-open; accept legacy bank_accounts / pull perms for balance sync. */
+  const canSync =
+    permissions == null ||
+    permissions.length === 0 ||
+    permissions.includes("bank_balances:sync") ||
+    permissions.includes("bank_accounts:write") ||
+    permissions.includes("bank_reconciliations:pull");
 
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const [page, setPage] = useState(boot.page);
+  const [size, setSize] = useState(boot.size);
   const [showCreate, setShowCreate] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() =>
+    hasAdvancedBankAccountFilters(boot.filters),
+  );
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
 
-  const [qDraft, setQDraft] = useState("");
-  const [statusDraft, setStatusDraft] = useState<BankAccountStatus | null>(null);
-  const [typeDraft, setTypeDraft] = useState<BankAccountType | null>(null);
-  const [collectDraft, setCollectDraft] = useState<string | null>(null);
-  const [disburseDraft, setDisburseDraft] = useState<string | null>(null);
+  const [qDraft, setQDraft] = useState(boot.filters.q ?? "");
+  const [statusDraft, setStatusDraft] = useState<BankAccountStatus | null>(
+    boot.filters.status ?? null,
+  );
+  const [typeDraft, setTypeDraft] = useState<BankAccountType | null>(
+    boot.filters.accountType ?? null,
+  );
+  const [collectDraft, setCollectDraft] = useState<string | null>(
+    isActiveDraftFromFlag(boot.filters.canCollect),
+  );
+  const [disburseDraft, setDisburseDraft] = useState<string | null>(
+    isActiveDraftFromFlag(boot.filters.canDisburse),
+  );
+  const [checkDraft, setCheckDraft] = useState<string | null>(
+    boot.filters.balanceCheckStatus ?? null,
+  );
 
-  const [filters, setFilters] = useState<{
-    q?: string;
-    status?: BankAccountStatus;
-    accountType?: BankAccountType;
-    canCollect?: boolean;
-    canDisburse?: boolean;
-  }>({});
+  const [filters, setFilters] = useState<BankAccountFilters>(boot.filters);
 
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
     defaultColumnVisibility,
@@ -227,6 +335,15 @@ export function BankAccountsPage() {
     [t],
   );
 
+  const checkOptions = useMemo(
+    () => [
+      { value: "ok", label: t("bankAccounts.checkOk") },
+      { value: "error", label: t("bankAccounts.checkError") },
+      { value: "never", label: t("bankAccounts.checkNever") },
+    ],
+    [t],
+  );
+
   const loadList = useCallback(
     async (signal?: AbortSignal) => {
       const data = await bankAccountApi.list({ ...filters, page, size, signal });
@@ -256,27 +373,47 @@ export function BankAccountsPage() {
       filters.status ||
       filters.accountType ||
       filters.canCollect != null ||
-      filters.canDisburse != null,
+      filters.canDisburse != null ||
+      filters.balanceCheckStatus,
   );
   const draftsDirty =
     Boolean(qDraft) ||
     statusDraft != null ||
     typeDraft != null ||
     collectDraft != null ||
-    disburseDraft != null;
+    disburseDraft != null ||
+    checkDraft != null;
   const canReset = hasFilters || draftsDirty;
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
 
   function applyFilters() {
-    setPage(0);
-    setFilters({
+    const next: BankAccountFilters = {
       q: qDraft.trim() || undefined,
       status: statusDraft ?? undefined,
       accountType: typeDraft ?? undefined,
       canCollect: collectDraft != null ? collectDraft === "true" : undefined,
       canDisburse: disburseDraft != null ? disburseDraft === "true" : undefined,
+      balanceCheckStatus: checkDraft || undefined,
+    };
+    setPage(0);
+    setFilters(next);
+    if (hasAdvancedBankAccountFilters(next)) setExpanded(true);
+    syncUrl(next, 0, size);
+  }
+
+  function syncUrl(next: BankAccountFilters, nextPage: number, nextSize: number) {
+    const qs = buildQueryString({
+      q: next.q,
+      status: next.status,
+      accountType: next.accountType,
+      canCollect: next.canCollect === undefined ? undefined : String(next.canCollect),
+      canDisburse: next.canDisburse === undefined ? undefined : String(next.canDisburse),
+      balanceCheckStatus: next.balanceCheckStatus,
+      page: nextPage > 0 ? nextPage : undefined,
+      size: nextSize !== 20 ? nextSize : undefined,
     });
+    router.replace(qs ? `${ROUTES.bankAccounts}?${qs}` : ROUTES.bankAccounts);
   }
 
   function onSearch(e: FormEvent) {
@@ -297,8 +434,28 @@ export function BankAccountsPage() {
     setTypeDraft(null);
     setCollectDraft(null);
     setDisburseDraft(null);
+    setCheckDraft(null);
     setFilters({});
     setPage(0);
+    syncUrl({}, 0, size);
+  }
+
+  function onPageChange(nextPage: number) {
+    setPage(nextPage);
+    syncUrl(filters, nextPage, size);
+  }
+
+  function onPageSizeChange(nextSize: number) {
+    setSize(nextSize);
+    setPage(0);
+    syncUrl(filters, 0, nextSize);
+  }
+
+  function balanceCheckLabel(status: string | null | undefined): string {
+    const s = (status ?? "never").toLowerCase();
+    if (s === "ok") return t("bankAccounts.checkOk");
+    if (s === "error") return t("bankAccounts.checkError");
+    return t("bankAccounts.checkNever");
   }
 
   async function onToggleFlag(
@@ -319,6 +476,28 @@ export function BankAccountsPage() {
       );
     } finally {
       setTogglingKey(null);
+    }
+  }
+
+  async function onSyncBalance(row: BankAccountListItem) {
+    const workerConfigured = row.workerConfigured ?? row.acbConfigured;
+    const workerEnabled = row.workerEnabled ?? false;
+    if (!workerConfigured || !workerEnabled) {
+      toast.error(t("bankBalances.syncDisabledHint"));
+      return;
+    }
+    setSyncingId(row.id);
+    try {
+      const res = await bankAccountApi.syncBalance({ bankAccountId: row.id });
+      toast.success(
+        t("bankAccounts.syncBalanceOk", { amount: formatMoney(res.lastKnownBalance) }),
+      );
+      await refresh();
+    } catch (err) {
+      toast.error(syncBalanceErrorMessage(err, t));
+      await refresh();
+    } finally {
+      setSyncingId(null);
     }
   }
 
@@ -365,7 +544,7 @@ export function BankAccountsPage() {
       >
         {expanded ? (
           <div className="flex flex-col gap-3.5">
-            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               <FilterField label={t("bankAccounts.filterStatus")} htmlFor="ba-filter-status">
                 <Select
                   id="ba-filter-status"
@@ -410,6 +589,18 @@ export function BankAccountsPage() {
                   value={disburseDraft}
                   onChange={setDisburseDraft}
                   placeholder={t("bankAccounts.filterPayoutAll")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("bankAccounts.filterCheck")} htmlFor="ba-filter-check">
+                <Select
+                  id="ba-filter-check"
+                  size="md"
+                  options={checkOptions}
+                  value={checkDraft}
+                  onChange={setCheckDraft}
+                  placeholder={t("bankAccounts.filterCheckAll")}
                   clearable
                   triggerClassName={filterControlClass}
                 />
@@ -521,11 +712,8 @@ export function BankAccountsPage() {
             pageSize={size}
             total={total}
             loading={loading}
-            onPageChange={setPage}
-            onPageSizeChange={(s) => {
-              setSize(s);
-              setPage(0);
-            }}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
             rangeLabel={t("bankAccounts.range", { from, to, total })}
           />
         }
@@ -552,6 +740,15 @@ export function BankAccountsPage() {
                   </ColumnHeader>
                 </th>
               ) : null}
+              {show.bank ? (
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.bank} ${BANK_ACCOUNT_COLUMN_ALIGN.bank} px-3 py-2.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconBank width={14} height={14} />}>
+                    {t("bankAccounts.colBank")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
               {show.holder ? (
                 <th
                   className={`${BANK_ACCOUNT_COLUMN_WIDTH.holder} ${BANK_ACCOUNT_COLUMN_ALIGN.holder} px-3 py-2.5`}
@@ -561,21 +758,39 @@ export function BankAccountsPage() {
                   </ColumnHeader>
                 </th>
               ) : null}
-              {show.bank ? (
-                <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.bank} ${BANK_ACCOUNT_COLUMN_ALIGN.bank} px-3 py-2.5`}
-                >
-                  <ColumnHeader icon={<IconBank width={14} height={14} />}>
-                    {t("bankAccounts.colBank")}
-                  </ColumnHeader>
-                </th>
-              ) : null}
               {show.accountType ? (
                 <th
                   className={`${BANK_ACCOUNT_COLUMN_WIDTH.accountType} ${BANK_ACCOUNT_COLUMN_ALIGN.accountType} px-3 py-2.5`}
                 >
                   <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
                     {t("bankAccounts.colAccountType")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.balance ? (
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.balance} ${BANK_ACCOUNT_COLUMN_ALIGN.balance} px-3 py-2.5`}
+                >
+                  <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                    {t("bankAccounts.colBalance")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.balanceCheckStatus ? (
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.balanceCheckStatus} ${BANK_ACCOUNT_COLUMN_ALIGN.balanceCheckStatus} px-3 py-2.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
+                    {t("bankAccounts.colBalanceCheckStatus")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.balanceCheckedAt ? (
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.balanceCheckedAt} ${BANK_ACCOUNT_COLUMN_ALIGN.balanceCheckedAt} px-3 py-2.5`}
+                >
+                  <ColumnHeader icon={<IconClock width={14} height={14} />}>
+                    {t("bankAccounts.colBalanceCheckedAt")}
                   </ColumnHeader>
                 </th>
               ) : null}
@@ -597,15 +812,6 @@ export function BankAccountsPage() {
                   </ColumnHeader>
                 </th>
               ) : null}
-              {show.rotation ? (
-                <th
-                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.rotation} ${BANK_ACCOUNT_COLUMN_ALIGN.rotation} px-3 py-2.5`}
-                >
-                  <ColumnHeader align="center" icon={<IconRefresh width={14} height={14} />}>
-                    {t("bankAccounts.colRotation")}
-                  </ColumnHeader>
-                </th>
-              ) : null}
               {show.disburse ? (
                 <th
                   className={`${BANK_ACCOUNT_COLUMN_WIDTH.disburse} ${BANK_ACCOUNT_COLUMN_ALIGN.disburse} px-3 py-2.5`}
@@ -621,6 +827,15 @@ export function BankAccountsPage() {
                 >
                   <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
                     {t("bankAccounts.colCoverage")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.rotation ? (
+                <th
+                  className={`${BANK_ACCOUNT_COLUMN_WIDTH.rotation} ${BANK_ACCOUNT_COLUMN_ALIGN.rotation} px-3 py-2.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconRefresh width={14} height={14} />}>
+                    {t("bankAccounts.colRotation")}
                   </ColumnHeader>
                 </th>
               ) : null}
@@ -670,14 +885,27 @@ export function BankAccountsPage() {
               </tr>
             ) : null}
 
-            {rows.map((row) => (
+            {rows.map((row) => {
+              const workerConfigured = row.workerConfigured ?? row.acbConfigured;
+              const workerEnabled = Boolean(row.workerEnabled);
+              const canRowSync = canSync && workerConfigured && workerEnabled;
+              const syncing = syncingId === row.id;
+              const syncHint = !workerConfigured
+                ? t("bankBalances.noCredentials")
+                : !workerEnabled
+                  ? t("bankBalances.workerOff")
+                  : row.balanceCheckStatus === "error" && row.balanceCheckError
+                    ? row.balanceCheckError
+                    : null;
+
+              return (
               <tr
                 key={row.id}
                 className={`group ${tableBodyRowClassName}`}
               >
                 {show.account ? (
                   <td className="sticky left-0 z-[1] bg-elevated px-3 py-2.5 group-hover:bg-surface/70">
-                    <div className="flex min-w-0 items-center gap-1.5">
+                    <div className="flex min-w-0 items-center gap-1">
                       <button
                         type="button"
                         className="min-w-0 truncate font-mono text-label leading-5 text-ink transition hover:text-link-hover hover:underline"
@@ -686,7 +914,7 @@ export function BankAccountsPage() {
                       >
                         {row.accountNumber}
                       </button>
-                      <span className="inline-flex shrink-0 items-center">
+                      <span className="inline-flex shrink-0 items-center gap-0.5">
                         <AcbKeyMark
                           configured={row.acbConfigured}
                           configuredLabel={t("bankAccounts.acbBadgeOn")}
@@ -702,6 +930,16 @@ export function BankAccountsPage() {
                     </div>
                   </td>
                 ) : null}
+                {show.bank ? (
+                  <td className="px-3 py-2.5 text-center">
+                    <span
+                      className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
+                      title={row.bankName}
+                    >
+                      {row.bankCode}
+                    </span>
+                  </td>
+                ) : null}
                 {show.holder ? (
                   <td className="truncate px-3 py-2.5" title={row.accountHolder}>
                     <button
@@ -713,21 +951,67 @@ export function BankAccountsPage() {
                     </button>
                   </td>
                 ) : null}
-                {show.bank ? (
-                  <td className="px-3 py-2.5">
-                    <span
-                      className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
-                      title={row.bankName}
-                    >
-                      {row.bankCode}
-                    </span>
-                  </td>
-                ) : null}
                 {show.accountType ? (
                   <td className="px-3 py-2.5 text-center">
                     <StatusBadge tone={BANK_ACCOUNT_TYPE_TONE[row.accountType]}>
                       {t(BANK_ACCOUNT_TYPE_LABEL_KEY[row.accountType])}
                     </StatusBadge>
+                  </td>
+                ) : null}
+                {show.balance ? (
+                  <td className="px-3 py-2.5">
+                    <div className="flex w-full items-center justify-end gap-2">
+                      <MoneyAmount
+                        value={row.lastKnownBalance}
+                        className="justify-end"
+                        amountClassName="text-label font-medium text-ink"
+                      />
+                      {canSync ? (
+                        <ActionTooltip
+                          label={
+                            !canRowSync
+                              ? t("bankBalances.syncDisabledHint")
+                              : syncing
+                                ? t("bankBalances.syncing")
+                                : t("bankAccounts.syncBalance")
+                          }
+                        >
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            iconOnly
+                            className="shrink-0 text-muted"
+                            leftIcon={<IconRefresh width={14} height={14} />}
+                            disabled={!canRowSync || syncing}
+                            loading={syncing}
+                            aria-label={
+                              syncing
+                                ? t("bankBalances.syncing")
+                                : t("bankAccounts.syncBalance")
+                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void onSyncBalance(row);
+                            }}
+                          />
+                        </ActionTooltip>
+                      ) : null}
+                    </div>
+                  </td>
+                ) : null}
+                {show.balanceCheckStatus ? (
+                  <td className="px-3 py-2.5 text-center">
+                    <span title={syncHint ?? undefined} className="inline-flex">
+                      <StatusBadge tone={balanceCheckTone(row.balanceCheckStatus)}>
+                        {balanceCheckLabel(row.balanceCheckStatus)}
+                      </StatusBadge>
+                    </span>
+                  </td>
+                ) : null}
+                {show.balanceCheckedAt ? (
+                  <td className="whitespace-nowrap px-3 py-2.5 text-label text-ink">
+                    <DateTimeText value={row.balanceCheckedAt} />
                   </td>
                 ) : null}
                 {show.status ? (
@@ -738,7 +1022,7 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.collect ? (
-                  <td className="px-3 py-2.5 text-center">
+                  <td className="px-2 py-2.5 text-center">
                     <div className="inline-flex items-center justify-center">
                       <Switch
                         checked={row.canCollect}
@@ -749,13 +1033,8 @@ export function BankAccountsPage() {
                     </div>
                   </td>
                 ) : null}
-                {show.rotation ? (
-                  <td className="px-3 py-2.5 text-center font-mono text-label tabular-nums text-ink">
-                    {row.rotationGroup != null ? row.rotationGroup : "—"}
-                  </td>
-                ) : null}
                 {show.disburse ? (
-                  <td className="px-3 py-2.5 text-center">
+                  <td className="px-2 py-2.5 text-center">
                     <div className="inline-flex items-center justify-center">
                       <Switch
                         checked={row.canDisburse}
@@ -768,13 +1047,18 @@ export function BankAccountsPage() {
                 ) : null}
                 {show.coverage ? (
                   <td
-                    className={`px-3 py-2.5 text-center font-mono text-label font-semibold tabular-nums ${coverageClass(row.configuredSourceCount)}`}
+                    className={`px-2 py-2.5 text-center font-mono text-label font-semibold tabular-nums ${coverageClass(row.configuredSourceCount)}`}
                   >
                     {row.configuredSourceCount}/3
                   </td>
                 ) : null}
+                {show.rotation ? (
+                  <td className="px-3 py-2.5 text-center font-mono text-label tabular-nums text-ink">
+                    {row.rotationGroup != null ? row.rotationGroup : "—"}
+                  </td>
+                ) : null}
                 {show.web ? (
-                  <td className="px-3 py-2.5 text-center">
+                  <td className="px-2 py-2.5 text-center">
                     <SourceMark
                       configured={row.webConfigured}
                       configuredLabel={t("bankAccounts.sourceConfigured")}
@@ -783,7 +1067,7 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.app ? (
-                  <td className="px-3 py-2.5 text-center">
+                  <td className="px-2 py-2.5 text-center">
                     <SourceMark
                       configured={row.appConfigured}
                       configuredLabel={t("bankAccounts.sourceConfigured")}
@@ -792,7 +1076,7 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
                 {show.notif ? (
-                  <td className="px-3 py-2.5 text-center">
+                  <td className="px-2 py-2.5 text-center">
                     <SourceMark
                       configured={row.notificationConfigured}
                       configuredLabel={t("bankAccounts.sourceConfigured")}
@@ -801,7 +1085,8 @@ export function BankAccountsPage() {
                   </td>
                 ) : null}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </TableCard>

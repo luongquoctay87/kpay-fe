@@ -35,6 +35,10 @@ export const payinApi = {
     );
   },
 
+  get(id: string): Promise<PayinOrderListItem> {
+    return unwrap(apiClient.get(`/payin-orders/${id}`));
+  },
+
   async export(params: Omit<PayinOrderListParams, "page" | "size"> = {}): Promise<void> {
     const res = await apiClient.get("/payin-orders/export", {
       params: {

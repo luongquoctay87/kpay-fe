@@ -4,17 +4,23 @@ import {
   saveStoredColumnVisibility,
 } from "@/lib/columns/storage";
 
-/** Toggleable data columns. */
+/**
+ * Column order = visual reading order:
+ * identity → balance → flags → coverage extras.
+ */
 export const BANK_ACCOUNT_COLUMNS = [
   "account",
-  "holder",
   "bank",
+  "holder",
   "accountType",
+  "balance",
+  "balanceCheckStatus",
+  "balanceCheckedAt",
   "status",
   "collect",
-  "rotation",
   "disburse",
   "coverage",
+  "rotation",
   "web",
   "app",
   "notif",
@@ -24,61 +30,73 @@ export type BankAccountColumn = (typeof BANK_ACCOUNT_COLUMNS)[number];
 
 export const BANK_ACCOUNT_COLUMN_LABEL_KEY: Record<BankAccountColumn, MessageKey> = {
   account: "bankAccounts.colAccount",
-  holder: "bankAccounts.colHolder",
   bank: "bankAccounts.colBank",
+  holder: "bankAccounts.colHolder",
   accountType: "bankAccounts.colAccountType",
+  balance: "bankAccounts.colBalance",
+  balanceCheckStatus: "bankAccounts.colBalanceCheckStatus",
+  balanceCheckedAt: "bankAccounts.colBalanceCheckedAt",
   status: "bankAccounts.colStatus",
   collect: "bankAccounts.colCollect",
-  rotation: "bankAccounts.colRotation",
   disburse: "bankAccounts.colDisburse",
   coverage: "bankAccounts.colCoverage",
+  rotation: "bankAccounts.colRotation",
   web: "bankAccounts.colWeb",
   app: "bankAccounts.colApp",
   notif: "bankAccounts.colNotif",
 };
 
-/** Widths as px — table-fixed distributes leftover so the row fills the card (no empty right gap). */
+/** Width classes — keep compact so the default view fits without heavy scroll. */
 export const BANK_ACCOUNT_COLUMN_WIDTH: Record<BankAccountColumn, string> = {
-  account: "w-[200px]",
-  holder: "w-[160px]",
-  bank: "w-[88px]",
-  accountType: "w-[104px]",
-  status: "w-[112px]",
-  collect: "w-[96px]",
-  rotation: "w-[88px]",
-  disburse: "w-[96px]",
-  coverage: "w-[80px]",
-  web: "w-[64px]",
-  app: "w-[64px]",
-  notif: "w-[72px]",
+  account: "w-[188px]",
+  bank: "w-[72px]",
+  holder: "w-[168px]",
+  accountType: "w-[92px]",
+  balance: "w-[168px]",
+  balanceCheckStatus: "w-[88px]",
+  balanceCheckedAt: "w-[128px]",
+  status: "w-[100px]",
+  collect: "w-[72px]",
+  disburse: "w-[72px]",
+  coverage: "w-[64px]",
+  rotation: "w-[72px]",
+  web: "w-[52px]",
+  app: "w-[52px]",
+  notif: "w-[64px]",
 };
 
 /** Pixel mins — drives horizontal scroll when the table is wider than the viewport. */
 export const BANK_ACCOUNT_COLUMN_MIN_PX: Record<BankAccountColumn, number> = {
-  account: 200,
-  holder: 160,
-  bank: 88,
-  accountType: 104,
-  status: 112,
-  collect: 96,
-  rotation: 88,
-  disburse: 96,
-  coverage: 80,
-  web: 64,
-  app: 64,
-  notif: 72,
+  account: 188,
+  bank: 72,
+  holder: 168,
+  accountType: 92,
+  balance: 168,
+  balanceCheckStatus: 88,
+  balanceCheckedAt: 128,
+  status: 100,
+  collect: 72,
+  disburse: 72,
+  coverage: 64,
+  rotation: 72,
+  web: 52,
+  app: 52,
+  notif: 64,
 };
 
 export const BANK_ACCOUNT_COLUMN_ALIGN: Record<BankAccountColumn, string> = {
   account: "text-left",
+  bank: "text-center",
   holder: "text-left",
-  bank: "text-left",
   accountType: "text-center",
+  balance: "text-right",
+  balanceCheckStatus: "text-center",
+  balanceCheckedAt: "text-left",
   status: "text-center",
   collect: "text-center",
-  rotation: "text-center",
   disburse: "text-center",
   coverage: "text-center",
+  rotation: "text-center",
   web: "text-center",
   app: "text-center",
   notif: "text-center",
@@ -86,16 +104,19 @@ export const BANK_ACCOUNT_COLUMN_ALIGN: Record<BankAccountColumn, string> = {
 
 export const DEFAULT_VISIBLE_COLUMNS: readonly BankAccountColumn[] = [
   "account",
-  "holder",
   "bank",
+  "holder",
   "accountType",
+  "balance",
+  "balanceCheckStatus",
   "status",
   "collect",
   "disburse",
   "coverage",
 ];
 
-export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.bank-accounts.columns";
+/** Bump when default column set/order changes so old localStorage does not fight the new layout. */
+export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.bank-accounts.columns.v2";
 
 export type ColumnVisibility = Record<BankAccountColumn, boolean>;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { DatePicker } from "antd";
-import type { Dayjs } from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import { cn } from "@/lib/cn";
 import { DATE_DISPLAY_FORMAT } from "@/lib/format/datetime";
 
@@ -71,4 +71,17 @@ export function dateRangeToIsoBounds(range: DateRangeValue): {
     from: from ? from.startOf("day").toISOString() : undefined,
     to: to ? to.endOf("day").toISOString() : undefined,
   };
+}
+
+/** Restore a date-range control from ISO bounds stored in the URL / API filters. */
+export function isoBoundsToDateRange(
+  from?: string | null,
+  to?: string | null,
+): DateRangeValue {
+  if (!from && !to) return null;
+  const start = from ? dayjs(from) : null;
+  const end = to ? dayjs(to) : null;
+  if ((start && !start.isValid()) || (end && !end.isValid())) return null;
+  if (!start && !end) return null;
+  return [start, end];
 }

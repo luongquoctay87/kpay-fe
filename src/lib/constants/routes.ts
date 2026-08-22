@@ -23,6 +23,10 @@ export const ROUTES = {
   customers: "/customers",
   /** Phase 2 #1 — lịch sử giao dịch ví khách hàng. */
   customerLedgers: "/customers/ledgers",
+  /** Rule NDCK — moved from Settings into Customers. */
+  customerTransferContent: "/customers/transfer-content",
+  customerTransferContentDetail: (id: string) =>
+    `/customers/transfer-content/${encodeURIComponent(id)}`,
   payin: "/payin",
   payout: "/payout",
   withdraw: "/withdraw",
@@ -42,12 +46,14 @@ export const ROUTES = {
   balanceMovements: "/banking/movements",
   /** Phase 2 #10 — tài khoản chặn (blacklist). */
   blockedAccounts: "/banking/blocked-accounts",
-  /** Phase 2 #11 — theo dõi số dư tài khoản. */
-  bankBalances: "/banking/balances",
+  /**
+   * Phase 2 #11 — số dư tài khoản (merged into bank accounts list).
+   * Kept for redirects from old bookmarks/menu links.
+   */
+  bankBalances: "/banking/accounts",
   /** Future: Tài nguyên › Ví điện tử. */
   ewalletRoot: "/ewallet",
   /** Phase 2 #2 — Cài đặt. */
-  settingsTransferContent: "/settings/transfer-content",
   settingsUsers: "/settings/users",
   settingsUserDetail: (id: string) => `/settings/users/${id}`,
   settingsRoles: "/settings/roles",

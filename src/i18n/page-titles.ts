@@ -11,6 +11,12 @@ export function getPageTitleKey(pathname: string): MessageKey {
   if (pathname.startsWith(`${ROUTES.agents}/`)) return "pages.agents";
   if (pathname.startsWith(ROUTES.agents)) return "pages.agents";
   if (pathname.startsWith(ROUTES.customerLedgers)) return "pages.customerLedgers";
+  if (pathname.startsWith(`${ROUTES.customerTransferContent}/`)) {
+    return "pages.settingsTransferContentDetail";
+  }
+  if (pathname.startsWith(ROUTES.customerTransferContent)) {
+    return "pages.settingsTransferContent";
+  }
   if (pathname === ROUTES.customers) return "pages.customers";
   if (pathname.startsWith(ROUTES.payin)) return "pages.payin";
   if (pathname.startsWith(ROUTES.payout)) return "pages.payout";
@@ -25,10 +31,6 @@ export function getPageTitleKey(pathname: string): MessageKey {
   }
   if (pathname.startsWith(ROUTES.balanceMovements)) return "pages.balanceMovements";
   if (pathname.startsWith(ROUTES.blockedAccounts)) return "pages.blockedAccounts";
-  if (pathname.startsWith(ROUTES.bankBalances)) return "pages.bankBalances";
-  if (pathname.startsWith(ROUTES.settingsTransferContent)) {
-    return "pages.settingsTransferContent";
-  }
   if (pathname.startsWith(ROUTES.settingsUsers + "/")) return "pages.settingsUserDetail";
   if (pathname.startsWith(ROUTES.settingsUsers)) return "pages.settingsUsers";
   if (pathname.startsWith(ROUTES.settingsRoles + "/")) return "pages.settingsRoleDetail";

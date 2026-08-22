@@ -59,6 +59,7 @@ export function stageNature(stage: string): StageNature {
     stage.includes("matched") ||
     stage.includes("approved") ||
     stage.includes("capture") ||
+    stage === "callback.outbound" ||
     stage.endsWith(".inbound")
   ) {
     return "success";

@@ -14,6 +14,7 @@ export const callbackLogApi = {
           type: params.type || undefined,
           direction: params.direction,
           status: params.status,
+          merchantId: params.merchantId || undefined,
           page: params.page ?? 0,
           size: params.size ?? 20,
         },

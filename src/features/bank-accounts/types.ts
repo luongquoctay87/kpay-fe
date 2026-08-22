@@ -33,6 +33,13 @@ export interface BankAccountListItem {
   configuredSourceCount: number;
   /** True when ACB AccountKeys row exists (secrets never returned). */
   acbConfigured: boolean;
+  /** Live balance snapshot from worker — not openingBalance. */
+  lastKnownBalance?: number | null;
+  balanceCheckedAt?: string | null;
+  balanceCheckStatus?: string | null;
+  balanceCheckError?: string | null;
+  workerConfigured?: boolean;
+  workerEnabled?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -66,6 +73,7 @@ export interface BankAccountListParams {
   accountType?: BankAccountType;
   canCollect?: boolean;
   canDisburse?: boolean;
+  balanceCheckStatus?: string;
   page?: number;
   size?: number;
   signal?: AbortSignal;
@@ -104,6 +112,18 @@ export interface UpdateBankAccountBody {
   webConfigured?: boolean;
   appConfigured?: boolean;
   notificationConfigured?: boolean;
+}
+
+export interface BankBalanceSyncBody {
+  bankAccountId: string;
+}
+
+export interface BankBalanceSyncResult {
+  bankAccountId: string;
+  lastKnownBalance?: number | null;
+  balanceCheckedAt?: string | null;
+  balanceCheckStatus: string;
+  balanceCheckError?: string | null;
 }
 
 export const BANK_ACCOUNT_STATUS_OPTIONS: BankAccountStatus[] = [

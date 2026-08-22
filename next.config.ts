@@ -81,7 +81,18 @@ const nextConfig: NextConfig = {
         destination: "/banking/blocked-accounts",
         permanent: false,
       },
-      { source: "/bank-balances", destination: "/banking/balances", permanent: false },
+      { source: "/bank-balances", destination: "/banking/accounts", permanent: false },
+      { source: "/banking/balances", destination: "/banking/accounts", permanent: false },
+      {
+        source: "/settings/transfer-content",
+        destination: "/customers/transfer-content",
+        permanent: false,
+      },
+      {
+        source: "/settings/transfer-content/:id",
+        destination: "/customers/transfer-content/:id",
+        permanent: false,
+      },
     ];
   },
 };

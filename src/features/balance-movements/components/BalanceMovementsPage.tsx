@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
   type FormEvent,
@@ -28,6 +27,7 @@ import {
   DateRangeFilter,
   dateRangeToIsoBounds,
   FilterBar,
+  isoBoundsToDateRange,
   MoneyAmount,
   PageHeader,
   Pagination,
@@ -62,14 +62,53 @@ import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
+import {
+  buildQueryString,
+  oneOf,
+  parseNonNegInt,
+  parsePageSize,
+} from "@/lib/url/list-search-params";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const EMPTY_LIST = {
   rows: [] as BalanceMovementListItem[],
   total: 0,
   sumAmount: 0,
 };
+
+type BalanceMovementFilters = {
+  q?: string;
+  processStatus?: string;
+  from?: string;
+  to?: string;
+};
+
+function readBalanceMovementsStateFromSearch(searchParams: {
+  get(name: string): string | null;
+}): {
+  filters: BalanceMovementFilters;
+  page: number;
+  size: number;
+  range: DateRangeValue;
+} {
+  const from = searchParams.get("from") || undefined;
+  const to = searchParams.get("to") || undefined;
+  const filters: BalanceMovementFilters = {
+    q: searchParams.get("q")?.trim() || undefined,
+    processStatus:
+      oneOf(searchParams.get("processStatus"), BALANCE_MOVEMENT_STATUS_OPTIONS) ??
+      undefined,
+    from,
+    to,
+  };
+  return {
+    filters,
+    page: parseNonNegInt(searchParams.get("page"), 0),
+    size: parsePageSize(searchParams.get("size"), 20),
+    range: isoBoundsToDateRange(from, to),
+  };
+}
 
 /** Pixel tracks — every column has a width so table-fixed cannot collapse the thead. */
 const COL_W = {
@@ -89,31 +128,22 @@ const COL_SPAN = 9;
 
 export function BalanceMovementsPage() {
   const { t } = useI18n();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const qFromUrl = searchParams.get("q")?.trim() || "";
+  const [boot] = useState(() => readBalanceMovementsStateFromSearch(searchParams));
 
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const [page, setPage] = useState(boot.page);
+  const [size, setSize] = useState(boot.size);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
 
-  const [qDraft, setQDraft] = useState(qFromUrl);
-  const [statusDraft, setStatusDraft] = useState<string | null>(null);
-  const [rangeDraft, setRangeDraft] = useState<DateRangeValue>(null);
+  const [qDraft, setQDraft] = useState(boot.filters.q ?? "");
+  const [statusDraft, setStatusDraft] = useState<string | null>(
+    boot.filters.processStatus ?? null,
+  );
+  const [rangeDraft, setRangeDraft] = useState<DateRangeValue>(boot.range);
 
-  const [filters, setFilters] = useState<{
-    q?: string;
-    processStatus?: string;
-    from?: string;
-    to?: string;
-  }>(() => (qFromUrl ? { q: qFromUrl } : {}));
-
-  useEffect(() => {
-    if (!qFromUrl) return;
-    setQDraft(qFromUrl);
-    setPage(0);
-    setFilters((prev) => (prev.q === qFromUrl ? prev : { ...prev, q: qFromUrl }));
-  }, [qFromUrl]);
+  const [filters, setFilters] = useState<BalanceMovementFilters>(boot.filters);
 
   const statusOptions = useMemo(
     () =>
@@ -171,13 +201,27 @@ export function BalanceMovementsPage() {
 
   function applyFilters() {
     const bounds = dateRangeToIsoBounds(rangeDraft);
-    setPage(0);
-    setFilters({
+    const next: BalanceMovementFilters = {
       q: qDraft.trim() || undefined,
       processStatus: statusDraft || undefined,
       from: bounds.from,
       to: bounds.to,
+    };
+    setPage(0);
+    setFilters(next);
+    syncUrl(next, 0, size);
+  }
+
+  function syncUrl(next: BalanceMovementFilters, nextPage: number, nextSize: number) {
+    const qs = buildQueryString({
+      q: next.q,
+      processStatus: next.processStatus,
+      from: next.from,
+      to: next.to,
+      page: nextPage > 0 ? nextPage : undefined,
+      size: nextSize !== 20 ? nextSize : undefined,
     });
+    router.replace(qs ? `${ROUTES.balanceMovements}?${qs}` : ROUTES.balanceMovements);
   }
 
   function onSearch(e: FormEvent) {
@@ -191,6 +235,18 @@ export function BalanceMovementsPage() {
     setRangeDraft(null);
     setPage(0);
     setFilters({});
+    syncUrl({}, 0, size);
+  }
+
+  function onPageChange(nextPage: number) {
+    setPage(nextPage);
+    syncUrl(filters, nextPage, size);
+  }
+
+  function onPageSizeChange(nextSize: number) {
+    setSize(nextSize);
+    setPage(0);
+    syncUrl(filters, 0, nextSize);
   }
 
   return (
@@ -282,11 +338,8 @@ export function BalanceMovementsPage() {
             pageSize={size}
             total={total}
             loading={loading}
-            onPageChange={setPage}
-            onPageSizeChange={(next: number) => {
-              setSize(next);
-              setPage(0);
-            }}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
             rangeLabel={t("balanceMovements.range", {
               from,
               to,

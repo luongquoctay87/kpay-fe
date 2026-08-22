@@ -35,6 +35,17 @@ export interface TransferContentRuleListParams {
   signal?: AbortSignal;
 }
 
+export interface TransferContentMerchantOption {
+  id: string;
+  code: string;
+  name: string;
+  transferContentRuleId?: string | null;
+}
+
+export interface AssignTransferContentMerchantsBody {
+  merchantIds: string[];
+}
+
 export interface CreateTransferContentRuleBody {
   code: string;
   name: string;

@@ -4,6 +4,8 @@ import type {
   BankAccountListItem,
   BankAccountListParams,
   BankAccountListResp,
+  BankBalanceSyncBody,
+  BankBalanceSyncResult,
   BankOption,
   AcbVendorCsvPreview,
   CreateBankAccountBody,
@@ -22,6 +24,7 @@ export const bankAccountApi = {
           accountType: params.accountType,
           canCollect: params.canCollect,
           canDisburse: params.canDisburse,
+          balanceCheckStatus: params.balanceCheckStatus || undefined,
           page: params.page ?? 0,
           size: params.size ?? 20,
         },
@@ -43,6 +46,11 @@ export const bankAccountApi = {
 
   listBanks(): Promise<BankOption[]> {
     return unwrap(apiClient.get("/banks"));
+  },
+
+  /** Sync live balance via ACB worker — same BE as former /banking/balances. */
+  syncBalance(body: BankBalanceSyncBody): Promise<BankBalanceSyncResult> {
+    return unwrap(apiClient.post("/bank-balances/sync", body));
   },
 
   getAcbCredentialsStatus(id: string): Promise<BankAccountAcbCredentialsStatus> {

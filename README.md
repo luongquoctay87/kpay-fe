@@ -103,11 +103,10 @@ npm start   # http://localhost:3000
 | `/agents`, `/agents/new` | Agent list / create / edit |
 | `/payin` | Payin orders (advanced search, export, finalize) |
 | `/payout` | Payout orders (advanced search, export, finalize) |
-| `/banking/accounts` | Danh sách tài khoản (collect / payout) |
+| `/banking/accounts` | Danh sách tài khoản (collect / payout) + số dư / sync |
 | `/banking/reconciliations` | Đối chiếu sổ ngân hàng |
 | `/banking/movements` | Biến động số dư từ app (#9) |
 | `/banking/blocked-accounts` | Tài khoản chặn (Phase 2 #10) |
-| `/banking/balances` | Số dư tài khoản (Phase 2) |
 | `/callback-logs` | Outbound webhook logs + resend |
 | `/profile` | Operator profile |
 | `/portal`, `/portal/payin`, `/portal/payout`, `/portal/balance` | Merchant portal |

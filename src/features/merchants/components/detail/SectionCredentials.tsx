@@ -123,9 +123,6 @@ export function CredentialsStepUpModal({
 
 const MASKED_KEY = "••••••••••••••••••••••••";
 
-const credIconBtnClass =
-  "mt-0.5 inline-flex shrink-0 items-center justify-center rounded p-1 text-muted transition hover:bg-hover hover:text-ink";
-
 function CredentialField({
   label,
   value,
@@ -149,31 +146,30 @@ function CredentialField({
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className="text-label text-muted">{label}</span>
       {value ? (
-        <div className="flex w-fit max-w-full items-start gap-1">
-          <span className="min-w-0 break-all font-mono text-label text-ink">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="min-w-0 break-all font-mono text-label leading-5 text-ink">
             {visible ? value : MASKED_KEY}
           </span>
-          <PasswordVisibilityToggle
-            visible={visible}
-            onToggle={() => setVisible((v) => !v)}
-            showLabel={showLabel}
-            hideLabel={hideLabel}
-          />
-          <CopyButton
-            value={value}
-            label={copyLabel}
-            showCheck
-            className={credIconBtnClass}
-          />
+          <div className="flex shrink-0 items-center gap-0.5">
+            <PasswordVisibilityToggle
+              visible={visible}
+              onToggle={() => setVisible((v) => !v)}
+              showLabel={showLabel}
+              hideLabel={hideLabel}
+              className="h-5 w-5 rounded-md p-0"
+            />
+            <CopyButton value={value} label={copyLabel} showCheck size="sm" />
+          </div>
         </div>
       ) : (
-        <div className="flex min-w-0 items-center gap-1">
-          <span className="font-mono text-label text-ink">{MASKED_KEY}</span>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="font-mono text-label leading-5 text-ink">{MASKED_KEY}</span>
           <PasswordVisibilityToggle
             visible={false}
             onToggle={onReveal}
             showLabel={revealLabel}
             hideLabel={revealLabel}
+            className="h-5 w-5 rounded-md p-0"
           />
         </div>
       )}

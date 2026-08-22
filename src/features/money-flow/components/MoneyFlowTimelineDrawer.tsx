@@ -236,6 +236,16 @@ export function MoneyFlowTimelineDrawer({ seed, onClose }: Props) {
                   ) : null}
                   {item.source ? <span>{item.source}</span> : null}
                 </div>
+                {item.detailJson && Object.keys(item.detailJson).length > 0 ? (
+                  <details className="mt-2 rounded-md border border-edge bg-canvas/80 open:bg-canvas">
+                    <summary className="cursor-pointer select-none px-2.5 py-1.5 text-caption font-medium text-muted hover:text-ink">
+                      {t("moneyFlow.timelineDetail")}
+                    </summary>
+                    <pre className="max-h-64 overflow-auto border-t border-edge px-2.5 py-2 font-mono text-caption whitespace-pre-wrap break-all text-ink-secondary">
+                      {JSON.stringify(item.detailJson, null, 2)}
+                    </pre>
+                  </details>
+                ) : null}
               </li>
               );
             })}

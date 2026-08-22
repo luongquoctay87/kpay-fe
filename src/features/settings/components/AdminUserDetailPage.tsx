@@ -366,6 +366,7 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
         cidr,
         note: note || undefined,
       });
+      setLoginIpWhitelistEnabled(true);
       setShowAddIp(false);
       toast.success(t("settings.ipAddOk"));
       await load();
@@ -381,6 +382,8 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
     setIpBusy(true);
     try {
       await adminUsersApi.deleteLoginIp(userId, pendingDelete.id);
+      const remaining = (user?.loginIps ?? []).filter((row) => row.id !== pendingDelete.id);
+      if (remaining.length === 0) setLoginIpWhitelistEnabled(false);
       setPendingDelete(null);
       toast.success(t("settings.ipDeleteOk"));
       await load();

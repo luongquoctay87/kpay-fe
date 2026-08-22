@@ -9,7 +9,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   IconActivity,
   IconArrowIn,
@@ -37,6 +37,7 @@ import {
   CopyButton,
   DateRangeFilter,
   dateRangeToIsoBounds,
+  isoBoundsToDateRange,
   FilterField,
   PageHeader,
   Pagination,
@@ -92,6 +93,12 @@ import { usePagedList } from "@/lib/async/use-paged-list";
 import { formatMoney } from "@/lib/format/datetime";
 import { ROUTES } from "@/lib/constants/routes";
 import { ApiError } from "@/lib/types/api";
+import {
+  buildQueryString,
+  oneOf,
+  parseNonNegInt,
+  parsePageSize,
+} from "@/lib/url/list-search-params";
 
 const EMPTY_PAYIN_LIST = {
   rows: [] as PayinOrderListItem[],
@@ -99,39 +106,101 @@ const EMPTY_PAYIN_LIST = {
   stats: EMPTY_PAYIN_STATS,
 };
 
+type PayinFilters = {
+  q?: string;
+  merchantId?: string;
+  channelId?: string;
+  status?: PayinStatus;
+  callbackStatus?: OrderCallbackStatus;
+  createdFrom?: string;
+  createdTo?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
+};
+
+function hasAdvancedPayinFilters(f: PayinFilters): boolean {
+  return Boolean(
+    f.merchantId ||
+      f.channelId ||
+      f.status ||
+      f.callbackStatus ||
+      f.createdFrom ||
+      f.createdTo ||
+      f.updatedFrom ||
+      f.updatedTo,
+  );
+}
+
+function readPayinStateFromSearch(searchParams: {
+  get(name: string): string | null;
+}): {
+  filters: PayinFilters;
+  page: number;
+  size: number;
+  createdRange: DateRangeValue;
+  updatedRange: DateRangeValue;
+} {
+  const createdFrom = searchParams.get("createdFrom") || undefined;
+  const createdTo = searchParams.get("createdTo") || undefined;
+  const updatedFrom = searchParams.get("updatedFrom") || undefined;
+  const updatedTo = searchParams.get("updatedTo") || undefined;
+  const filters: PayinFilters = {
+    q: searchParams.get("q")?.trim() || undefined,
+    merchantId: searchParams.get("merchantId") || undefined,
+    channelId: searchParams.get("channelId") || undefined,
+    status: oneOf(searchParams.get("status"), PAYIN_STATUS_OPTIONS) ?? undefined,
+    callbackStatus:
+      oneOf(searchParams.get("callbackStatus"), CALLBACK_STATUS_OPTIONS) ?? undefined,
+    createdFrom,
+    createdTo,
+    updatedFrom,
+    updatedTo,
+  };
+  return {
+    filters,
+    page: parseNonNegInt(searchParams.get("page"), 0),
+    size: parsePageSize(searchParams.get("size"), 20),
+    createdRange: isoBoundsToDateRange(createdFrom, createdTo),
+    updatedRange: isoBoundsToDateRange(updatedFrom, updatedTo),
+  };
+}
+
 export function PayinListPage() {
   const { t } = useI18n();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const qFromUrl = searchParams.get("q")?.trim() || "";
+  const [boot] = useState(() => readPayinStateFromSearch(searchParams));
 
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
-  const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState(boot.page);
+  const [size, setSize] = useState(boot.size);
+  const [expanded, setExpanded] = useState(() => hasAdvancedPayinFilters(boot.filters));
   const [exporting, setExporting] = useState(false);
   const [finalizeRow, setFinalizeRow] = useState<PayinOrderListItem | null>(null);
   const [detailRow, setDetailRow] = useState<PayinOrderListItem | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
 
-  const [qDraft, setQDraft] = useState(qFromUrl);
-  const [merchantDraft, setMerchantDraft] = useState<string | null>(null);
-  const [channelDraft, setChannelDraft] = useState<string | null>(null);
-  const [statusDraft, setStatusDraft] = useState<PayinStatus | null>(null);
-  const [callbackDraft, setCallbackDraft] = useState<OrderCallbackStatus | null>(null);
-  const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(null);
-  const [updatedRangeDraft, setUpdatedRangeDraft] = useState<DateRangeValue>(null);
+  const [qDraft, setQDraft] = useState(boot.filters.q ?? "");
+  const [merchantDraft, setMerchantDraft] = useState<string | null>(
+    boot.filters.merchantId ?? null,
+  );
+  const [channelDraft, setChannelDraft] = useState<string | null>(
+    boot.filters.channelId ?? null,
+  );
+  const [statusDraft, setStatusDraft] = useState<PayinStatus | null>(
+    boot.filters.status ?? null,
+  );
+  const [callbackDraft, setCallbackDraft] = useState<OrderCallbackStatus | null>(
+    boot.filters.callbackStatus ?? null,
+  );
+  const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(
+    boot.createdRange,
+  );
+  const [updatedRangeDraft, setUpdatedRangeDraft] = useState<DateRangeValue>(
+    boot.updatedRange,
+  );
 
-  const [filters, setFilters] = useState<{
-    q?: string;
-    merchantId?: string;
-    channelId?: string;
-    status?: PayinStatus;
-    callbackStatus?: OrderCallbackStatus;
-    createdFrom?: string;
-    createdTo?: string;
-    updatedFrom?: string;
-    updatedTo?: string;
-  }>(() => (qFromUrl ? { q: qFromUrl } : {}));
+  const [filters, setFilters] = useState<PayinFilters>(boot.filters);
 
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
     defaultColumnVisibility,
@@ -142,13 +211,6 @@ export function PayinListPage() {
   useEffect(() => {
     setColumnVisibility(loadColumnVisibility());
   }, []);
-
-  useEffect(() => {
-    if (!qFromUrl) return;
-    setQDraft(qFromUrl);
-    setPage(0);
-    setFilters((prev) => (prev.q === qFromUrl ? prev : { ...prev, q: qFromUrl }));
-  }, [qFromUrl]);
 
   useEffect(() => {
     let cancelled = false;
@@ -300,10 +362,29 @@ export function PayinListPage() {
     };
   }
 
+  function syncUrl(next: PayinFilters, nextPage: number, nextSize: number) {
+    const qs = buildQueryString({
+      q: next.q,
+      merchantId: next.merchantId,
+      channelId: next.channelId,
+      status: next.status,
+      callbackStatus: next.callbackStatus,
+      createdFrom: next.createdFrom,
+      createdTo: next.createdTo,
+      updatedFrom: next.updatedFrom,
+      updatedTo: next.updatedTo,
+      page: nextPage > 0 ? nextPage : undefined,
+      size: nextSize !== 20 ? nextSize : undefined,
+    });
+    router.replace(qs ? `${ROUTES.payin}?${qs}` : ROUTES.payin);
+  }
+
   function applyFilters() {
     const next = buildFiltersFromDraft();
     setPage(0);
     setFilters(next);
+    if (hasAdvancedPayinFilters(next)) setExpanded(true);
+    syncUrl(next, 0, size);
   }
 
   function onSearch(e: FormEvent) {
@@ -327,6 +408,18 @@ export function PayinListPage() {
     setUpdatedRangeDraft(null);
     setFilters({});
     setPage(0);
+    syncUrl({}, 0, size);
+  }
+
+  function onPageChange(nextPage: number) {
+    setPage(nextPage);
+    syncUrl(filters, nextPage, size);
+  }
+
+  function onPageSizeChange(nextSize: number) {
+    setSize(nextSize);
+    setPage(0);
+    syncUrl(filters, 0, nextSize);
   }
 
   async function onExport() {
@@ -581,11 +674,8 @@ export function PayinListPage() {
             pageSize={size}
             total={total}
             loading={loading}
-            onPageChange={setPage}
-            onPageSizeChange={(s) => {
-              setSize(s);
-              setPage(0);
-            }}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
             rangeLabel={t("payin.range", { from, to, total })}
           />
         }
