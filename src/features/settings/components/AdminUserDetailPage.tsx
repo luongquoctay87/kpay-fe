@@ -7,10 +7,11 @@ import {
   IconGlobe,
   IconHash,
   IconKey,
+  IconList,
   IconPlus,
   IconSave,
   IconSettings,
-  IconUsers,
+  IconUser,
   IconX,
 } from "@/components/icons/NavIcons";
 import {
@@ -436,10 +437,10 @@ export function AdminUserDetailPage({ userId }: { userId: string }) {
             </span>
           }
           breadcrumbs={[
-            { label: t("nav.settings"), icon: <IconSettings /> },
+            { label: t("nav.settings"), icon: <IconUser /> },
             {
               label: t("nav.settingsUsers"),
-              icon: <IconUsers />,
+              icon: <IconList />,
               href: ROUTES.settingsUsers,
             },
             { label: user.username },

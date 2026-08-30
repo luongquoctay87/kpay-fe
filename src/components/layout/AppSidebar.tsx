@@ -18,9 +18,11 @@ import {
   IconFileText,
   IconHome,
   IconKey,
+  IconLayers,
+  IconList,
   IconResource,
-  IconSettings,
   IconCustomers,
+  IconUser,
   IconUsers,
   IconWallet,
   IconWebhook,
@@ -170,6 +172,11 @@ const NAV: NavEntry[] = [
   { href: ROUTES.payout, labelKey: "nav.payout", icon: <IconArrowOut /> },
   { href: ROUTES.withdraw, labelKey: "nav.withdraw", icon: <IconWithdraw /> },
   {
+    href: ROUTES.customerLedgers,
+    labelKey: "nav.customerLedgers",
+    icon: <IconFileText />,
+  },
+  {
     id: "customers",
     labelKey: "nav.customers",
     icon: <IconCustomers />,
@@ -177,7 +184,7 @@ const NAV: NavEntry[] = [
       {
         href: ROUTES.customers,
         labelKey: "nav.customersList",
-        icon: <IconUsers />,
+        icon: <IconList />,
       },
       {
         href: ROUTES.customerTransferContent,
@@ -186,52 +193,9 @@ const NAV: NavEntry[] = [
         permission: "settings:read",
       },
       {
-        href: ROUTES.customerLedgers,
-        labelKey: "nav.customerLedgers",
-        icon: <IconFileText />,
-      },
-      {
         href: ROUTES.callbackLogs,
         labelKey: "nav.callback",
         icon: <IconWebhook />,
-      },
-    ],
-  },
-  {
-    id: "logs",
-    labelKey: "nav.logs",
-    icon: <IconLog />,
-    children: [
-      {
-        href: ROUTES.auditLogs,
-        labelKey: "nav.auditLogs",
-        icon: <IconAuditLog />,
-        permission: "audit_logs:read",
-      },
-      {
-        href: ROUTES.moneyFlowLogs,
-        labelKey: "nav.moneyFlowLogs",
-        icon: <IconMoneyFlow />,
-        permission: "money_flow_logs:read",
-      },
-    ],
-  },
-  {
-    id: "settings",
-    labelKey: "nav.settings",
-    icon: <IconSettings />,
-    children: [
-      {
-        href: ROUTES.settingsUsers,
-        labelKey: "nav.settingsUsers",
-        icon: <IconUsers />,
-        permission: "admin_users:read",
-      },
-      {
-        href: ROUTES.settingsRoles,
-        labelKey: "nav.settingsRoles",
-        icon: <IconKey />,
-        staffRole: ADMIN_STAFF_ROLE,
       },
     ],
   },
@@ -275,6 +239,49 @@ const NAV: NavEntry[] = [
       },
     ],
   },
+  {
+    href: ROUTES.partners,
+    labelKey: "nav.partners",
+    icon: <IconLayers />,
+  },
+  {
+    id: "settings",
+    labelKey: "nav.settings",
+    icon: <IconUser />,
+    children: [
+      {
+        href: ROUTES.settingsUsers,
+        labelKey: "nav.settingsUsers",
+        icon: <IconList />,
+        permission: "admin_users:read",
+      },
+      {
+        href: ROUTES.settingsRoles,
+        labelKey: "nav.settingsRoles",
+        icon: <IconKey />,
+        staffRole: ADMIN_STAFF_ROLE,
+      },
+    ],
+  },
+  {
+    id: "logs",
+    labelKey: "nav.logs",
+    icon: <IconLog />,
+    children: [
+      {
+        href: ROUTES.auditLogs,
+        labelKey: "nav.auditLogs",
+        icon: <IconAuditLog />,
+        permission: "audit_logs:read",
+      },
+      {
+        href: ROUTES.moneyFlowLogs,
+        labelKey: "nav.moneyFlowLogs",
+        icon: <IconMoneyFlow />,
+        permission: "money_flow_logs:read",
+      },
+    ],
+  },
 ];
 
 const ROW =
@@ -289,7 +296,7 @@ const NAV_IDLE =
 
 function isActive(pathname: string, href: string) {
   if (href === ROUTES.home) return pathname === ROUTES.home;
-  // Exact only — `/customers` must not highlight for `/customers/ledgers`.
+  // Exact only — `/customers` must not highlight for `/customers/transfer-content`.
   if (href === ROUTES.customers) return pathname === ROUTES.customers;
   return pathname === href || pathname.startsWith(`${href}/`);
 }

@@ -31,6 +31,8 @@ export function getPageTitleKey(pathname: string): MessageKey {
   }
   if (pathname.startsWith(ROUTES.balanceMovements)) return "pages.balanceMovements";
   if (pathname.startsWith(ROUTES.blockedAccounts)) return "pages.blockedAccounts";
+  if (pathname.startsWith(`${ROUTES.partners}/`)) return "pages.partnerDetail";
+  if (pathname.startsWith(ROUTES.partners)) return "pages.partners";
   if (pathname.startsWith(ROUTES.settingsUsers + "/")) return "pages.settingsUserDetail";
   if (pathname.startsWith(ROUTES.settingsUsers)) return "pages.settingsUsers";
   if (pathname.startsWith(ROUTES.settingsRoles + "/")) return "pages.settingsRoleDetail";

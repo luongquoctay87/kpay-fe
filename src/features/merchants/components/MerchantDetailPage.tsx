@@ -19,6 +19,7 @@ import { SectionBasic } from "@/features/merchants/components/detail/SectionBasi
 import { SectionChannels } from "@/features/merchants/components/detail/SectionChannels";
 import { SectionCredentials } from "@/features/merchants/components/detail/SectionCredentials";
 import { SectionFees } from "@/features/merchants/components/detail/SectionFees";
+import { SectionPartnerRouting } from "@/features/merchants/components/detail/SectionPartnerRouting";
 import { SectionVietpmBot } from "@/features/merchants/components/detail/SectionVietpmBot";
 import { SectionWallet } from "@/features/merchants/components/detail/SectionWallet";
 import { WebhookSecurityConfigModal } from "@/features/merchants/components/detail/WebhookSecurityConfigModal";
@@ -226,6 +227,9 @@ export function MerchantDetailPage({ id }: { id: string }) {
 
       {/* Fees */}
       <SectionFees fees={merchant.fees} merchantId={id} onUpdated={setMerchant} />
+
+      {/* Partner routing override */}
+      <SectionPartnerRouting merchantId={id} />
 
       {/* Credentials */}
       <SectionCredentials

@@ -21,6 +21,7 @@ import {
   IconFileText,
   IconHash,
   IconInbox,
+  IconLayers,
   IconRefresh,
   IconSearch,
   IconSettings,
@@ -51,6 +52,7 @@ import { Button, Select, StatusBadge, toast } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import { getActiveMerchantOptions } from "@/features/merchants/options-cache";
+import { getGatewayFilterOptions } from "@/features/partners/gateway-options";
 import { payoutApi } from "@/features/payout/api";
 import { ColumnPicker } from "@/features/payout/components/ColumnPicker";
 import { FinalizePayoutModal } from "@/features/payout/components/FinalizePayoutModal";
@@ -114,6 +116,7 @@ function hasAdvancedPayoutFilters(f: PayoutFilters): boolean {
   return Boolean(
     f.merchantId ||
       f.sourceBankAccountId ||
+      f.gateway ||
       f.status ||
       f.callbackStatus ||
       f.createdFrom ||
@@ -140,6 +143,7 @@ function readPayoutStateFromSearch(searchParams: {
     q: searchParams.get("q")?.trim() || undefined,
     merchantId: searchParams.get("merchantId") || undefined,
     sourceBankAccountId: searchParams.get("sourceBankAccountId") || undefined,
+    gateway: searchParams.get("gateway")?.trim() || undefined,
     status: oneOf(searchParams.get("status"), PAYOUT_STATUS_OPTIONS) ?? undefined,
     callbackStatus:
       oneOf(searchParams.get("callbackStatus"), CALLBACK_STATUS_OPTIONS) ?? undefined,
@@ -183,6 +187,9 @@ export function PayoutListPage() {
   const [sourceAccountDraft, setSourceAccountDraft] = useState<string | null>(
     boot.filters.sourceBankAccountId ?? null,
   );
+  const [gatewayDraft, setGatewayDraft] = useState<string | null>(
+    boot.filters.gateway ?? null,
+  );
   const [statusDraft, setStatusDraft] = useState<PayoutStatus | null>(
     boot.filters.status ?? null,
   );
@@ -205,6 +212,7 @@ export function PayoutListPage() {
   const [sourceAccountOptions, setSourceAccountOptions] = useState<
     { value: string; label: string }[]
   >([]);
+  const [gatewayOptions, setGatewayOptions] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
     setColumnVisibility(loadColumnVisibility());
@@ -214,7 +222,7 @@ export function PayoutListPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const [merchants, bankAccounts] = await Promise.all([
+        const [merchants, bankAccounts, gateways] = await Promise.all([
           getActiveMerchantOptions(),
           bankAccountApi.list({
             page: 0,
@@ -222,6 +230,7 @@ export function PayoutListPage() {
             status: "active",
             canDisburse: true,
           }),
+          getGatewayFilterOptions(),
         ]);
         if (cancelled) return;
         setMerchantOptions(merchants);
@@ -231,6 +240,7 @@ export function PayoutListPage() {
             label: `${account.bankCode || account.bankName} — ${account.accountNumber}`,
           })),
         );
+        setGatewayOptions(gateways);
       } catch {
         // dropdowns stay empty; list still works
       }
@@ -313,6 +323,7 @@ export function PayoutListPage() {
     filters.q ||
       filters.merchantId ||
       filters.sourceBankAccountId ||
+      filters.gateway ||
       filters.status ||
       filters.callbackStatus ||
       filters.createdFrom ||
@@ -325,6 +336,7 @@ export function PayoutListPage() {
     Boolean(qDraft) ||
     merchantDraft != null ||
     sourceAccountDraft != null ||
+    gatewayDraft != null ||
     statusDraft != null ||
     callbackDraft != null ||
     Boolean(createdRangeDraft?.[0] || createdRangeDraft?.[1]) ||
@@ -350,6 +362,7 @@ export function PayoutListPage() {
       q: qDraft.trim() || undefined,
       merchantId: merchantDraft ?? undefined,
       sourceBankAccountId: sourceAccountDraft ?? undefined,
+      gateway: gatewayDraft ?? undefined,
       status: statusDraft ?? undefined,
       callbackStatus: callbackDraft ?? undefined,
       createdFrom: created.from,
@@ -364,6 +377,7 @@ export function PayoutListPage() {
       q: next.q,
       merchantId: next.merchantId,
       sourceBankAccountId: next.sourceBankAccountId,
+      gateway: next.gateway,
       status: next.status,
       callbackStatus: next.callbackStatus,
       createdFrom: next.createdFrom,
@@ -399,6 +413,7 @@ export function PayoutListPage() {
     setQDraft("");
     setMerchantDraft(null);
     setSourceAccountDraft(null);
+    setGatewayDraft(null);
     setStatusDraft(null);
     setCallbackDraft(null);
     setCreatedRangeDraft(null);
@@ -527,6 +542,18 @@ export function PayoutListPage() {
                   value={callbackDraft}
                   onChange={setCallbackDraft}
                   placeholder={t("payout.filterCallbackPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payout.filterGateway")} htmlFor="payout-gateway">
+                <Select
+                  id="payout-gateway"
+                  size="md"
+                  options={gatewayOptions}
+                  value={gatewayDraft}
+                  onChange={setGatewayDraft}
+                  placeholder={t("payout.filterGatewayPlaceholder")}
                   clearable
                   triggerClassName={filterControlClass}
                 />
@@ -770,6 +797,13 @@ export function PayoutListPage() {
                   </ColumnHeader>
                 </th>
               ) : null}
+              {show.gateway ? (
+                <th className={`${PAYOUT_COLUMN_WIDTH.gateway} ${PAYOUT_COLUMN_ALIGN.gateway} px-3 py-2.5`}>
+                  <ColumnHeader align="center" icon={<IconLayers width={14} height={14} />}>
+                    {t("payout.colGateway")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
               {show.realStatus ? (
                 <th className={`${PAYOUT_COLUMN_WIDTH.realStatus} ${PAYOUT_COLUMN_ALIGN.realStatus} px-3 py-2.5`}>
                   <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
@@ -972,6 +1006,11 @@ export function PayoutListPage() {
                     </StatusBadge>
                   </td>
                 ) : null}
+                {show.gateway ? (
+                  <td className="px-3 py-2.5 text-center font-mono text-label text-ink-secondary">
+                    {row.gateway ?? "—"}
+                  </td>
+                ) : null}
                 {show.realStatus ? (
                   <td
                     className="px-3 py-2.5 text-center text-label text-ink-secondary"
@@ -1082,6 +1121,7 @@ export function PayoutListPage() {
                 ) : null}
                 {show.status ? <td /> : null}
                 {show.callback ? <td /> : null}
+                {show.gateway ? <td /> : null}
                 {show.realStatus ? <td /> : null}
                 {show.reason ? <td /> : null}
                 {show.note ? <td /> : null}

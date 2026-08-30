@@ -38,6 +38,8 @@ export interface PayoutOrderListItem {
   reason?: string | null;
   status: PayoutStatus;
   callbackStatus: OrderCallbackStatus;
+  gateway?: string | null;
+  partnerRef?: string | null;
   realStatus?: string | null;
   retryCount?: number | null;
   bankErrorCode?: string | null;
@@ -65,6 +67,7 @@ export interface PayoutOrderListParams {
   q?: string;
   merchantId?: string;
   sourceBankAccountId?: string;
+  gateway?: string;
   status?: PayoutStatus;
   callbackStatus?: OrderCallbackStatus;
   createdFrom?: string;

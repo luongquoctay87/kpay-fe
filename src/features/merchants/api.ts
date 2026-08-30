@@ -7,12 +7,14 @@ import type {
   MerchantIpWhitelistItem,
   MerchantListParams,
   MerchantListResp,
+  MerchantPartnerRouting,
   MerchantStatus,
   MerchantVietpmBot,
   MerchantTelegramPayout,
   UpdateChannelItem,
   UpdateFeeItem,
   UpdateMerchantBody,
+  UpdateMerchantPartnerRoutingBody,
 } from "@/features/merchants/types";
 
 export const merchantApi = {
@@ -93,6 +95,17 @@ export const merchantApi = {
 
   updateVietpmBot(id: string, body: MerchantVietpmBot): Promise<MerchantDetail> {
     return unwrap(apiClient.put(`/merchants/${id}/vietpm-bot`, body));
+  },
+
+  getPartnerRouting(id: string): Promise<MerchantPartnerRouting> {
+    return unwrap(apiClient.get(`/merchants/${id}/partner-routing`));
+  },
+
+  updatePartnerRouting(
+    id: string,
+    body: UpdateMerchantPartnerRoutingBody,
+  ): Promise<MerchantPartnerRouting> {
+    return unwrap(apiClient.patch(`/merchants/${id}/partner-routing`, body));
   },
 
   listIpWhitelist(id: string): Promise<MerchantIpWhitelistItem[]> {

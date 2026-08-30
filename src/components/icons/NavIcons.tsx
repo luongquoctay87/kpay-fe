@@ -505,6 +505,20 @@ export function IconFileText(props: IconProps) {
   );
 }
 
+/** Danh sách — menu / list view */
+export function IconList(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M8 6h13" />
+      <path d="M8 12h13" />
+      <path d="M8 18h13" />
+      <circle cx="4" cy="6" r="1.25" />
+      <circle cx="4" cy="12" r="1.25" />
+      <circle cx="4" cy="18" r="1.25" />
+    </svg>
+  );
+}
+
 export function IconRepeat(props: IconProps) {
   return (
     <svg {...base(props)}>

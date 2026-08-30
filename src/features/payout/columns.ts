@@ -17,6 +17,7 @@ export const PAYOUT_COLUMNS = [
   "fee",
   "status",
   "callback",
+  "gateway",
   "realStatus",
   "reason",
   "note",
@@ -41,6 +42,7 @@ export const PAYOUT_COLUMN_LABEL_KEY: Record<PayoutColumn, MessageKey> = {
   amount: "payout.colAmount",
   status: "payout.colStatus",
   callback: "payout.colCallback",
+  gateway: "payout.colGateway",
   realStatus: "payout.colRealStatus",
   reason: "payout.colReason",
   sourceAccount: "payout.colSourceAccount",
@@ -64,6 +66,7 @@ export const PAYOUT_COLUMN_MIN_PX: Record<PayoutColumn | "stt", number> = {
   amount: 110,
   status: 120,
   callback: 110,
+  gateway: 100,
   realStatus: 120,
   reason: 150,
   sourceAccount: 140,
@@ -87,6 +90,7 @@ export const PAYOUT_COLUMN_WIDTH: Record<PayoutColumn | "stt", string> = {
   amount: "w-[110px]",
   status: "w-[120px]",
   callback: "w-[110px]",
+  gateway: "w-[100px]",
   realStatus: "w-[120px]",
   reason: "w-[150px]",
   sourceAccount: "w-[140px]",
@@ -110,6 +114,7 @@ export const PAYOUT_COLUMN_ALIGN: Record<PayoutColumn | "stt", string> = {
   amount: "text-right",
   status: "text-center",
   callback: "text-center",
+  gateway: "text-center",
   realStatus: "text-center",
   reason: "text-left",
   sourceAccount: "text-left",
@@ -131,7 +136,7 @@ export const DEFAULT_VISIBLE_COLUMNS: readonly PayoutColumn[] = [
   "createdAt",
 ];
 
-export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.payout.columns.v4";
+export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.payout.columns.v5";
 
 export type ColumnVisibility = Record<PayoutColumn, boolean>;
 

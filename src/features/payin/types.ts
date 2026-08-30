@@ -29,6 +29,7 @@ export interface PayinOrderListItem {
   channelName?: string | null;
   accountName?: string | null;
   bankAccountNumber?: string | null;
+  bankCode?: string | null;
   bankName?: string | null;
   transferContent?: string | null;
   requestValue: number;
@@ -39,6 +40,7 @@ export interface PayinOrderListItem {
   status: PayinStatus;
   callbackStatus: OrderCallbackStatus;
   gateway?: string | null;
+  partnerRef?: string | null;
   processedBy?: string | null;
   processedAt?: string | null;
   createdAt?: string;
@@ -60,6 +62,7 @@ export interface PayinOrderListParams {
   q?: string;
   merchantId?: string;
   channelId?: string;
+  gateway?: string;
   status?: PayinStatus;
   callbackStatus?: OrderCallbackStatus;
   createdFrom?: string;

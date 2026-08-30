@@ -135,52 +135,53 @@ export function OtpInput({
   }
 
   return (
-    <div
-      role="group"
-      aria-label={ariaLabel}
-      className={cn(
-        "flex w-fit max-w-full flex-wrap items-center gap-1.5 self-start sm:gap-2",
-        className,
-      )}
-    >
+    <div className={cn("w-full", className)}>
       {/* Hidden field keeps native form autofill / submit name if present */}
       {name ? (
         <input type="hidden" name={name} value={onlyDigits(value, length)} readOnly />
       ) : null}
 
-      {Array.from({ length }, (_, index) => {
-        const digit = digits[index]?.trim() ?? "";
-        return (
-          <input
-            key={index}
-            ref={(el) => {
-              inputsRef.current[index] = el;
-            }}
-            id={index === 0 ? baseId : `${baseId}-${index}`}
-            type="text"
-            inputMode="numeric"
-            autoComplete={index === 0 ? "one-time-code" : "off"}
-            maxLength={length}
-            disabled={disabled}
-            aria-invalid={invalid || undefined}
-            aria-label={`${ariaLabel ?? "OTP"} ${index + 1}`}
-            value={digit}
-            onChange={(e) => onDigitChange(index, e.target.value)}
-            onKeyDown={(e) => onKeyDown(index, e)}
-            onPaste={onPaste}
-            onFocus={(e) => e.currentTarget.select()}
-            className={cn(
-              "h-9 w-9 shrink-0 rounded-md border bg-canvas text-center font-mono text-[0.8125rem] tabular-nums text-ink outline-none transition sm:h-10 sm:w-10 sm:text-label",
-              "focus:border-accent focus:shadow-[0_0_0_2px_rgba(37,99,235,0.18)]",
-              invalid
-                ? "border-danger bg-danger-bg/40"
-                : "border-edge-strong hover:border-ink/35",
-              disabled && "cursor-not-allowed opacity-50",
-              digit && !invalid && "border-ink/45 bg-surface",
-            )}
-          />
-        );
-      })}
+      <div
+        role="group"
+        aria-label={ariaLabel}
+        className="grid w-full gap-1.5 sm:gap-2.5"
+        style={{ gridTemplateColumns: `repeat(${length}, minmax(0, 1fr))` }}
+      >
+        {Array.from({ length }, (_, index) => {
+          const digit = digits[index]?.trim() ?? "";
+          return (
+            <div key={index} className="relative aspect-square min-w-0">
+              <input
+                ref={(el) => {
+                  inputsRef.current[index] = el;
+                }}
+                id={index === 0 ? baseId : `${baseId}-${index}`}
+                type="text"
+                inputMode="numeric"
+                autoComplete={index === 0 ? "one-time-code" : "off"}
+                maxLength={length}
+                disabled={disabled}
+                aria-invalid={invalid || undefined}
+                aria-label={`${ariaLabel ?? "OTP"} ${index + 1}`}
+                value={digit}
+                onChange={(e) => onDigitChange(index, e.target.value)}
+                onKeyDown={(e) => onKeyDown(index, e)}
+                onPaste={onPaste}
+                onFocus={(e) => e.currentTarget.select()}
+                className={cn(
+                  "absolute inset-0 h-full w-full rounded-md border bg-canvas text-center font-mono text-label tabular-nums text-ink outline-none transition",
+                  "focus:border-accent focus:shadow-[0_0_0_2px_rgba(37,99,235,0.18)]",
+                  invalid
+                    ? "border-danger bg-danger-bg/40"
+                    : "border-edge-strong hover:border-ink/35",
+                  disabled && "cursor-not-allowed opacity-50",
+                  digit && !invalid && "border-ink/45 bg-surface",
+                )}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

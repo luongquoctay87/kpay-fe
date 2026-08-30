@@ -16,6 +16,7 @@ import {
   IconSave,
   IconSearch,
   IconSettings,
+  IconUser,
   IconX,
 } from "@/components/icons/NavIcons";
 import {
@@ -383,7 +384,7 @@ export function RolesPage() {
       <PageHeader
         title={t("settings.rolesTitle")}
         breadcrumbs={[
-          { label: t("nav.settings"), icon: <IconSettings /> },
+          { label: t("nav.settings"), icon: <IconUser /> },
           { label: t("nav.settingsRoles"), icon: <IconKey /> },
         ]}
         actions={

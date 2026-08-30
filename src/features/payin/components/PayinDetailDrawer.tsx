@@ -171,6 +171,9 @@ export function PayinDetailDrawer({
           <DetailRow label={t("payin.colGateway")}>
             {row.gateway ?? "—"}
           </DetailRow>
+          <DetailRow label={t("payin.colPartnerRef")}>
+            {row.partnerRef ?? "—"}
+          </DetailRow>
           <DetailRow label={t("payin.colAccountNumber")}>
             {row.bankAccountNumber ?? "—"}
           </DetailRow>

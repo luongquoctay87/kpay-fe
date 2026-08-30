@@ -182,6 +182,12 @@ export function PayoutDetailDrawer({
               {t(CALLBACK_STATUS_LABEL_KEY[row.callbackStatus])}
             </StatusBadge>
           </DetailRow>
+          <DetailRow label={t("payout.colGateway")}>
+            {row.gateway ?? "—"}
+          </DetailRow>
+          <DetailRow label={t("payout.colPartnerRef")}>
+            {row.partnerRef ?? "—"}
+          </DetailRow>
           <DetailRow label={t("payout.colRealStatus")}>
             {isAwaitingReconciliation(row) ? (
               <StatusBadge tone="pending">{t("payout.badgeAwaitingRecon")}</StatusBadge>

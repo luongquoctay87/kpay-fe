@@ -160,6 +160,34 @@ export interface MerchantDetail {
   vietpmBot?: MerchantVietpmBot | null;
 }
 
+export type MerchantPartnerRoutingMode =
+  | "inherit"
+  | "internal_only"
+  | "partner_only"
+  | "custom";
+
+export type PartnerRoutingMode = "off" | "fallback" | "always";
+
+export interface MerchantPartnerRouting {
+  merchantId: string;
+  routingMode: MerchantPartnerRoutingMode;
+  payinPartnerId?: string | null;
+  payinPartnerCode?: string | null;
+  payoutPartnerId?: string | null;
+  payoutPartnerCode?: string | null;
+  payinRoutingOverride?: PartnerRoutingMode | null;
+  payoutRoutingOverride?: PartnerRoutingMode | null;
+  updatedAt?: string | null;
+}
+
+export interface UpdateMerchantPartnerRoutingBody {
+  routingMode: MerchantPartnerRoutingMode;
+  payinPartnerId?: string;
+  payoutPartnerId?: string;
+  payinRoutingOverride?: PartnerRoutingMode;
+  payoutRoutingOverride?: PartnerRoutingMode;
+}
+
 export interface MerchantCredentialsResp {
   merchantKey: string;
   merchantSecret: string;

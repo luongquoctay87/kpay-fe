@@ -50,6 +50,7 @@ import {
 
 import { Button, Select, StatusBadge, toast } from "@/components/ui";
 import { getActiveMerchantOptions } from "@/features/merchants/options-cache";
+import { getGatewayFilterOptions } from "@/features/partners/gateway-options";
 import { payinApi } from "@/features/payin/api";
 import { FinalizePayinModal } from "@/features/payin/components/FinalizePayinModal";
 import { PayinDetailDrawer } from "@/features/payin/components/PayinDetailDrawer";
@@ -110,6 +111,7 @@ type PayinFilters = {
   q?: string;
   merchantId?: string;
   channelId?: string;
+  gateway?: string;
   status?: PayinStatus;
   callbackStatus?: OrderCallbackStatus;
   createdFrom?: string;
@@ -122,6 +124,7 @@ function hasAdvancedPayinFilters(f: PayinFilters): boolean {
   return Boolean(
     f.merchantId ||
       f.channelId ||
+      f.gateway ||
       f.status ||
       f.callbackStatus ||
       f.createdFrom ||
@@ -148,6 +151,7 @@ function readPayinStateFromSearch(searchParams: {
     q: searchParams.get("q")?.trim() || undefined,
     merchantId: searchParams.get("merchantId") || undefined,
     channelId: searchParams.get("channelId") || undefined,
+    gateway: searchParams.get("gateway")?.trim() || undefined,
     status: oneOf(searchParams.get("status"), PAYIN_STATUS_OPTIONS) ?? undefined,
     callbackStatus:
       oneOf(searchParams.get("callbackStatus"), CALLBACK_STATUS_OPTIONS) ?? undefined,
@@ -187,6 +191,9 @@ export function PayinListPage() {
   const [channelDraft, setChannelDraft] = useState<string | null>(
     boot.filters.channelId ?? null,
   );
+  const [gatewayDraft, setGatewayDraft] = useState<string | null>(
+    boot.filters.gateway ?? null,
+  );
   const [statusDraft, setStatusDraft] = useState<PayinStatus | null>(
     boot.filters.status ?? null,
   );
@@ -207,6 +214,7 @@ export function PayinListPage() {
   );
   const [merchantOptions, setMerchantOptions] = useState<{ value: string; label: string }[]>([]);
   const [channelOptions, setChannelOptions] = useState<PayinChannelOption[]>([]);
+  const [gatewayOptions, setGatewayOptions] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
     setColumnVisibility(loadColumnVisibility());
@@ -216,13 +224,15 @@ export function PayinListPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const [merchants, channels] = await Promise.all([
+        const [merchants, channels, gateways] = await Promise.all([
           getActiveMerchantOptions(),
           payinApi.listChannels(),
+          getGatewayFilterOptions(),
         ]);
         if (cancelled) return;
         setMerchantOptions(merchants);
         setChannelOptions(channels ?? []);
+        setGatewayOptions(gateways);
       } catch {
         // dropdowns stay empty; list still works
       }
@@ -310,6 +320,7 @@ export function PayinListPage() {
     filters.q ||
       filters.merchantId ||
       filters.channelId ||
+      filters.gateway ||
       filters.status ||
       filters.callbackStatus ||
       filters.createdFrom ||
@@ -322,6 +333,7 @@ export function PayinListPage() {
     Boolean(qDraft) ||
     merchantDraft != null ||
     channelDraft != null ||
+    gatewayDraft != null ||
     statusDraft != null ||
     callbackDraft != null ||
     Boolean(createdRangeDraft?.[0] || createdRangeDraft?.[1]) ||
@@ -353,6 +365,7 @@ export function PayinListPage() {
       q: qDraft.trim() || undefined,
       merchantId: merchantDraft ?? undefined,
       channelId: channelDraft ?? undefined,
+      gateway: gatewayDraft ?? undefined,
       status: statusDraft ?? undefined,
       callbackStatus: callbackDraft ?? undefined,
       createdFrom: created.from,
@@ -367,6 +380,7 @@ export function PayinListPage() {
       q: next.q,
       merchantId: next.merchantId,
       channelId: next.channelId,
+      gateway: next.gateway,
       status: next.status,
       callbackStatus: next.callbackStatus,
       createdFrom: next.createdFrom,
@@ -402,6 +416,7 @@ export function PayinListPage() {
     setQDraft("");
     setMerchantDraft(null);
     setChannelDraft(null);
+    setGatewayDraft(null);
     setStatusDraft(null);
     setCallbackDraft(null);
     setCreatedRangeDraft(null);
@@ -525,6 +540,18 @@ export function PayinListPage() {
                   value={callbackDraft}
                   onChange={setCallbackDraft}
                   placeholder={t("payin.filterCallbackPlaceholder")}
+                  clearable
+                  triggerClassName={filterControlClass}
+                />
+              </FilterField>
+              <FilterField label={t("payin.filterGateway")} htmlFor="payin-gateway">
+                <Select
+                  id="payin-gateway"
+                  size="md"
+                  options={gatewayOptions}
+                  value={gatewayDraft}
+                  onChange={setGatewayDraft}
+                  placeholder={t("payin.filterGatewayPlaceholder")}
                   clearable
                   triggerClassName={filterControlClass}
                 />
@@ -938,12 +965,12 @@ export function PayinListPage() {
                 ) : null}
                 {show.bank ? (
                   <td className="px-3 py-2.5 text-center">
-                    {row.bankName ? (
+                    {row.bankCode || row.bankName ? (
                       <span
                         className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
-                        title={row.bankName}
+                        title={row.bankName ?? row.bankCode ?? undefined}
                       >
-                        {row.bankName}
+                        {row.bankCode ?? row.bankName}
                       </span>
                     ) : (
                       <span className="text-label text-muted">—</span>

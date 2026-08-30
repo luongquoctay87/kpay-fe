@@ -93,6 +93,31 @@ const nextConfig: NextConfig = {
         destination: "/customers/transfer-content/:id",
         permanent: false,
       },
+      {
+        source: "/customers/ledgers",
+        destination: "/ledgers",
+        permanent: false,
+      },
+      {
+        source: "/settings/users",
+        destination: "/accounts/users",
+        permanent: false,
+      },
+      {
+        source: "/settings/users/:id",
+        destination: "/accounts/users/:id",
+        permanent: false,
+      },
+      {
+        source: "/settings/roles",
+        destination: "/accounts/roles",
+        permanent: false,
+      },
+      {
+        source: "/settings/roles/:code",
+        destination: "/accounts/roles/:code",
+        permanent: false,
+      },
     ];
   },
 };

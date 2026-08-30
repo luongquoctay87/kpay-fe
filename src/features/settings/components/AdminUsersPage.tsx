@@ -11,13 +11,12 @@ import {
   IconHash,
   IconInbox,
   IconLayers,
+  IconList,
   IconPlus,
   IconRefresh,
   IconSave,
   IconSearch,
-  IconSettings,
   IconUser,
-  IconUsers,
   IconX,
 } from "@/components/icons/NavIcons";
 import {
@@ -475,8 +474,8 @@ export function AdminUsersPage() {
       <PageHeader
         title={t("settings.usersTitle")}
         breadcrumbs={[
-          { label: t("nav.settings"), icon: <IconSettings /> },
-          { label: t("nav.settingsUsers"), icon: <IconUsers /> },
+          { label: t("nav.settings"), icon: <IconUser /> },
+          { label: t("nav.settingsUsers"), icon: <IconList /> },
         ]}
         actions={
           canWrite && canChangeRoles ? (

@@ -118,7 +118,6 @@ export function AcbCredentialsStepUpModal({
                 onChange={setTotpCode}
                 aria-label={t("bankAccounts.acbStepUpTotp")}
                 disabled={saving}
-                className="w-full justify-between"
               />
             </Field>
 

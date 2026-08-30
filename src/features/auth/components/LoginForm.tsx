@@ -192,7 +192,7 @@ export function LoginForm() {
       <DocumentTitle title={`${t("auth.signIn")} · ${t("brand.admin")}`} />
 
       <div className="overflow-hidden rounded-lg border border-edge bg-elevated shadow-[0_20px_48px_-20px_rgba(15,23,42,0.28)]">
-        <div className="flex items-center gap-2 border-b border-edge bg-surface/80 px-4 py-2.5 sm:px-5 sm:py-3">
+        <div className="flex items-center gap-2 border-b border-edge bg-surface/80 px-4 py-2.5 sm:px-6 sm:py-3">
           <span className="inline-flex max-w-full items-center truncate rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-ink ring-1 ring-ink/20">
             {t("auth.adminBadge")}
           </span>
@@ -293,12 +293,13 @@ export function LoginForm() {
               </p>
             </form>
           ) : (
-            <form className="mt-5 flex flex-col gap-4" onSubmit={onOtpSubmit} noValidate>
+            <form className="mt-5 flex w-full flex-col gap-4" onSubmit={onOtpSubmit} noValidate>
               <Field
                 label={useBackup ? t("auth.backupCode") : t("auth.otpCode")}
                 htmlFor="login-code"
                 required
                 error={otp.errorOf("code")}
+                className="w-full"
               >
                 {useBackup ? (
                   <Input

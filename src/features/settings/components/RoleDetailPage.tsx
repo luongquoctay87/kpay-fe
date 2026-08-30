@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   IconKey,
   IconSave,
-  IconSettings,
+  IconUser,
 } from "@/components/icons/NavIcons";
 import { DateTimeText, PageHeader } from "@/components/common";
 import { Button, ConfirmDialog, Field, Input, StatusBadge, Switch, toast } from "@/components/ui";
@@ -265,7 +265,7 @@ export function RoleDetailPage({ code }: { code: string }) {
             </span>
           }
           breadcrumbs={[
-            { label: t("nav.settings"), icon: <IconSettings /> },
+            { label: t("nav.settings"), icon: <IconUser /> },
             {
               label: t("nav.settingsRoles"),
               icon: <IconKey />,

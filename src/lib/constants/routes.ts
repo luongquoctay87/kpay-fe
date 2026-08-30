@@ -22,7 +22,7 @@ export const ROUTES = {
   /** Phase 2 #5 — danh sách Merchant + Agent gộp. */
   customers: "/customers",
   /** Phase 2 #1 — lịch sử giao dịch ví khách hàng. */
-  customerLedgers: "/customers/ledgers",
+  customerLedgers: "/ledgers",
   /** Rule NDCK — moved from Settings into Customers. */
   customerTransferContent: "/customers/transfer-content",
   customerTransferContentDetail: (id: string) =>
@@ -46,6 +46,9 @@ export const ROUTES = {
   balanceMovements: "/banking/movements",
   /** Phase 2 #10 — tài khoản chặn (blacklist). */
   blockedAccounts: "/banking/blocked-accounts",
+  /** Partner routing (TruePay, …) — Tài nguyên › Đối tác. */
+  partners: "/partners",
+  partnerDetail: (id: string) => `/partners/${id}`,
   /**
    * Phase 2 #11 — số dư tài khoản (merged into bank accounts list).
    * Kept for redirects from old bookmarks/menu links.
@@ -54,10 +57,10 @@ export const ROUTES = {
   /** Future: Tài nguyên › Ví điện tử. */
   ewalletRoot: "/ewallet",
   /** Phase 2 #2 — Cài đặt. */
-  settingsUsers: "/settings/users",
-  settingsUserDetail: (id: string) => `/settings/users/${id}`,
-  settingsRoles: "/settings/roles",
-  settingsRoleDetail: (code: string) => `/settings/roles/${encodeURIComponent(code)}`,
+  settingsUsers: "/accounts/users",
+  settingsUserDetail: (id: string) => `/accounts/users/${id}`,
+  settingsRoles: "/accounts/roles",
+  settingsRoleDetail: (code: string) => `/accounts/roles/${encodeURIComponent(code)}`,
   profile: "/profile",
   pay: (token: string) => `/pay/${token}`,
 } as const;
