@@ -165,134 +165,157 @@ function filterNavEntries(
   return out;
 }
 
-/** Flat trail — top-level links plus expandable groups (supports nested subgroups). */
-const NAV: NavEntry[] = [
-  { href: ROUTES.home, labelKey: "nav.overview", icon: <IconHome /> },
-  { href: ROUTES.payin, labelKey: "nav.payin", icon: <IconArrowIn /> },
-  { href: ROUTES.payout, labelKey: "nav.payout", icon: <IconArrowOut /> },
-  { href: ROUTES.withdraw, labelKey: "nav.withdraw", icon: <IconWithdraw /> },
+/** Sidebar sections — visual grouping without extra labels. */
+const NAV_SECTIONS: { entries: NavEntry[] }[] = [
   {
-    href: ROUTES.customerLedgers,
-    labelKey: "nav.customerLedgers",
-    icon: <IconFileText />,
-  },
-  {
-    id: "customers",
-    labelKey: "nav.customers",
-    icon: <IconCustomers />,
-    children: [
+    entries: [
+      { href: ROUTES.home, labelKey: "nav.overview", icon: <IconHome /> },
+      { href: ROUTES.payin, labelKey: "nav.payin", icon: <IconArrowIn /> },
+      { href: ROUTES.payout, labelKey: "nav.payout", icon: <IconArrowOut /> },
+      { href: ROUTES.withdraw, labelKey: "nav.withdraw", icon: <IconWithdraw /> },
       {
-        href: ROUTES.customers,
-        labelKey: "nav.customersList",
-        icon: <IconList />,
-      },
-      {
-        href: ROUTES.customerTransferContent,
-        labelKey: "nav.settingsTransferContent",
+        href: ROUTES.customerLedgers,
+        labelKey: "nav.customerLedgers",
         icon: <IconFileText />,
-        permission: "settings:read",
-      },
-      {
-        href: ROUTES.callbackLogs,
-        labelKey: "nav.callback",
-        icon: <IconWebhook />,
       },
     ],
   },
   {
-    id: "resources",
-    labelKey: "nav.resources",
-    icon: <IconResource />,
-    children: [
+    entries: [
       {
-        id: "banking",
-        labelKey: "nav.banking",
-        icon: <IconBank />,
+        id: "customers",
+        labelKey: "nav.customers",
+        icon: <IconCustomers />,
         children: [
           {
-            href: ROUTES.bankAccounts,
-            labelKey: "nav.bankAccounts",
-            icon: <IconUsers />,
+            href: ROUTES.customers,
+            labelKey: "nav.customersList",
+            icon: <IconList />,
           },
           {
-            href: ROUTES.bankReconciliations,
-            labelKey: "nav.bankReconciliation",
+            href: ROUTES.customerTransferContent,
+            labelKey: "nav.settingsTransferContent",
             icon: <IconFileText />,
+            permission: "settings:read",
           },
           {
-            href: ROUTES.balanceMovements,
-            labelKey: "nav.balanceMovements",
-            icon: <IconBell />,
-          },
-          {
-            href: ROUTES.blockedAccounts,
-            labelKey: "nav.blockedAccounts",
-            icon: <IconBan />,
+            href: ROUTES.callbackLogs,
+            labelKey: "nav.callback",
+            icon: <IconWebhook />,
           },
         ],
       },
       {
-        id: "ewallet",
-        labelKey: "nav.ewallet",
-        icon: <IconWallet />,
-        children: [],
+        href: ROUTES.partners,
+        labelKey: "nav.partners",
+        icon: <IconLayers />,
+      },
+      {
+        id: "resources",
+        labelKey: "nav.resources",
+        icon: <IconResource />,
+        children: [
+          {
+            id: "banking",
+            labelKey: "nav.banking",
+            icon: <IconBank />,
+            children: [
+              {
+                href: ROUTES.bankAccounts,
+                labelKey: "nav.bankAccounts",
+                icon: <IconUsers />,
+              },
+              {
+                href: ROUTES.bankReconciliations,
+                labelKey: "nav.bankReconciliation",
+                icon: <IconFileText />,
+              },
+              {
+                href: ROUTES.balanceMovements,
+                labelKey: "nav.balanceMovements",
+                icon: <IconBell />,
+              },
+              {
+                href: ROUTES.blockedAccounts,
+                labelKey: "nav.blockedAccounts",
+                icon: <IconBan />,
+              },
+            ],
+          },
+          {
+            id: "ewallet",
+            labelKey: "nav.ewallet",
+            icon: <IconWallet />,
+            children: [],
+          },
+        ],
       },
     ],
   },
   {
-    href: ROUTES.partners,
-    labelKey: "nav.partners",
-    icon: <IconLayers />,
-  },
-  {
-    id: "settings",
-    labelKey: "nav.settings",
-    icon: <IconUser />,
-    children: [
+    entries: [
       {
-        href: ROUTES.settingsUsers,
-        labelKey: "nav.settingsUsers",
-        icon: <IconList />,
-        permission: "admin_users:read",
+        id: "settings",
+        labelKey: "nav.settings",
+        icon: <IconUser />,
+        children: [
+          {
+            href: ROUTES.settingsUsers,
+            labelKey: "nav.settingsUsers",
+            icon: <IconList />,
+            permission: "admin_users:read",
+          },
+          {
+            href: ROUTES.settingsRoles,
+            labelKey: "nav.settingsRoles",
+            icon: <IconKey />,
+            staffRole: ADMIN_STAFF_ROLE,
+          },
+        ],
       },
       {
-        href: ROUTES.settingsRoles,
-        labelKey: "nav.settingsRoles",
-        icon: <IconKey />,
-        staffRole: ADMIN_STAFF_ROLE,
-      },
-    ],
-  },
-  {
-    id: "logs",
-    labelKey: "nav.logs",
-    icon: <IconLog />,
-    children: [
-      {
-        href: ROUTES.auditLogs,
-        labelKey: "nav.auditLogs",
-        icon: <IconAuditLog />,
-        permission: "audit_logs:read",
-      },
-      {
-        href: ROUTES.moneyFlowLogs,
-        labelKey: "nav.moneyFlowLogs",
-        icon: <IconMoneyFlow />,
-        permission: "money_flow_logs:read",
+        id: "logs",
+        labelKey: "nav.logs",
+        icon: <IconLog />,
+        children: [
+          {
+            href: ROUTES.auditLogs,
+            labelKey: "nav.auditLogs",
+            icon: <IconAuditLog />,
+            permission: "audit_logs:read",
+          },
+          {
+            href: ROUTES.moneyFlowLogs,
+            labelKey: "nav.moneyFlowLogs",
+            icon: <IconMoneyFlow />,
+            permission: "money_flow_logs:read",
+          },
+        ],
       },
     ],
   },
 ];
 
 const ROW =
-  "relative flex w-full items-center gap-2.5 rounded-md text-body no-underline outline-none transition-[color,background-color] duration-150 focus-visible:ring-2 focus-visible:ring-edge-strong focus-visible:ring-offset-1";
+  "relative flex w-full items-center gap-2 rounded-lg text-body no-underline outline-none transition-[color,background-color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-edge-strong focus-visible:ring-offset-1";
 
-/** Active page — soft sky fill + light blue rail. */
+/** Active page — soft sky fill + accent rail. */
 const NAV_ACTIVE =
-  "!bg-nav-active font-medium !text-nav-active-fg before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-nav-active-bar";
+  "!bg-nav-active font-medium !text-nav-active-fg shadow-[inset_0_0_0_1px_rgba(64,136,240,0.08)] before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-full before:bg-nav-active-fg";
 
 const NAV_IDLE =
   "!text-ink-secondary hover:bg-panel hover:!text-ink";
+
+const NAV_CHILD_IDLE = "!text-muted hover:bg-panel hover:!text-ink-secondary";
+
+function labelClass(depth: number, kind: "leaf" | "group") {
+  if (depth === 0) {
+    return kind === "group"
+      ? "text-label font-semibold tracking-tight"
+      : "text-label font-medium";
+  }
+  return kind === "group" ? "text-label font-medium" : "text-label font-normal";
+}
 
 function isActive(pathname: string, href: string) {
   if (href === ROUTES.home) return pathname === ROUTES.home;
@@ -301,7 +324,12 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-const NEST_PAD = ["pl-[22px]", "pl-[34px]", "pl-[46px]"] as const;
+function nestedListClass(depth: number) {
+  return cn(
+    "mt-1 space-y-0.5 border-l border-edge-soft",
+    depth === 0 ? "ml-3.5 pl-2" : "ml-3 pl-2",
+  );
+}
 
 export function AppSidebar({
   collapsed,
@@ -318,7 +346,18 @@ export function AppSidebar({
   const user = useAuthStore((s) => s.user);
   const [openGroups, setOpenGroups] = useState<string[]>([]);
 
-  const navEntries = useMemo(() => filterNavEntries(NAV, user), [user]);
+  const navSections = useMemo(
+    () =>
+      NAV_SECTIONS.map((section) => ({
+        entries: filterNavEntries(section.entries, user),
+      })).filter((section) => section.entries.length > 0),
+    [user],
+  );
+
+  const navEntries = useMemo(
+    () => navSections.flatMap((section) => section.entries),
+    [navSections],
+  );
 
   useEffect(() => {
     try {
@@ -362,7 +401,7 @@ export function AppSidebar({
   function renderLeaf(leaf: NavLeaf, depth: number) {
     const active = isActive(pathname, leaf.href);
     const label = t(leaf.labelKey);
-    const pad = depth > 0 ? NEST_PAD[Math.min(depth, NEST_PAD.length) - 1] : undefined;
+    const isChild = depth > 0;
 
     return (
       <li key={leaf.href}>
@@ -376,23 +415,23 @@ export function AppSidebar({
             ROW,
             collapsed && depth === 0
               ? "justify-center px-2 py-2"
-              : cn("py-1.5 pr-2.5", pad ?? "px-2.5 py-2"),
-            active ? NAV_ACTIVE : NAV_IDLE,
+              : cn("px-2.5", isChild ? "py-1.5" : "py-2"),
+            active ? NAV_ACTIVE : isChild ? NAV_CHILD_IDLE : NAV_IDLE,
           )}
         >
           {leaf.icon ? (
             <span
               className={cn(
-                "flex h-5 w-5 shrink-0 items-center justify-center transition-colors",
-                depth > 0 && "[&>svg]:h-4 [&>svg]:w-4",
-                active ? "text-nav-active-fg" : "text-ink-secondary",
+                "flex shrink-0 items-center justify-center transition-colors",
+                isChild ? "h-4 w-4 [&>svg]:h-4 [&>svg]:w-4" : "h-5 w-5",
+                active ? "text-nav-active-fg" : isChild ? "text-subtle" : "text-ink-secondary",
               )}
             >
               {leaf.icon}
             </span>
           ) : null}
           {!collapsed || depth > 0 ? (
-            <span className="truncate">{label}</span>
+            <span className={cn("truncate", labelClass(depth, "leaf"))}>{label}</span>
           ) : null}
         </Link>
       </li>
@@ -403,7 +442,7 @@ export function AppSidebar({
     const label = t(group.labelKey);
     const hasActiveChild = groupContainsPath(group, pathname);
     const open = openGroups.includes(group.id);
-    const pad = depth > 0 ? NEST_PAD[Math.min(depth, NEST_PAD.length) - 1] : undefined;
+    const isChild = depth > 0;
 
     return (
       <li key={group.id}>
@@ -416,26 +455,30 @@ export function AppSidebar({
             ROW,
             collapsed && depth === 0
               ? "justify-center px-2 py-2"
-              : cn("py-1.5 pr-2.5", pad ?? "px-2.5 py-2"),
-            hasActiveChild ? "font-medium text-nav-active-fg" : NAV_IDLE,
+              : cn("px-2.5", isChild ? "py-1.5" : "py-2"),
+            open && !collapsed && "bg-panel/70",
+            hasActiveChild ? "text-nav-active-fg" : isChild ? NAV_CHILD_IDLE : NAV_IDLE,
           )}
         >
           <span
             className={cn(
-              "flex h-5 w-5 shrink-0 items-center justify-center transition-colors",
-              depth > 0 && "[&>svg]:h-4 [&>svg]:w-4",
-              hasActiveChild ? "text-nav-active-fg" : "text-ink-secondary",
+              "flex shrink-0 items-center justify-center transition-colors",
+              isChild ? "h-4 w-4 [&>svg]:h-4 [&>svg]:w-4" : "h-5 w-5",
+              hasActiveChild ? "text-nav-active-fg" : isChild ? "text-subtle" : "text-ink-secondary",
             )}
           >
             {group.icon}
           </span>
           {!collapsed || depth > 0 ? (
             <>
-              <span className="flex-1 truncate text-left">{label}</span>
+              <span className={cn("flex-1 truncate text-left", labelClass(depth, "group"))}>
+                {label}
+              </span>
               <IconChevron
                 className={cn(
-                  "shrink-0 text-subtle transition-transform",
+                  "h-3.5 w-3.5 shrink-0 text-subtle transition-transform duration-200",
                   open && "rotate-180",
+                  hasActiveChild && "text-nav-active-fg/70",
                 )}
               />
             </>
@@ -443,16 +486,9 @@ export function AppSidebar({
         </button>
 
         {open && !collapsed ? (
-          <ul className="mt-0.5 space-y-0.5">
+          <ul className={nestedListClass(depth)}>
             {group.children.length === 0 ? (
-              <li
-                className={cn(
-                  "px-2.5 py-1.5 text-caption text-subtle",
-                  NEST_PAD[Math.min(depth + 1, NEST_PAD.length) - 1],
-                )}
-              >
-                {t("nav.emptyGroup")}
-              </li>
+              <li className="px-2.5 py-1.5 text-caption text-subtle">{t("nav.emptyGroup")}</li>
             ) : (
               group.children.map((child) =>
                 isGroup(child) ? renderGroup(child, depth + 1) : renderLeaf(child, depth + 1),
@@ -467,13 +503,13 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "sticky top-0 z-10 flex h-dvh shrink-0 flex-col border-r-[0.5px] border-edge-soft bg-canvas transition-[width] duration-200 ease-out",
-        collapsed ? "w-[68px]" : "w-[248px]",
+        "sticky top-0 z-10 flex h-dvh shrink-0 flex-col border-r border-edge-soft bg-canvas transition-[width] duration-200 ease-out",
+        collapsed ? "w-[68px]" : "w-[252px]",
       )}
     >
       <div
         className={cn(
-          "flex h-14 items-center",
+          "flex h-14 shrink-0 items-center border-b border-edge-soft",
           collapsed ? "justify-center px-2" : "gap-2 px-4",
         )}
       >
@@ -507,12 +543,17 @@ export function AppSidebar({
         />
       </button>
 
-      <nav className="flex-1 overflow-y-auto px-2 py-2">
-        <ul className="space-y-0.5">
-          {navEntries.map((entry) =>
-            isGroup(entry) ? renderGroup(entry, 0) : renderLeaf(entry, 0),
-          )}
-        </ul>
+      <nav className="flex-1 overflow-y-auto px-2.5 py-3">
+        {navSections.map((section, index) => (
+          <ul
+            key={index}
+            className={cn("space-y-0.5", index > 0 && "mt-4 border-t border-edge-soft pt-4")}
+          >
+            {section.entries.map((entry) =>
+              isGroup(entry) ? renderGroup(entry, 0) : renderLeaf(entry, 0),
+            )}
+          </ul>
+        ))}
       </nav>
     </aside>
   );

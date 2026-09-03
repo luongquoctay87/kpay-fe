@@ -21,6 +21,8 @@ export interface PartnerListItem {
   adapterType: string;
   baseUrl: string;
   merchantKey: string;
+  /** Plain secret on detail/create/update; omitted on list. */
+  merchantSecret?: string | null;
   secretConfigured: boolean;
   payinRouting: PartnerRoutingMode;
   payoutRouting: PartnerRoutingMode;
@@ -75,15 +77,6 @@ export interface UpdatePartnerBody {
   payoutRouting?: PartnerRoutingMode;
   priority?: number;
   supportedChannels?: string[];
-}
-
-export interface PartnerHealthResp {
-  ok: boolean;
-  message: string;
-  httpStatus?: number | null;
-  latencyMs?: number | null;
-  partnerCode?: string;
-  adapterType?: string;
 }
 
 export interface PartnerStatsResp {

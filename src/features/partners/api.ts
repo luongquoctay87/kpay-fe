@@ -2,7 +2,6 @@ import { apiClient, unwrap } from "@/lib/api/client";
 import type {
   CreatePartnerBody,
   PartnerCallbackLogListResp,
-  PartnerHealthResp,
   PartnerListItem,
   PartnerListParams,
   PartnerListResp,
@@ -40,10 +39,6 @@ export const partnerApi = {
 
   updateStatus(id: string, status: PartnerStatus): Promise<PartnerListItem> {
     return unwrap(apiClient.patch(`/partners/${id}/status`, { status }));
-  },
-
-  healthCheck(id: string): Promise<PartnerHealthResp> {
-    return unwrap(apiClient.post(`/partners/${id}/health`));
   },
 
   stats(id: string): Promise<PartnerStatsResp> {

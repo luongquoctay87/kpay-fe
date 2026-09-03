@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { DateTimeText, PageHeader } from "@/components/common";
-import { IconActivity, IconChevronLeft, IconLayers, IconSave } from "@/components/icons/NavIcons";
-import { Button, Field, Input, Select, StatusBadge, toast } from "@/components/ui";
+import { IconChevronLeft, IconLayers, IconSave } from "@/components/icons/NavIcons";
+import { Button, Field, Input, PasswordVisibilityToggle, Select, StatusBadge, toast } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { partnerApi } from "@/features/partners/api";
 import { invalidateGatewayFilterOptionsCache } from "@/features/partners/gateway-options";
@@ -44,6 +44,9 @@ export function PartnerDetailPage({ id }: { id: string }) {
   const [baseUrl, setBaseUrl] = useState("");
   const [merchantKey, setMerchantKey] = useState("");
   const [merchantSecret, setMerchantSecret] = useState("");
+  const [loadedMerchantSecret, setLoadedMerchantSecret] = useState("");
+  const [showMerchantKey, setShowMerchantKey] = useState(false);
+  const [showMerchantSecret, setShowMerchantSecret] = useState(false);
   const [payinRouting, setPayinRouting] = useState<string | null>("off");
   const [payoutRouting, setPayoutRouting] = useState<string | null>("off");
   const [priority, setPriority] = useState("100");
@@ -51,8 +54,6 @@ export function PartnerDetailPage({ id }: { id: string }) {
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [healthChecking, setHealthChecking] = useState(false);
-  const [healthMsg, setHealthMsg] = useState<string | null>(null);
 
   const required = useRequiredFields(
     { name, adapterType, baseUrl, merchantKey },
@@ -88,7 +89,11 @@ export function PartnerDetailPage({ id }: { id: string }) {
     setAdapterType(p.adapterType);
     setBaseUrl(p.baseUrl);
     setMerchantKey(p.merchantKey);
-    setMerchantSecret("");
+    const secret = p.merchantSecret ?? "";
+    setMerchantSecret(secret);
+    setLoadedMerchantSecret(secret);
+    setShowMerchantKey(false);
+    setShowMerchantSecret(false);
     setPayinRouting(p.payinRouting);
     setPayoutRouting(p.payoutRouting);
     setPriority(String(p.priority ?? 100));
@@ -137,7 +142,7 @@ export function PartnerDetailPage({ id }: { id: string }) {
       payoutRouting: (payoutRouting as PartnerRoutingMode) || undefined,
       priority: Number(priority) || 0,
     };
-    if (merchantSecret.trim()) {
+    if (merchantSecret.trim() && merchantSecret.trim() !== loadedMerchantSecret) {
       body.merchantSecret = merchantSecret.trim();
     }
     setSubmitting(true);
@@ -153,33 +158,6 @@ export function PartnerDetailPage({ id }: { id: string }) {
       toast.error(t("partners.saveError"), msg);
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  async function onHealthCheck() {
-    setHealthChecking(true);
-    setHealthMsg(null);
-    try {
-      const res = await partnerApi.healthCheck(id);
-      const detail = [
-        res.message,
-        res.httpStatus != null ? `HTTP ${res.httpStatus}` : null,
-        res.latencyMs != null ? `${res.latencyMs}ms` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ");
-      setHealthMsg(detail);
-      if (res.ok) {
-        toast.success(t("partners.healthOk"), detail);
-      } else {
-        toast.error(t("partners.healthFail"), detail);
-      }
-    } catch (err) {
-      const msg = err instanceof ApiError ? err.message : t("partners.healthFail");
-      setHealthMsg(msg);
-      toast.error(t("partners.healthFail"), msg);
-    } finally {
-      setHealthChecking(false);
     }
   }
 
@@ -241,12 +219,6 @@ export function PartnerDetailPage({ id }: { id: string }) {
           </Button>
         </div>
       </div>
-
-      {healthMsg ? (
-        <p role="status" className="rounded-lg border border-edge bg-surface px-4 py-3 text-label text-muted">
-          {healthMsg}
-        </p>
-      ) : null}
 
       <div className="grid min-w-0 gap-4 sm:gap-5 lg:grid-cols-2 lg:items-start">
         <form
@@ -345,10 +317,21 @@ export function PartnerDetailPage({ id }: { id: string }) {
                 >
                   <Input
                     id="partner-detail-merchant-key"
+                    type={showMerchantKey ? "text" : "password"}
                     value={merchantKey}
                     onChange={(e) => setMerchantKey(e.target.value)}
                     disabled={fieldsLocked}
                     invalid={Boolean(required.errorOf("merchantKey"))}
+                    autoComplete="off"
+                    spellCheck={false}
+                    rightAddon={
+                      <PasswordVisibilityToggle
+                        visible={showMerchantKey}
+                        onToggle={() => setShowMerchantKey((v) => !v)}
+                        showLabel={t("partners.showCredential")}
+                        hideLabel={t("partners.hideCredential")}
+                      />
+                    }
                   />
                 </Field>
                 <Field
@@ -362,12 +345,21 @@ export function PartnerDetailPage({ id }: { id: string }) {
                 >
                   <Input
                     id="partner-detail-merchant-secret"
-                    type="password"
+                    type={showMerchantSecret ? "text" : "password"}
                     value={merchantSecret}
                     onChange={(e) => setMerchantSecret(e.target.value)}
                     disabled={fieldsLocked}
                     placeholder="••••••••"
                     autoComplete="new-password"
+                    spellCheck={false}
+                    rightAddon={
+                      <PasswordVisibilityToggle
+                        visible={showMerchantSecret}
+                        onToggle={() => setShowMerchantSecret((v) => !v)}
+                        showLabel={t("partners.showCredential")}
+                        hideLabel={t("partners.hideCredential")}
+                      />
+                    }
                   />
                 </Field>
               </div>
@@ -424,19 +416,7 @@ export function PartnerDetailPage({ id }: { id: string }) {
             ) : null}
           </div>
 
-          <div className="mt-auto flex flex-col gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              className="w-full sm:w-auto"
-              loading={healthChecking}
-              disabled={submitting}
-              leftIcon={<IconActivity width={16} height={16} />}
-              onClick={() => void onHealthCheck()}
-            >
-              {t("partners.btnHealth")}
-            </Button>
+          <div className="mt-auto flex flex-col gap-2 border-t border-edge px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
             {canWrite ? (
               <Button
                 type="submit"
@@ -444,7 +424,6 @@ export function PartnerDetailPage({ id }: { id: string }) {
                 size="md"
                 className="w-full sm:w-auto"
                 loading={submitting}
-                disabled={healthChecking}
                 leftIcon={<IconSave width={16} height={16} />}
               >
                 {t("partners.btnSave")}
