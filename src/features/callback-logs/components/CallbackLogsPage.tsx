@@ -31,6 +31,7 @@ import { Button, Select, StatusBadge, toast } from "@/components/ui";
 import { callbackLogApi } from "@/features/callback-logs/api";
 import { ColumnPicker } from "@/features/callback-logs/components/ColumnPicker";
 import { JsonViewModal } from "@/features/callback-logs/components/JsonViewModal";
+import { PartnerCallbackLogsSection } from "@/features/callback-logs/components/PartnerCallbackLogsSection";
 import {
   CALLBACK_LOG_COLUMN_ALIGN,
   CALLBACK_LOG_COLUMN_MIN_PX,
@@ -77,6 +78,7 @@ import {
 } from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { ROUTES } from "@/lib/constants/routes";
+import { cn } from "@/lib/cn";
 import { useMerchantAgentFilterOptions } from "@/lib/options/use-merchant-agent-filter-options";
 import { ApiError } from "@/lib/types/api";
 import { useAuthStore } from "@/features/auth/store";
@@ -232,6 +234,27 @@ export function CallbackLogsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [boot] = useState(() => readCallbackStateFromSearch(searchParams));
+
+  const currentTab =
+    searchParams.get("tab") === "partner" ? "partner" : "merchant";
+  const [activeTab, setActiveTab] =
+    useState<"merchant" | "partner">(currentTab);
+
+  useEffect(() => {
+    const tabFromUrl =
+      searchParams.get("tab") === "partner" ? "partner" : "merchant";
+    setActiveTab(tabFromUrl);
+  }, [searchParams]);
+
+  function handleTabChange(nextTab: "merchant" | "partner") {
+    setActiveTab(nextTab);
+    if (nextTab === "partner") {
+      router.replace(`${ROUTES.callbackLogs}?tab=partner`);
+    } else {
+      router.replace(ROUTES.callbackLogs);
+    }
+  }
+
   const permissions = useAuthStore((s) => s.user?.permissions);
   // Fail-closed: missing permissions means no privileged actions.
   const canResend = Boolean(permissions?.includes("callbacks:resend"));
@@ -512,8 +535,76 @@ export function CallbackLogsPage() {
         }
       />
 
-      <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
-        <FilterBar
+      {/* Navigation Tabs */}
+      <div className="border-b border-edge">
+        <nav className="-mb-px flex items-center gap-6 sm:gap-8" aria-label="Callback category tabs">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "merchant"}
+            className={cn(
+              "group relative flex items-center gap-2.5 pb-3.5 pt-1 text-label transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+              activeTab === "merchant"
+                ? "text-accent font-semibold"
+                : "text-muted hover:text-ink font-medium",
+            )}
+            onClick={() => handleTabChange("merchant")}
+          >
+            <span
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
+                activeTab === "merchant"
+                  ? "bg-accent/10 text-accent ring-1 ring-accent/20"
+                  : "bg-surface text-muted group-hover:bg-panel group-hover:text-ink",
+              )}
+            >
+              <IconWebhook className="h-4 w-4" />
+            </span>
+            <span className="text-body font-medium">{t("callbackLogs.tabMerchant")}</span>
+            {activeTab === "merchant" && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-accent" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "partner"}
+            className={cn(
+              "group relative flex items-center gap-2.5 pb-3.5 pt-1 text-label transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+              activeTab === "partner"
+                ? "text-accent font-semibold"
+                : "text-muted hover:text-ink font-medium",
+            )}
+            onClick={() => handleTabChange("partner")}
+          >
+            <span
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
+                activeTab === "partner"
+                  ? "bg-accent/10 text-accent ring-1 ring-accent/20"
+                  : "bg-surface text-muted group-hover:bg-panel group-hover:text-ink",
+              )}
+            >
+              <IconLayers className="h-4 w-4" />
+            </span>
+            <span className="text-body font-medium">{t("callbackLogs.tabPartner")}</span>
+            {activeTab === "partner" && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-accent" />
+            )}
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === "partner" ? (
+        <PartnerCallbackLogsSection
+          autoRefresh={autoRefresh}
+          autoRefreshSec={autoRefreshSec}
+        />
+      ) : (
+        <>
+          <div className="min-w-0 rounded-xl border border-edge bg-elevated px-4 py-4 sm:px-5">
+            <FilterBar
           onSearch={onSearch}
           onReset={onReset}
           canReset={canReset}
@@ -985,6 +1076,8 @@ export function CallbackLogsPage() {
           }}
         />
       ) : null}
+        </>
+      )}
     </div>
   );
 }

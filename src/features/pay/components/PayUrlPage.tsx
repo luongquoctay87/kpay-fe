@@ -160,20 +160,20 @@ function DetailRow({
         emphasize && "rounded-xl bg-nav-active/80 ring-1 ring-accent/15",
       )}
     >
-      <div className="min-w-0 text-left">
+      <div className="min-w-0 flex-1 text-left">
         <div className="text-caption font-medium uppercase tracking-wide text-muted">
           {label}
         </div>
         <div
           className={cn(
-            "mt-0.5 break-all text-body font-semibold text-ink",
+            "mt-0.5 break-words [overflow-wrap:anywhere] text-body font-semibold text-ink select-all",
             emphasize && "font-mono tracking-tight",
           )}
         >
           {display}
         </div>
       </div>
-      <CopyButton value={clipboard} label={copyLabel} className="mt-0.5" />
+      <CopyButton value={clipboard} label={copyLabel} className="mt-0.5 shrink-0" />
     </div>
   );
 }

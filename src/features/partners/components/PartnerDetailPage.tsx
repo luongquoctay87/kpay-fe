@@ -14,7 +14,6 @@ import {
   PARTNER_STATUS_TONE,
 } from "@/features/partners/status";
 import {
-  PARTNER_ADAPTER_OPTIONS,
   PARTNER_ROUTING_OPTIONS,
   PARTNER_STATUS_OPTIONS,
   type PartnerListItem,
@@ -49,16 +48,13 @@ export function PartnerDetailPage({ id }: { id: string }) {
   const [showMerchantSecret, setShowMerchantSecret] = useState(false);
   const [payinRouting, setPayinRouting] = useState<string | null>("off");
   const [payoutRouting, setPayoutRouting] = useState<string | null>("off");
-  const [priority, setPriority] = useState("100");
+  const [priority, setPriority] = useState("1");
   const [secretConfigured, setSecretConfigured] = useState(false);
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const required = useRequiredFields(
-    { name, adapterType, baseUrl, merchantKey },
-    { selectKeys: ["adapterType"] },
-  );
+  const required = useRequiredFields({ name, baseUrl, merchantKey });
 
   const load = useCallback(() => partnerApi.getById(id), [id]);
   const mapError = useCallback(
@@ -96,7 +92,7 @@ export function PartnerDetailPage({ id }: { id: string }) {
     setShowMerchantSecret(false);
     setPayinRouting(p.payinRouting);
     setPayoutRouting(p.payoutRouting);
-    setPriority(String(p.priority ?? 100));
+    setPriority(String(p.priority ?? 1));
     setSecretConfigured(p.secretConfigured);
   }
 
@@ -107,10 +103,6 @@ export function PartnerDetailPage({ id }: { id: string }) {
         label: t(PARTNER_STATUS_LABEL_KEY[v]),
       })),
     [t],
-  );
-  const adapterOptions = useMemo(
-    () => PARTNER_ADAPTER_OPTIONS.map((v) => ({ value: v, label: v })),
-    [],
   );
   const routingOptions = useMemo(
     () =>
@@ -128,14 +120,14 @@ export function PartnerDetailPage({ id }: { id: string }) {
     e.preventDefault();
     if (!canWrite || !data) return;
     setFormError(null);
-    if (required.hasMissing || !adapterType) {
+    if (required.hasMissing) {
       required.reveal();
       return;
     }
     const body: UpdatePartnerBody = {
       name: name.trim(),
       status: (status as PartnerStatus) || undefined,
-      adapterType,
+      adapterType: adapterType || "truepay_safepay",
       baseUrl: baseUrl.trim(),
       merchantKey: merchantKey.trim(),
       payinRouting: (payinRouting as PartnerRoutingMode) || undefined,
@@ -283,15 +275,13 @@ export function PartnerDetailPage({ id }: { id: string }) {
                 <Field
                   label={t("partners.labelAdapter")}
                   htmlFor="partner-detail-adapter"
-                  required
-                  error={required.errorOf("adapterType")}
                 >
-                  <Select
+                  <Input
                     id="partner-detail-adapter"
-                    value={adapterType}
-                    onChange={setAdapterType}
-                    options={adapterOptions}
-                    disabled={fieldsLocked}
+                    value={adapterType || "truepay_safepay"}
+                    readOnly
+                    disabled
+                    className="font-mono"
                   />
                 </Field>
                 <Field

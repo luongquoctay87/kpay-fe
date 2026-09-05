@@ -1,6 +1,7 @@
 import { apiClient, unwrap } from "@/lib/api/client";
 import type {
   CreatePartnerBody,
+  PartnerCallbackLogListParams,
   PartnerCallbackLogListResp,
   PartnerListItem,
   PartnerListParams,
@@ -33,6 +34,10 @@ export const partnerApi = {
     return unwrap(apiClient.post("/partners", body));
   },
 
+  generateCode(): Promise<{ code: string }> {
+    return unwrap(apiClient.get("/partners/generate-code"));
+  },
+
   update(id: string, body: UpdatePartnerBody): Promise<PartnerListItem> {
     return unwrap(apiClient.patch(`/partners/${id}`, body));
   },
@@ -52,6 +57,25 @@ export const partnerApi = {
     return unwrap(
       apiClient.get(`/partners/${id}/callback-logs`, {
         params: {
+          page: params.page ?? 0,
+          size: params.size ?? 20,
+        },
+      }),
+    );
+  },
+
+  listAllCallbackLogs(
+    params: PartnerCallbackLogListParams = {},
+  ): Promise<PartnerCallbackLogListResp> {
+    return unwrap(
+      apiClient.get("/partner-callback-logs", {
+        signal: params.signal,
+        params: {
+          q: params.q || undefined,
+          partnerId: params.partnerId || undefined,
+          orderType: params.orderType || undefined,
+          signatureValid: params.signatureValid,
+          processed: params.processed,
           page: params.page ?? 0,
           size: params.size ?? 20,
         },

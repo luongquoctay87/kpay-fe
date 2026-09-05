@@ -87,6 +87,9 @@ export interface PartnerStatsResp {
 
 export interface PartnerCallbackLogItem {
   id: string;
+  partnerId?: string;
+  partnerCode?: string;
+  partnerName?: string;
   orderType: string;
   orderId: string;
   signatureValid?: boolean | null;
@@ -94,6 +97,17 @@ export interface PartnerCallbackLogItem {
   errorMessage?: string | null;
   rawBody?: Record<string, unknown> | null;
   createdAt: string;
+}
+
+export interface PartnerCallbackLogListParams {
+  q?: string;
+  partnerId?: string;
+  orderType?: string;
+  signatureValid?: boolean;
+  processed?: boolean;
+  page?: number;
+  size?: number;
+  signal?: AbortSignal;
 }
 
 export interface PartnerCallbackLogListResp {

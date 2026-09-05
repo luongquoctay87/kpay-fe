@@ -21,7 +21,17 @@ export type PipelineStepView = PipelineStepDef & {
 
 const PAYIN_STEPS: readonly PipelineStepDef[] = [
   { stage: "payin.created", errorAlts: ["payin.rejected"] },
-  { stage: "bank.inbound", optional: true, errorAlts: ["payin.unmatched"] },
+  {
+    stage: "bank.inbound",
+    optional: true,
+    alts: ["partner.payin.created"],
+    errorAlts: ["payin.unmatched", "partner.payin.failed"],
+  },
+  {
+    stage: "partner.callback.inbound",
+    optional: true,
+    errorAlts: ["partner.callback.failed"],
+  },
   { stage: "payin.matched" },
   { stage: "wallet.credit" },
   { stage: "payin.finalized", optional: true },
@@ -30,8 +40,17 @@ const PAYIN_STEPS: readonly PipelineStepDef[] = [
 
 const PAYOUT_STEPS: readonly PipelineStepDef[] = [
   { stage: "wallet.reserve", errorAlts: ["payout.rejected"] },
-  { stage: "payout.disburse" },
-  { stage: "bank.outbound", optional: true },
+  {
+    stage: "payout.disburse",
+    alts: ["partner.payout.disburse"],
+    errorAlts: ["partner.payout.failed"],
+  },
+  {
+    stage: "bank.outbound",
+    optional: true,
+    alts: ["partner.callback.inbound"],
+    errorAlts: ["partner.callback.failed"],
+  },
   { stage: "wallet.capture", alts: ["wallet.release"] },
   { stage: "callback.outbound", optional: true, errorAlts: ["callback.failed"] },
 ];
@@ -69,12 +88,13 @@ export function pipelineKindFromEvent(
   if (row.withdrawOrderId || row.correlationType === "withdraw_order") return "withdraw";
   if (
     row.stage.startsWith("payin.") ||
+    row.stage.startsWith("partner.payin.") ||
     row.stage === "bank.inbound" ||
     row.stage === "payin.unmatched"
   ) {
     return "payin";
   }
-  if (row.stage.startsWith("payout.")) return "payout";
+  if (row.stage.startsWith("payout.") || row.stage.startsWith("partner.payout.")) return "payout";
   if (row.stage.startsWith("withdraw.")) return "withdraw";
   // Callback stages alone need order FK / correlation — already handled above.
   return null;
