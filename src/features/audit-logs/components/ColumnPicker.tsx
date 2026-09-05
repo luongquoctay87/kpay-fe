@@ -5,6 +5,7 @@ import {
   AUDIT_LOG_COLUMNS,
   AUDIT_LOG_COLUMN_LABEL_KEY,
   type ColumnVisibility,
+  defaultColumnVisibility,
   visibleColumnCount,
 } from "@/features/audit-logs/columns";
 
@@ -22,6 +23,8 @@ export function ColumnPicker({ visibility, onChange }: ColumnPickerProps) {
       onChange={onChange}
       buttonLabelKey="auditLogs.columns"
       hintLabelKey="auditLogs.columnsHint"
+      allLabelKey="auditLogs.columnsAll"
+      defaultVisibility={defaultColumnVisibility}
       reservedColumnCount={1}
       visibleCount={visibleColumnCount}
     />

@@ -5,6 +5,7 @@ import {
   BANK_RECONCILIATION_COLUMNS,
   BANK_RECONCILIATION_COLUMN_LABEL_KEY,
   type ColumnVisibility,
+  defaultColumnVisibility,
   visibleColumnCount,
 } from "@/features/bank-reconciliation/columns";
 
@@ -22,6 +23,8 @@ export function ColumnPicker({ visibility, onChange }: ColumnPickerProps) {
       onChange={onChange}
       buttonLabelKey="bankReconciliation.columns"
       hintLabelKey="bankReconciliation.columnsHint"
+      allLabelKey="bankReconciliation.columnsAll"
+      defaultVisibility={defaultColumnVisibility}
       reservedColumnCount={0}
       visibleCount={visibleColumnCount}
     />

@@ -5,6 +5,7 @@ import {
   MONEY_FLOW_COLUMNS,
   MONEY_FLOW_COLUMN_LABEL_KEY,
   type ColumnVisibility,
+  defaultColumnVisibility,
   visibleColumnCount,
 } from "@/features/money-flow/columns";
 
@@ -22,6 +23,8 @@ export function ColumnPicker({ visibility, onChange }: ColumnPickerProps) {
       onChange={onChange}
       buttonLabelKey="moneyFlow.columns"
       hintLabelKey="moneyFlow.columnsHint"
+      allLabelKey="moneyFlow.columnsAll"
+      defaultVisibility={defaultColumnVisibility}
       reservedColumnCount={1}
       visibleCount={visibleColumnCount}
     />

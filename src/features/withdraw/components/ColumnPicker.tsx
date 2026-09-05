@@ -5,6 +5,7 @@ import {
   WITHDRAW_COLUMNS,
   WITHDRAW_COLUMN_LABEL_KEY,
   type ColumnVisibility,
+  defaultColumnVisibility,
   visibleColumnCount,
 } from "@/features/withdraw/columns";
 
@@ -22,6 +23,8 @@ export function ColumnPicker({ visibility, onChange }: ColumnPickerProps) {
       onChange={onChange}
       buttonLabelKey="withdraw.columns"
       hintLabelKey="withdraw.columnsHint"
+      allLabelKey="withdraw.columnsAll"
+      defaultVisibility={defaultColumnVisibility}
       reservedColumnCount={1}
       visibleCount={visibleColumnCount}
     />

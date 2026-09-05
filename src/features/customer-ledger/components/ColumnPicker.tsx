@@ -5,6 +5,7 @@ import {
   CUSTOMER_LEDGER_COLUMNS,
   CUSTOMER_LEDGER_COLUMN_LABEL_KEY,
   type ColumnVisibility,
+  defaultColumnVisibility,
   visibleColumnCount,
 } from "@/features/customer-ledger/columns";
 
@@ -22,6 +23,8 @@ export function ColumnPicker({ visibility, onChange }: ColumnPickerProps) {
       onChange={onChange}
       buttonLabelKey="customerLedger.columns"
       hintLabelKey="customerLedger.columnsHint"
+      allLabelKey="customerLedger.columnsAll"
+      defaultVisibility={defaultColumnVisibility}
       reservedColumnCount={1}
       visibleCount={visibleColumnCount}
     />

@@ -33,6 +33,9 @@ export type ColumnPickerProps<C extends string> = {
   /** Button + hint i18n keys (e.g. payin.columns / payin.columnsHint). */
   buttonLabelKey: MessageKey;
   hintLabelKey: MessageKey;
+  /** Optional "All" checkbox label key and default visibility factory. */
+  allLabelKey?: MessageKey;
+  defaultVisibility?: () => Record<C, boolean>;
   /**
    * How many always-on columns are baked into `visibleCount` (STT, Actions, …).
    * Toggleable columns must keep at least one visible: `visibleCount - reserved >= 1`.
@@ -48,6 +51,8 @@ export function ColumnPicker<C extends string>({
   onChange,
   buttonLabelKey,
   hintLabelKey,
+  allLabelKey,
+  defaultVisibility,
   reservedColumnCount = 0,
   visibleCount,
 }: ColumnPickerProps<C>) {
@@ -63,6 +68,19 @@ export function ColumnPicker<C extends string>({
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
+
+  const allChecked = columns.every((col) => visibility[col]);
+
+  function toggleAll() {
+    if (allChecked) {
+      if (defaultVisibility) {
+        onChange(defaultVisibility());
+      }
+    } else {
+      const next = Object.fromEntries(columns.map((col) => [col, true])) as Record<C, boolean>;
+      onChange(next);
+    }
+  }
 
   function toggleableVisible() {
     return visibleCount(visibility) - reservedColumnCount;
@@ -94,6 +112,19 @@ export function ColumnPicker<C extends string>({
           className="absolute right-0 z-30 mt-1.5 w-[min(16rem,calc(100vw-2rem))] rounded-md border border-edge bg-elevated py-1.5 shadow-lg"
         >
           <p className="px-3 pb-1.5 pt-1 text-caption text-muted">{t(hintLabelKey)}</p>
+          {allLabelKey ? (
+            <div className="border-b border-edge">
+              <label className="flex min-h-10 cursor-pointer items-center gap-2.5 px-3 py-2.5 text-label font-medium text-ink hover:bg-surface">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-accent"
+                  checked={allChecked}
+                  onChange={toggleAll}
+                />
+                <span>{t(allLabelKey)}</span>
+              </label>
+            </div>
+          ) : null}
           <ul className="max-h-80 overflow-y-auto">
             {columns.map((col) => {
               const checked = visibility[col];

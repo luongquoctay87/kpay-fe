@@ -49,12 +49,13 @@ export function TableCard({
 }: TableCardProps) {
   const { t } = useI18n();
   const refreshText = refreshLabel ?? t("common.refresh");
+  const hasToolbar = Boolean(toolbar || onRefresh);
 
   return (
-    <section className="relative z-0 w-full min-w-0 overflow-hidden rounded-lg border border-edge bg-elevated">
+    <section className="relative w-full min-w-0 rounded-lg border border-edge bg-elevated">
       {/* Toolbar */}
-      {(toolbar || onRefresh) ? (
-        <div className="flex flex-wrap items-center justify-end gap-2 border-b border-edge px-3 py-3 sm:px-5">
+      {hasToolbar ? (
+        <div className="relative z-10 flex flex-wrap items-center justify-end gap-2 rounded-t-lg border-b border-edge px-3 py-3 sm:px-5">
           {toolbar}
           {onRefresh ? (
             <Button
@@ -74,7 +75,11 @@ export function TableCard({
 
       {/* Error bar */}
       {error ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-danger-edge bg-danger-bg px-3 py-2.5 sm:px-5">
+        <div
+          className={`flex flex-wrap items-center justify-between gap-2 border-b border-danger-edge bg-danger-bg px-3 py-2.5 sm:px-5 ${
+            !hasToolbar ? "rounded-t-lg" : ""
+          }`}
+        >
           <p className="text-label text-danger">{error}</p>
           {onRetry ? (
             <Button
@@ -91,10 +96,12 @@ export function TableCard({
       ) : null}
 
       {/* Table content — horizontal scroll when columns exceed viewport */}
-      <div className="min-w-0 overflow-x-auto overscroll-x-contain">{children}</div>
+      <div className={`min-w-0 overflow-x-auto overscroll-x-contain ${!pagination ? "rounded-b-lg" : ""}`}>
+        {children}
+      </div>
 
       {/* Pagination */}
-      {pagination}
+      {pagination ? <div className="rounded-b-lg">{pagination}</div> : null}
     </section>
   );
 }

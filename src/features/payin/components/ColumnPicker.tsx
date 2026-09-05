@@ -5,6 +5,7 @@ import {
   PAYIN_COLUMNS,
   PAYIN_COLUMN_LABEL_KEY,
   type ColumnVisibility,
+  defaultColumnVisibility,
   visibleColumnCount,
 } from "@/features/payin/columns";
 
@@ -22,6 +23,8 @@ export function ColumnPicker({ visibility, onChange }: ColumnPickerProps) {
       onChange={onChange}
       buttonLabelKey="payin.columns"
       hintLabelKey="payin.columnsHint"
+      allLabelKey="payin.columnsAll"
+      defaultVisibility={defaultColumnVisibility}
       reservedColumnCount={1}
       visibleCount={visibleColumnCount}
     />

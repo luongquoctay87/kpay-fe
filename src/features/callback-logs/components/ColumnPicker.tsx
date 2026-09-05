@@ -5,6 +5,7 @@ import {
   CALLBACK_LOG_COLUMNS,
   CALLBACK_LOG_COLUMN_LABEL_KEY,
   type ColumnVisibility,
+  defaultColumnVisibility,
   visibleColumnCount,
 } from "@/features/callback-logs/columns";
 
@@ -22,6 +23,8 @@ export function ColumnPicker({ visibility, onChange }: ColumnPickerProps) {
       onChange={onChange}
       buttonLabelKey="callbackLogs.columns"
       hintLabelKey="callbackLogs.columnsHint"
+      allLabelKey="callbackLogs.columnsAll"
+      defaultVisibility={defaultColumnVisibility}
       reservedColumnCount={0}
       visibleCount={visibleColumnCount}
     />
