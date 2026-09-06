@@ -12,6 +12,8 @@ type TableCardProps = {
   error?: string | null;
   onRetry?: () => void;
   retryLabel?: string;
+  /** Optional top progress bar shown directly above the table content. */
+  progressBar?: ReactNode;
   /** The <table> element or any content inside the card. */
   children: ReactNode;
   /** Pagination bar (pass <Pagination /> component). */
@@ -41,6 +43,7 @@ export function TableCard({
   error,
   onRetry,
   retryLabel,
+  progressBar,
   children,
   pagination,
   onRefresh,
@@ -70,6 +73,13 @@ export function TableCard({
               disabled={loading}
             />
           ) : null}
+        </div>
+      ) : null}
+
+      {/* Top Progress bar */}
+      {progressBar ? (
+        <div className="relative z-10 w-full overflow-hidden border-b border-edge/40">
+          {progressBar}
         </div>
       ) : null}
 

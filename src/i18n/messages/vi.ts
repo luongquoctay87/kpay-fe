@@ -1276,6 +1276,7 @@ export const vi = {
     colActions: "Thao tác",
     btnFinalize: "Finalize",
     btnRetryPartner: "Gọi lại đối tác",
+    retryPartnerProcessing: "Đang gọi lại sang đối tác…",
     retryPartnerConfirmTitle: "Gọi lại sang đối tác",
     retryPartnerConfirmMessage:
       "Bạn có chắc chắn muốn gọi lại yêu cầu chi đơn {requestId} sang đối tác {gateway}?",

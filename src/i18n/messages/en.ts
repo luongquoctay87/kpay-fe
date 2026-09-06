@@ -1280,6 +1280,7 @@ export const en = {
     colActions: "Actions",
     btnFinalize: "Finalize",
     btnRetryPartner: "Retry partner",
+    retryPartnerProcessing: "Retrying partner payout…",
     retryPartnerConfirmTitle: "Retry partner payout",
     retryPartnerConfirmMessage:
       "Are you sure you want to retry sending payout {requestId} to partner {gateway}?",

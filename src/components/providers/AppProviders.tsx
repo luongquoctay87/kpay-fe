@@ -9,6 +9,7 @@ import "dayjs/locale/en";
 import "dayjs/locale/vi";
 import { useEffect, type ReactNode } from "react";
 import { ToastHost } from "@/components/ui/ToastHost";
+import { PayoutRetryProgressBarHost } from "@/features/payout/components/PayoutRetryProgressBarHost";
 import { useLocaleStore } from "@/i18n/store";
 import { KPAY_THEME } from "@/lib/theme/tokens";
 
@@ -59,6 +60,7 @@ function LocaleEffects({ children }: { children: ReactNode }) {
       <App>
         {children}
         <ToastHost />
+        <PayoutRetryProgressBarHost />
       </App>
     </ConfigProvider>
   );

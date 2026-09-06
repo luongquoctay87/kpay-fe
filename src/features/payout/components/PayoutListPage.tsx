@@ -88,6 +88,7 @@ import {
   EMPTY_PAYOUT_STATS,
   PAYOUT_STATUS_OPTIONS,
 } from "@/features/payout/types";
+import { usePayoutRetryStore } from "@/features/payout/store/use-payout-retry-store";
 import { useI18n } from "@/i18n/use-i18n";
 import {
   useAutoRefresh,
@@ -96,6 +97,7 @@ import {
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { formatMoney } from "@/lib/format/datetime";
 import { ROUTES } from "@/lib/constants/routes";
+import { cn } from "@/lib/cn";
 import { ApiError } from "@/lib/types/api";
 import {
   buildQueryString,
@@ -178,6 +180,9 @@ export function PayoutListPage() {
   const [detailRow, setDetailRow] = useState<PayoutOrderListItem | null>(null);
   const [finalizeRow, setFinalizeRow] = useState<PayoutOrderListItem | null>(null);
   const [retryRow, setRetryRow] = useState<PayoutOrderListItem | null>(null);
+  const activeTask = usePayoutRetryStore((s) => s.activeTask);
+  const startRetry = usePayoutRetryStore((s) => s.startRetry);
+
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
 
@@ -320,6 +325,12 @@ export function PayoutListPage() {
 
   useAutoRefresh(refresh, { enabled: autoRefresh, intervalSec: autoRefreshSec });
 
+  useEffect(() => {
+    return usePayoutRetryStore.getState().subscribe(() => {
+      void refresh();
+    });
+  }, [refresh]);
+
   const canRetryPartner = useCallback(
     (row: PayoutOrderListItem) => {
       if (!canWrite) return false;
@@ -330,23 +341,26 @@ export function PayoutListPage() {
     [canWrite],
   );
 
-  const handleConfirmRetry = useCallback(async () => {
+  const handleConfirmRetry = useCallback(() => {
     if (!retryRow) return;
     const targetOrder = retryRow;
     setRetryRow(null);
-    try {
-      await payoutApi.retryPartner(targetOrder.id);
-      toast.success(t("payout.retryPartnerSuccess"));
-      void refresh();
-    } catch (e) {
-      toast.error(
-        e instanceof ApiError || e instanceof Error
-          ? e.message
-          : t("payout.retryPartnerFailed"),
-      );
-      void refresh();
-    }
-  }, [retryRow, refresh, t]);
+
+    void startRetry(
+      {
+        orderId: targetOrder.id,
+        requestId: targetOrder.requestId,
+        gateway:
+          targetOrder.gateway && targetOrder.gateway !== "internal"
+            ? targetOrder.gateway
+            : "Partner",
+      },
+      {
+        success: t("payout.retryPartnerSuccess"),
+        failed: t("payout.retryPartnerFailed"),
+      },
+    );
+  }, [retryRow, startRetry, t]);
 
   const hasFilters = Boolean(
     filters.q ||
@@ -705,6 +719,24 @@ export function PayoutListPage() {
       </form>
 
       <TableCard
+        progressBar={
+          activeTask ? (
+            <div className="relative h-1 w-full overflow-hidden bg-surface">
+              <div
+                className={cn(
+                  "h-full transition-all duration-300 ease-out",
+                  activeTask.status === "running" &&
+                    "bg-accent shadow-[0_0_8px_rgba(64,136,240,0.6)]",
+                  activeTask.status === "success" &&
+                    "bg-success shadow-[0_0_8px_rgba(4,120,87,0.6)]",
+                  activeTask.status === "error" &&
+                    "bg-danger shadow-[0_0_8px_rgba(185,28,28,0.6)]",
+                )}
+                style={{ width: `${activeTask.progress}%` }}
+              />
+            </div>
+          ) : null
+        }
         toolbar={
           <>
             <Button
@@ -945,8 +977,17 @@ export function PayoutListPage() {
               </tr>
             ) : null}
 
-            {rows.map((row, index) => (
-              <tr key={row.id} className="group hover:bg-surface/70 [&>td]:border-b [&>td]:border-edge">
+            {rows.map((row, index) => {
+              const isThisRowRetrying =
+                activeTask?.orderId === row.id && activeTask.status === "running";
+              return (
+              <tr
+                key={row.id}
+                className={cn(
+                  "group transition-colors [&>td]:border-b [&>td]:border-edge",
+                  isThisRowRetrying ? "bg-accent/5 hover:bg-accent/10" : "hover:bg-surface/70",
+                )}
+              >
                 <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                   {page * size + index + 1}
                 </td>
@@ -1130,16 +1171,32 @@ export function PayoutListPage() {
                           variant="ghost"
                           size="sm"
                           iconOnly
-                          className="text-accent hover:text-accent-dark hover:bg-accent/10"
-                          aria-label={t("payout.btnRetryPartner")}
-                          leftIcon={<IconRefresh width={15} height={15} />}
+                          className={cn(
+                            "text-accent hover:text-accent-dark hover:bg-accent/10",
+                            isThisRowRetrying && "opacity-80 cursor-wait",
+                          )}
+                          aria-label={
+                            isThisRowRetrying
+                              ? t("payout.retryPartnerProcessing")
+                              : t("payout.btnRetryPartner")
+                          }
+                          leftIcon={
+                            <IconRefresh
+                              width={15}
+                              height={15}
+                              className={isThisRowRetrying ? "animate-spin" : undefined}
+                            />
+                          }
+                          disabled={isThisRowRetrying}
                           onClick={() => setRetryRow(row)}
                         />
                         <span
                           role="tooltip"
                           className="pointer-events-none absolute bottom-full right-0 z-30 mb-1.5 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover/btn:opacity-100 group-focus-within/btn:opacity-100"
                         >
-                          {t("payout.btnRetryPartner")}
+                          {isThisRowRetrying
+                            ? t("payout.retryPartnerProcessing")
+                            : t("payout.btnRetryPartner")}
                         </span>
                       </span>
                     ) : null}
@@ -1150,7 +1207,8 @@ export function PayoutListPage() {
                   </div>
                 </td>
               </tr>
-            ))}
+            );
+            })}
 
             {!loading && rows.length > 0 ? (
               <tr className="bg-surface/50">
