@@ -1337,6 +1337,7 @@ export const vi = {
     createAccount: "Số tài khoản",
     createAmount: "Số tiền",
     createContent: "Nội dung chuyển khoản",
+    transferContentTooLong: "Nội dung chuyển khoản tối đa 50 ký tự.",
     createSubmit: "Tạo lệnh rút",
     createOk: "Đã tạo lệnh rút tiền.",
     createError: "Không tạo được lệnh rút tiền.",

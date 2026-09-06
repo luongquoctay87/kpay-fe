@@ -1340,6 +1340,7 @@ export const en = {
     createAccount: "Account number",
     createAmount: "Amount",
     createContent: "Transfer content",
+    transferContentTooLong: "Transfer content must not exceed 50 characters.",
     createSubmit: "Submit withdraw",
     createOk: "Withdraw order created.",
     createError: "Could not create withdraw order.",

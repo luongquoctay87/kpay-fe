@@ -422,7 +422,7 @@ export function PartnerDetailPage({ id }: { id: string }) {
           </div>
         </form>
 
-        <PartnerOpsPanel partnerId={id} />
+        <PartnerOpsPanel partnerId={id} onRefreshPartner={refresh} />
       </div>
     </div>
   );

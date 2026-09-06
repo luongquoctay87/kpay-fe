@@ -6,13 +6,13 @@
 /** Same string embedded in QR addInfo — use for UI + clipboard so they never diverge. */
 export function sanitizeTransferContent(raw: string | undefined | null): string {
   if (!raw) return "";
-  // NAPAS addInfo: alphanumeric-ish; keep common transfer chars; max 25 for QR field safety
+  // NAPAS addInfo: alphanumeric-ish; keep common transfer chars; max 50 for QR field safety
   return raw
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^A-Za-z0-9 \-_./]/g, "")
     .trim()
-    .slice(0, 25);
+    .slice(0, 50);
 }
 
 export function buildVietQrPayload(input: {

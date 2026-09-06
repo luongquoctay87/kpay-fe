@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { DateTimeText } from "@/components/common";
+import { IconRefresh } from "@/components/icons/NavIcons";
 import { Button, StatusBadge } from "@/components/ui";
 import { partnerApi } from "@/features/partners/api";
 import type { PartnerCallbackLogItem } from "@/features/partners/types";
@@ -9,9 +10,15 @@ import { useI18n } from "@/i18n/use-i18n";
 import { useAsyncLoad } from "@/lib/async/use-async-load";
 import { ApiError } from "@/lib/types/api";
 
-export function PartnerOpsPanel({ partnerId }: { partnerId: string }) {
+type PartnerOpsPanelProps = {
+  partnerId: string;
+  onRefreshPartner?: () => Promise<void>;
+};
+
+export function PartnerOpsPanel({ partnerId, onRefreshPartner }: PartnerOpsPanelProps) {
   const { t } = useI18n();
   const [logPage, setLogPage] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const pageSize = 10;
 
   const loadStats = useCallback(() => partnerApi.stats(partnerId), [partnerId]);
@@ -29,10 +36,23 @@ export function PartnerOpsPanel({ partnerId }: { partnerId: string }) {
   const stats = useAsyncLoad({ load: loadStats, mapError });
   const logs = useAsyncLoad({ load: loadLogs, mapError });
 
-  function refreshAll() {
-    void stats.refresh();
-    void logs.refresh();
-  }
+  const isRefreshing =
+    refreshing ||
+    (logs.loading && Boolean(logs.data)) ||
+    (stats.loading && Boolean(stats.data));
+
+  const refreshAll = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        stats.refresh(),
+        logs.refresh(),
+        onRefreshPartner ? onRefreshPartner() : Promise.resolve(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [stats, logs, onRefreshPartner]);
 
   return (
     <div className="min-w-0 space-y-6">
@@ -60,7 +80,16 @@ export function PartnerOpsPanel({ partnerId }: { partnerId: string }) {
       <section className="rounded-xl border border-edge bg-elevated p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-body font-semibold">{t("partners.logsTitle")}</h2>
-          <Button type="button" variant="ghost" size="sm" onClick={refreshAll}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            loading={isRefreshing}
+            disabled={isRefreshing}
+            leftIcon={<IconRefresh width={14} height={14} className="shrink-0" />}
+            onClick={() => void refreshAll()}
+            className="shadow-xs hover:border-edge-strong transition-all"
+          >
             {t("partners.refresh")}
           </Button>
         </div>

@@ -185,6 +185,10 @@ export function PortalWithdrawPage() {
       required.reveal();
       return;
     }
+    if (transferContent.trim().length > 50) {
+      setCreateError(t("withdraw.transferContentTooLong"));
+      return;
+    }
     setCreating(true);
     setCreateError(null);
     try {
@@ -333,6 +337,7 @@ export function PortalWithdrawPage() {
               value={transferContent}
               onChange={(e) => setTransferContent(e.target.value)}
               disabled={creating}
+              maxLength={50}
               invalid={Boolean(required.errorOf("transferContent"))}
             />
           </Field>
