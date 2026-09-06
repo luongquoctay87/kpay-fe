@@ -59,4 +59,8 @@ export const payoutApi = {
   ): Promise<PayoutOrderListItem> {
     return unwrap(apiClient.post(`/payout-orders/${id}/finalize`, body));
   },
+
+  retryPartner(id: string): Promise<PayoutOrderListItem> {
+    return unwrap(apiClient.post(`/payout-orders/${id}/retry`));
+  },
 };

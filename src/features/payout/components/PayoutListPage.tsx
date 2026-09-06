@@ -48,7 +48,7 @@ import {
   type DateRangeValue,
 } from "@/components/common";
 
-import { Button, Select, StatusBadge, toast } from "@/components/ui";
+import { Button, ConfirmDialog, Select, StatusBadge, toast } from "@/components/ui";
 import { useAuthStore } from "@/features/auth/store";
 import { bankAccountApi } from "@/features/bank-accounts/api";
 import { getActiveMerchantOptions } from "@/features/merchants/options-cache";
@@ -177,6 +177,7 @@ export function PayoutListPage() {
   const [exporting, setExporting] = useState(false);
   const [detailRow, setDetailRow] = useState<PayoutOrderListItem | null>(null);
   const [finalizeRow, setFinalizeRow] = useState<PayoutOrderListItem | null>(null);
+  const [retryRow, setRetryRow] = useState<PayoutOrderListItem | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
 
@@ -272,7 +273,7 @@ export function PayoutListPage() {
               : (PAYOUT_COLUMNS.find((c) => show[c]) ?? "requestId");
 
   function colWidth(col: PayoutColumn | "stt" | "actions"): string | undefined {
-    if (col === "actions") return "96px";
+    if (col === "actions") return "104px";
     if (col !== "stt" && col === flexCol) return undefined;
     return `${PAYOUT_COLUMN_MIN_PX[col]}px`;
   }
@@ -318,6 +319,34 @@ export function PayoutListPage() {
   const stats = data.stats;
 
   useAutoRefresh(refresh, { enabled: autoRefresh, intervalSec: autoRefreshSec });
+
+  const canRetryPartner = useCallback(
+    (row: PayoutOrderListItem) => {
+      if (!canWrite) return false;
+      if (row.status !== "pending" && row.status !== "processing") return false;
+      if (row.partnerRef) return false;
+      return true;
+    },
+    [canWrite],
+  );
+
+  const handleConfirmRetry = useCallback(async () => {
+    if (!retryRow) return;
+    const targetOrder = retryRow;
+    setRetryRow(null);
+    try {
+      await payoutApi.retryPartner(targetOrder.id);
+      toast.success(t("payout.retryPartnerSuccess"));
+      void refresh();
+    } catch (e) {
+      toast.error(
+        e instanceof ApiError || e instanceof Error
+          ? e.message
+          : t("payout.retryPartnerFailed"),
+      );
+      void refresh();
+    }
+  }, [retryRow, refresh, t]);
 
   const hasFilters = Boolean(
     filters.q ||
@@ -710,7 +739,7 @@ export function PayoutListPage() {
         }
       >
         <table
-          className="w-full table-fixed border-collapse text-left"
+          className="w-full table-fixed border-separate border-spacing-0 text-left"
           style={{ minWidth: payoutTableMinWidth(columnVisibility) }}
         >
           <colgroup>
@@ -721,7 +750,7 @@ export function PayoutListPage() {
             <col style={{ width: colWidth("actions") }} />
           </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+            <tr className="bg-surface text-label font-medium text-muted [&>th]:border-b [&>th]:border-edge [&>th]:bg-surface">
               <th className={`${PAYOUT_COLUMN_WIDTH.stt} ${PAYOUT_COLUMN_ALIGN.stt} px-3 py-2.5`}>
                 <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
                   {t("payout.colStt")}
@@ -867,7 +896,7 @@ export function PayoutListPage() {
                   </ColumnHeader>
                 </th>
               ) : null}
-              <th className="w-[96px] px-3 py-2.5 text-center">
+              <th className="sticky right-0 z-[2] w-[104px] min-w-[104px] border-b border-l border-edge bg-surface px-3 py-2.5 text-center shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]">
                 <ColumnHeader align="center" icon={<IconSettings width={14} height={14} />}>
                   {t("payout.colActions")}
                 </ColumnHeader>
@@ -917,7 +946,7 @@ export function PayoutListPage() {
             ) : null}
 
             {rows.map((row, index) => (
-              <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
+              <tr key={row.id} className="group hover:bg-surface/70 [&>td]:border-b [&>td]:border-edge">
                 <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                   {page * size + index + 1}
                 </td>
@@ -1072,34 +1101,59 @@ export function PayoutListPage() {
                     <DateTimeText value={row.updatedAt} />
                   </td>
                 ) : null}
-                <td className="px-3 py-2.5 text-center">
-                  {canWrite && (row.status === "pending" || row.status === "processing") ? (
-                    <span className="group relative inline-flex">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        iconOnly
-                        aria-label={t("payout.btnFinalize")}
-                        leftIcon={<IconCheckCircle width={15} height={15} />}
-                        onClick={() => setFinalizeRow(row)}
-                      />
-                      <span
-                        role="tooltip"
-                        className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-                      >
-                        {t("payout.btnFinalize")}
+                <td className="sticky right-0 z-[1] hover:z-30 focus-within:z-30 w-[104px] min-w-[104px] border-b border-l border-edge bg-elevated px-3 py-2.5 text-center shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] group-hover:bg-surface">
+                  <div className="flex items-center justify-center gap-1">
+                    {canWrite && (row.status === "pending" || row.status === "processing") ? (
+                      <span className="group/btn relative inline-flex">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          iconOnly
+                          aria-label={t("payout.btnFinalize")}
+                          leftIcon={<IconCheckCircle width={15} height={15} />}
+                          onClick={() => setFinalizeRow(row)}
+                        />
+                        <span
+                          role="tooltip"
+                          className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover/btn:opacity-100 group-focus-within/btn:opacity-100"
+                        >
+                          {t("payout.btnFinalize")}
+                        </span>
                       </span>
-                    </span>
-                  ) : (
-                    <span className="text-caption text-subtle">—</span>
-                  )}
+                    ) : null}
+
+                    {canRetryPartner(row) ? (
+                      <span className="group/btn relative inline-flex">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          iconOnly
+                          className="text-accent hover:text-accent-dark hover:bg-accent/10"
+                          aria-label={t("payout.btnRetryPartner")}
+                          leftIcon={<IconRefresh width={15} height={15} />}
+                          onClick={() => setRetryRow(row)}
+                        />
+                        <span
+                          role="tooltip"
+                          className="pointer-events-none absolute bottom-full right-0 z-30 mb-1.5 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover/btn:opacity-100 group-focus-within/btn:opacity-100"
+                        >
+                          {t("payout.btnRetryPartner")}
+                        </span>
+                      </span>
+                    ) : null}
+
+                    {!(canWrite && (row.status === "pending" || row.status === "processing")) ? (
+                      <span className="text-caption text-subtle">—</span>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ))}
 
             {!loading && rows.length > 0 ? (
-              <tr className="border-t border-edge bg-surface/50">
+              <tr className="bg-surface/50">
                 <td className="px-3 py-2.5 text-label font-semibold text-ink" colSpan={1}>
                   {t("payout.totalRow")}
                 </td>
@@ -1131,7 +1185,7 @@ export function PayoutListPage() {
                 {show.retryCount ? <td /> : null}
                 {show.createdAt ? <td /> : null}
                 {show.updatedAt ? <td /> : null}
-                <td />
+                <td className="sticky right-0 z-[1] w-[104px] min-w-[104px] border-l border-edge bg-surface shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]" />
               </tr>
             ) : null}
           </tbody>
@@ -1151,6 +1205,14 @@ export function PayoutListPage() {
                 }
               : undefined
           }
+          onRetry={
+            canRetryPartner(detailRow)
+              ? () => {
+                  setRetryRow(detailRow);
+                  setDetailRow(null);
+                }
+              : undefined
+          }
         />
       ) : null}
 
@@ -1161,6 +1223,24 @@ export function PayoutListPage() {
           onDone={() => {
             void refresh();
           }}
+        />
+      ) : null}
+
+      {retryRow ? (
+        <ConfirmDialog
+          title={t("payout.retryPartnerConfirmTitle")}
+          message={t("payout.retryPartnerConfirmMessage", {
+            requestId: retryRow.requestId,
+            gateway:
+              retryRow.gateway && retryRow.gateway !== "internal"
+                ? retryRow.gateway
+                : "Partner",
+          })}
+          confirmLabel={t("payout.btnRetryPartner")}
+          cancelLabel={t("common.cancel")}
+          confirmIcon={<IconRefresh width={15} height={15} />}
+          onConfirm={() => void handleConfirmRetry()}
+          onCancel={() => setRetryRow(null)}
         />
       ) : null}
     </div>

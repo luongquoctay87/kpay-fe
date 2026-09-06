@@ -1256,6 +1256,12 @@ export const vi = {
     range: "{from}-{to} trên {total} giao dịch",
     colActions: "Thao tác",
     btnFinalize: "Finalize",
+    btnRetryPartner: "Gọi lại đối tác",
+    retryPartnerConfirmTitle: "Gọi lại sang đối tác",
+    retryPartnerConfirmMessage:
+      "Bạn có chắc chắn muốn gọi lại yêu cầu chi đơn {requestId} sang đối tác {gateway}?",
+    retryPartnerSuccess: "Đã gửi lại yêu cầu sang đối tác thành công.",
+    retryPartnerFailed: "Gọi lại đối tác thất bại.",
     detailClose: "Đóng",
     detailId: "ID",
     detailCreateRequest: "Request tạo đơn",

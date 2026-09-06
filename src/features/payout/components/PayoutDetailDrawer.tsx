@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { CopyButton, DateTimeText } from "@/components/common";
-import { IconCheckCircle, IconX } from "@/components/icons/NavIcons";
+import { IconCheckCircle, IconRefresh, IconX } from "@/components/icons/NavIcons";
 import { Button, StatusBadge } from "@/components/ui";
 import { isAwaitingReconciliation, realStatusLabel } from "@/features/payout/real-status";
 import {
@@ -33,8 +33,9 @@ function sanitizeCreateRequestJson(value: unknown): unknown {
   if (value == null || typeof value !== "object" || Array.isArray(value)) {
     return value;
   }
-  const { callbackUrl: _callbackUrl, ...rest } = value as Record<string, unknown>;
-  return rest;
+  const copy = { ...(value as Record<string, unknown>) };
+  delete copy.callbackUrl;
+  return copy;
 }
 
 function DetailRow({
@@ -56,6 +57,7 @@ type PayoutDetailDrawerProps = {
   row: PayoutOrderListItem;
   onClose: () => void;
   onFinalize?: () => void;
+  onRetry?: () => void;
   /** When false, merchant name is plain text (portal — no Admin `/merchants` link). */
   linkMerchant?: boolean;
 };
@@ -64,6 +66,7 @@ export function PayoutDetailDrawer({
   row,
   onClose,
   onFinalize,
+  onRetry,
   linkMerchant = true,
 }: PayoutDetailDrawerProps) {
   const { t } = useI18n();
@@ -250,6 +253,18 @@ export function PayoutDetailDrawer({
           >
             {t("payout.detailClose")}
           </Button>
+          {onRetry ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              className="w-full sm:w-auto text-accent hover:text-accent-dark hover:border-accent"
+              onClick={onRetry}
+              leftIcon={<IconRefresh width={15} height={15} />}
+            >
+              {t("payout.btnRetryPartner")}
+            </Button>
+          ) : null}
           {onFinalize ? (
             <Button
               type="button"

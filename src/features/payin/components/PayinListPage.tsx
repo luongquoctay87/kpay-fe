@@ -708,7 +708,7 @@ export function PayinListPage() {
         }
       >
         <table
-          className="w-full table-fixed border-collapse text-left"
+          className="w-full table-fixed border-separate border-spacing-0 text-left"
           style={{ minWidth: payinTableMinWidth(columnVisibility) }}
         >
           <colgroup>
@@ -719,7 +719,7 @@ export function PayinListPage() {
             <col style={{ width: colWidth("actions") }} />
           </colgroup>
           <thead>
-            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
+            <tr className="bg-surface text-label font-medium text-muted [&>th]:border-b [&>th]:border-edge [&>th]:bg-surface">
               <th className={`${PAYIN_COLUMN_WIDTH.stt} ${PAYIN_COLUMN_ALIGN.stt} px-3 py-2.5`}>
                 <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
                   {t("payin.colStt")}
@@ -858,7 +858,7 @@ export function PayinListPage() {
                   </ColumnHeader>
                 </th>
               ) : null}
-              <th className="w-[96px] px-3 py-2.5 text-center">
+              <th className="sticky right-0 z-[2] w-[96px] min-w-[96px] border-b border-l border-edge bg-surface px-3 py-2.5 text-center shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]">
                 <ColumnHeader align="center" icon={<IconSettings width={14} height={14} />}>
                   {t("payin.colActions")}
                 </ColumnHeader>
@@ -908,7 +908,7 @@ export function PayinListPage() {
             ) : null}
 
             {rows.map((row, index) => (
-              <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
+              <tr key={row.id} className="group hover:bg-surface/70 [&>td]:border-b [&>td]:border-edge">
                 <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
                   {page * size + index + 1}
                 </td>
@@ -1046,9 +1046,9 @@ export function PayinListPage() {
                     {row.gateway ?? "—"}
                   </td>
                 ) : null}
-                <td className="px-3 py-2.5 text-center">
+                <td className="sticky right-0 z-[1] hover:z-30 focus-within:z-30 w-[96px] min-w-[96px] border-b border-l border-edge bg-elevated px-3 py-2.5 text-center shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] group-hover:bg-surface">
                   {row.status === "created" || row.status === "pending" ? (
-                    <span className="group relative inline-flex">
+                    <span className="group/btn relative inline-flex">
                       <Button
                         type="button"
                         variant="ghost"
@@ -1060,7 +1060,7 @@ export function PayinListPage() {
                       />
                       <span
                         role="tooltip"
-                        className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-caption font-medium text-on-accent opacity-0 shadow-md transition-opacity group-hover/btn:opacity-100 group-focus-within/btn:opacity-100"
                       >
                         {t("payin.btnFinalize")}
                       </span>
@@ -1073,7 +1073,7 @@ export function PayinListPage() {
             ))}
 
             {!loading && rows.length > 0 ? (
-              <tr className="border-t border-edge bg-surface/50">
+              <tr className="bg-surface/50">
                 <td className="px-3 py-2.5 text-label font-semibold text-ink" colSpan={1}>
                   {t("payin.totalRow")}
                 </td>
@@ -1116,7 +1116,7 @@ export function PayinListPage() {
                 {show.updatedAt ? <td /> : null}
                 {show.processedBy ? <td /> : null}
                 {show.gateway ? <td /> : null}
-                <td />
+                <td className="sticky right-0 z-[1] w-[96px] min-w-[96px] border-l border-edge bg-surface shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]" />
               </tr>
             ) : null}
           </tbody>

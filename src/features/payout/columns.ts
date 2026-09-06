@@ -141,7 +141,7 @@ export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.payout.columns.v5";
 export type ColumnVisibility = Record<PayoutColumn, boolean>;
 
 export function payoutTableMinWidth(visibility: ColumnVisibility): number {
-  let total = PAYOUT_COLUMN_MIN_PX.stt + 96;
+  let total = PAYOUT_COLUMN_MIN_PX.stt + 104;
   for (const col of PAYOUT_COLUMNS) {
     if (visibility[col]) total += PAYOUT_COLUMN_MIN_PX[col];
   }

@@ -39,6 +39,7 @@ export interface PayoutOrderListItem {
   status: PayoutStatus;
   callbackStatus: OrderCallbackStatus;
   gateway?: string | null;
+  partnerId?: string | null;
   partnerRef?: string | null;
   realStatus?: string | null;
   retryCount?: number | null;

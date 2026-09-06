@@ -1260,6 +1260,12 @@ export const en = {
     range: "{from}-{to} of {total} transactions",
     colActions: "Actions",
     btnFinalize: "Finalize",
+    btnRetryPartner: "Retry partner",
+    retryPartnerConfirmTitle: "Retry partner payout",
+    retryPartnerConfirmMessage:
+      "Are you sure you want to retry sending payout {requestId} to partner {gateway}?",
+    retryPartnerSuccess: "Partner payout request resent successfully.",
+    retryPartnerFailed: "Failed to retry partner payout.",
     detailClose: "Close",
     detailId: "ID",
     detailCreateRequest: "Create request",
