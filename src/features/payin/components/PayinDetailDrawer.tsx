@@ -27,8 +27,9 @@ function sanitizeCreateRequestJson(value: unknown): unknown {
   if (value == null || typeof value !== "object" || Array.isArray(value)) {
     return value;
   }
-  const { callbackUrl: _callbackUrl, ...rest } = value as Record<string, unknown>;
-  return rest;
+  const next = { ...(value as Record<string, unknown>) };
+  delete next.callbackUrl;
+  return next;
 }
 
 function DetailRow({

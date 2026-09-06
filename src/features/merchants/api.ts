@@ -108,13 +108,14 @@ export const merchantApi = {
     return unwrap(apiClient.patch(`/merchants/${id}/partner-routing`, body));
   },
 
-  listIpWhitelist(id: string): Promise<MerchantIpWhitelistItem[]> {
-    return unwrap(apiClient.get(`/merchants/${id}/ip-whitelist`));
+  listIpWhitelist(id: string, type?: string): Promise<MerchantIpWhitelistItem[]> {
+    const query = type ? `?type=${encodeURIComponent(type)}` : "";
+    return unwrap(apiClient.get(`/merchants/${id}/ip-whitelist${query}`));
   },
 
   addIpWhitelist(
     id: string,
-    body: { cidr: string; note?: string },
+    body: { cidr: string; type?: string; note?: string },
   ): Promise<MerchantIpWhitelistItem> {
     return unwrap(apiClient.post(`/merchants/${id}/ip-whitelist`, body));
   },

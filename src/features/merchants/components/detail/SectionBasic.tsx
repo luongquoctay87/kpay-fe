@@ -34,6 +34,9 @@ export function SectionBasic({
   const [email, setEmail] = useState(m.email ?? "");
   const [includeStats, setIncludeStats] = useState(m.includeInStatistics);
   const [ipWhitelist, setIpWhitelist] = useState(m.ipWhitelistEnabled);
+  const [portalIpWhitelist, setPortalIpWhitelist] = useState(
+    Boolean(m.loginIpWhitelistEnabled),
+  );
   const [transferRuleId, setTransferRuleId] = useState<string | null>(
     m.transferContentRuleId ?? null,
   );
@@ -44,6 +47,7 @@ export function SectionBasic({
     setEmail(m.email ?? "");
     setIncludeStats(m.includeInStatistics);
     setIpWhitelist(m.ipWhitelistEnabled);
+    setPortalIpWhitelist(Boolean(m.loginIpWhitelistEnabled));
     setTransferRuleId(m.transferContentRuleId ?? null);
   }, [m]);
 
@@ -70,7 +74,25 @@ export function SectionBasic({
 
   const ruleSelectOptions = useMemo(() => ruleOptions, [ruleOptions]);
 
+  const portalIpsCount = (m.ipWhitelist ?? []).filter(
+    (row) => row.type === "portal" || row.type === "all",
+  ).length;
+  const apiIpsCount = (m.ipWhitelist ?? []).filter(
+    (row) => row.type === "api" || row.type === "all" || !row.type,
+  ).length;
+
+  const isPortalWlOn = editing ? portalIpWhitelist : Boolean(m.loginIpWhitelistEnabled);
+  const isApiWlOn = editing ? ipWhitelist : m.ipWhitelistEnabled;
+
   async function save() {
+    if (portalIpWhitelist && portalIpsCount === 0) {
+      setError(t("merchantDetail.configPortalIpRequired"));
+      return;
+    }
+    if (ipWhitelist && apiIpsCount === 0) {
+      setError(t("merchantDetail.configApiIpRequired"));
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -79,6 +101,7 @@ export function SectionBasic({
         email: email.trim() || null,
         includeInStatistics: includeStats,
         ipWhitelistEnabled: ipWhitelist,
+        loginIpWhitelistEnabled: portalIpWhitelist,
       };
       if (transferRuleId) {
         body.transferContentRuleId = transferRuleId;
@@ -100,16 +123,23 @@ export function SectionBasic({
   }
 
   async function toggleFlag(
-    key: "includeInStatistics" | "ipWhitelistEnabled",
+    key: "includeInStatistics" | "ipWhitelistEnabled" | "loginIpWhitelistEnabled",
     value: boolean,
   ) {
-    if (editing && key !== "ipWhitelistEnabled") {
+    if (editing && key !== "ipWhitelistEnabled" && key !== "loginIpWhitelistEnabled") {
       if (key === "includeInStatistics") setIncludeStats(value);
       return;
     }
+    if (key === "loginIpWhitelistEnabled") {
+      if (value && portalIpsCount === 0) {
+        setError(t("merchantDetail.configPortalIpRequired"));
+        return;
+      }
+      setPortalIpWhitelist(value);
+    }
     if (key === "ipWhitelistEnabled") {
-      if (value && (m.ipWhitelist ?? []).length === 0) {
-        setError(t("merchantDetail.configIpRequired"));
+      if (value && apiIpsCount === 0) {
+        setError(t("merchantDetail.configApiIpRequired"));
         return;
       }
       setIpWhitelist(value);
@@ -123,9 +153,11 @@ export function SectionBasic({
       onUpdated(res);
       toast.success(t("common.saved"));
       if (key === "ipWhitelistEnabled") setIpWhitelist(res.ipWhitelistEnabled);
+      if (key === "loginIpWhitelistEnabled") setPortalIpWhitelist(Boolean(res.loginIpWhitelistEnabled));
       if (key === "includeInStatistics") setIncludeStats(res.includeInStatistics);
     } catch (e) {
       if (key === "ipWhitelistEnabled") setIpWhitelist(!value);
+      if (key === "loginIpWhitelistEnabled") setPortalIpWhitelist(!value);
       if (key === "includeInStatistics") setIncludeStats(!value);
       setError(e instanceof ApiError ? e.message : t("merchantDetail.saveError"));
       toast.error(
@@ -158,6 +190,7 @@ export function SectionBasic({
                   setEmail(m.email ?? "");
                   setIncludeStats(m.includeInStatistics);
                   setIpWhitelist(m.ipWhitelistEnabled);
+                  setPortalIpWhitelist(Boolean(m.loginIpWhitelistEnabled));
                   setTransferRuleId(m.transferContentRuleId ?? null);
                   setError(null);
                 }}
@@ -277,20 +310,37 @@ export function SectionBasic({
             disabled={saving}
           />
         </div>
+        {/* Whitelist cho Portal */}
         <div className="flex items-center justify-between sm:col-span-2">
           <div className="min-w-0 pr-3">
-            <span className="text-label text-muted">{t("merchantDetail.labelIpWhitelist")}</span>
+            <span className="text-label text-muted">{t("merchantDetail.labelPortalIpWhitelist")}</span>
             <p className="mt-0.5 text-caption text-muted">
-              {m.ipWhitelistEnabled
-                ? t("merchantDetail.ipWhitelistOnHint")
-                : t("merchantDetail.ipWhitelistOffHint")}
-              {(m.ipWhitelist ?? []).length > 0
-                ? ` (${(m.ipWhitelist ?? []).length})`
-                : ""}
+              {isPortalWlOn
+                ? t("merchantDetail.portalIpWhitelistOnHint")
+                : t("merchantDetail.portalIpWhitelistOffHint")}
+              {portalIpsCount > 0 ? ` (${portalIpsCount})` : ""}
             </p>
           </div>
           <Switch
-            checked={editing ? ipWhitelist : m.ipWhitelistEnabled}
+            checked={isPortalWlOn}
+            onChange={(v) => void toggleFlag("loginIpWhitelistEnabled", v)}
+            disabled={saving}
+          />
+        </div>
+
+        {/* Whitelist cho API */}
+        <div className="flex items-center justify-between sm:col-span-2">
+          <div className="min-w-0 pr-3">
+            <span className="text-label text-muted">{t("merchantDetail.labelApiIpWhitelist")}</span>
+            <p className="mt-0.5 text-caption text-muted">
+              {isApiWlOn
+                ? t("merchantDetail.apiIpWhitelistOnHint")
+                : t("merchantDetail.apiIpWhitelistOffHint")}
+              {apiIpsCount > 0 ? ` (${apiIpsCount})` : ""}
+            </p>
+          </div>
+          <Switch
+            checked={isApiWlOn}
             onChange={(v) => void toggleFlag("ipWhitelistEnabled", v)}
             disabled={saving}
           />

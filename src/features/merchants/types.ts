@@ -66,6 +66,7 @@ export interface UpdateMerchantBody {
   autoFinalizeWrongDenomination?: boolean;
   includeInStatistics?: boolean;
   ipWhitelistEnabled?: boolean;
+  loginIpWhitelistEnabled?: boolean;
   /** Assign NDCK rule; ignored when clearTransferContentRule is true. */
   transferContentRuleId?: string | null;
   /** When true, clears merchant.transferContentRuleId (use default rule). */
@@ -131,6 +132,7 @@ export interface MerchantVietpmBot {
 export interface MerchantIpWhitelistItem {
   id: string;
   cidr: string;
+  type?: "api" | "portal" | "all" | string;
   note?: string | null;
   createdAt?: string | null;
 }
@@ -147,6 +149,7 @@ export interface MerchantDetail {
   autoFinalizeWrongDenomination: boolean;
   includeInStatistics: boolean;
   ipWhitelistEnabled: boolean;
+  loginIpWhitelistEnabled?: boolean;
   /** NDCK rule assignment; null = use default rule. */
   transferContentRuleId?: string | null;
   createdAt?: string | null;
