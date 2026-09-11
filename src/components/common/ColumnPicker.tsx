@@ -125,7 +125,7 @@ export function ColumnPicker<C extends string>({
               </label>
             </div>
           ) : null}
-          <ul className="max-h-80 overflow-y-auto">
+          <ul className="max-h-56 overflow-y-auto">
             {columns.map((col) => {
               const checked = visibility[col];
               const disabled = checked && toggleableVisible() <= 1;

@@ -54,6 +54,10 @@ export const PAYOUT_COLUMN_LABEL_KEY: Record<PayoutColumn, MessageKey> = {
   fee: "payout.colFee",
 };
 
+/**
+ * Explicit widths so `table-fixed` scales every column with the viewport.
+ * Mins must fit Vietnamese headers (`ColumnHeader` is nowrap).
+ */
 export const PAYOUT_COLUMN_MIN_PX: Record<PayoutColumn | "stt", number> = {
   stt: 52,
   note: 140,

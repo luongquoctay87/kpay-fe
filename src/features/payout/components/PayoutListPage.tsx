@@ -264,22 +264,8 @@ export function PayoutListPage() {
   const colSpan = visibleColumnCount(columnVisibility);
   const show = columnVisibility;
 
-  const flexCol: PayoutColumn =
-    show.transferContent
-      ? "transferContent"
-      : show.requestId
-        ? "requestId"
-        : show.merchant
-          ? "merchant"
-          : show.note
-            ? "note"
-            : show.beneficiaryName
-              ? "beneficiaryName"
-              : (PAYOUT_COLUMNS.find((c) => show[c]) ?? "requestId");
-
-  function colWidth(col: PayoutColumn | "stt" | "actions"): string | undefined {
+  function colWidth(col: PayoutColumn | "stt" | "actions"): string {
     if (col === "actions") return "104px";
-    if (col !== "stt" && col === flexCol) return undefined;
     return `${PAYOUT_COLUMN_MIN_PX[col]}px`;
   }
 
@@ -536,7 +522,7 @@ export function PayoutListPage() {
       >
         {expanded ? (
           <div className="flex flex-col gap-3.5">
-            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-[repeat(auto-fill,minmax(16rem,20rem))]">
               <FilterField label={t("payout.filterMerchant")} htmlFor="payout-merchant">
                 <Select
                   id="payout-merchant"

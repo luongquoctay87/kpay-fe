@@ -22,6 +22,7 @@ export type CustomerLedgerListItem = {
   entryType: CustomerLedgerEntryType | string;
   direction?: string | null;
   amount: number;
+  availableBefore?: number | null;
   availableAfter?: number | null;
   reservedAfter?: number | null;
   refType?: string | null;
@@ -59,7 +60,6 @@ export const CUSTOMER_LEDGER_OWNER_OPTIONS: CustomerLedgerOwnerType[] = [
 
 export const CUSTOMER_LEDGER_ENTRY_TYPES: CustomerLedgerEntryType[] = [
   "payin_credit",
-  "payout_reserve",
   "payout_capture",
   "payout_release",
   "manual_credit",

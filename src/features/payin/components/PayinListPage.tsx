@@ -250,22 +250,8 @@ export function PayinListPage() {
   const colSpan = visibleColumnCount(columnVisibility);
   const show = columnVisibility;
 
-  const flexCol: PayinColumn =
-    show.description
-      ? "description"
-      : show.requestId
-        ? "requestId"
-        : show.merchant
-          ? "merchant"
-          : show.accountName
-            ? "accountName"
-            : show.createdAt
-              ? "createdAt"
-              : (PAYIN_COLUMNS.find((c) => show[c]) ?? "requestId");
-
-  function colWidth(col: PayinColumn | "stt" | "actions"): string | undefined {
+  function colWidth(col: PayinColumn | "stt" | "actions"): string {
     if (col === "actions") return "96px";
-    if (col !== "stt" && col === flexCol) return undefined;
     return `${PAYIN_COLUMN_MIN_PX[col]}px`;
   }
 
@@ -495,7 +481,7 @@ export function PayinListPage() {
       >
         {expanded ? (
           <div className="flex flex-col gap-3.5">
-            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-[repeat(auto-fill,minmax(16rem,20rem))]">
               <FilterField label={t("payin.filterMerchant")} htmlFor="payin-merchant">
                 <Select
                   id="payin-merchant"
