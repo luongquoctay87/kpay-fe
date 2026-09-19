@@ -1,5 +1,5 @@
 import { apiClient, unwrap } from "@/lib/api/client";
-import { downloadCsv, downloadXlsx } from "@/lib/api/download-blob";
+import { downloadXlsx } from "@/lib/api/download-blob";
 import type { PayinStatus } from "@/features/payin/types";
 
 export type AgentCommissionItem = {
@@ -57,10 +57,6 @@ export const agentCommissionApi = {
     );
   },
 
-  get(orderId: string): Promise<AgentCommissionItem> {
-    return unwrap(apiClient.get(`/agent/commissions/${orderId}`));
-  },
-
   async export(params: Omit<AgentCommissionListParams, "page" | "size"> = {}): Promise<void> {
     const res = await apiClient.get("/agent/commissions/export", {
       params: {
@@ -68,24 +64,9 @@ export const agentCommissionApi = {
         status: params.status || undefined,
         createdFrom: params.createdFrom || undefined,
         createdTo: params.createdTo || undefined,
-        format: "xlsx",
       },
       responseType: "blob",
     });
     downloadXlsx(res.data, "commissions.xlsx");
-  },
-
-  async exportCsv(params: Omit<AgentCommissionListParams, "page" | "size"> = {}): Promise<void> {
-    const res = await apiClient.get("/agent/commissions/export", {
-      params: {
-        q: params.q || undefined,
-        status: params.status || undefined,
-        createdFrom: params.createdFrom || undefined,
-        createdTo: params.createdTo || undefined,
-        format: "csv",
-      },
-      responseType: "blob",
-    });
-    downloadCsv(res.data, "commissions.csv");
   },
 };

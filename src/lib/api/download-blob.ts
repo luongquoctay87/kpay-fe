@@ -17,8 +17,3 @@ export function downloadXlsx(data: BlobPart, filename: string) {
     filename,
   );
 }
-
-/** CSV blob helper (UTF-8). */
-export function downloadCsv(data: BlobPart, filename: string) {
-  downloadBlob(new Blob([data], { type: "text/csv;charset=utf-8" }), filename);
-}

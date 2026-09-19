@@ -7,6 +7,8 @@ import {
   DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
+  dateRangeOrToday,
+  todayDateRange,
   FilterField,
   PageHeader,
   Pagination,
@@ -91,13 +93,16 @@ export function PortalWithdrawPage() {
   );
   const [qDraft, setQDraft] = useState("");
   const [statusDraft, setStatusDraft] = useState<WithdrawStatus | null>(null);
-  const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(null);
+  const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(todayDateRange);
   const [filters, setFilters] = useState<{
     q?: string;
     status?: WithdrawStatus;
     createdFrom?: string;
     createdTo?: string;
-  }>({});
+  }>(() => {
+    const created = dateRangeToIsoBounds(todayDateRange());
+    return { createdFrom: created.from, createdTo: created.to };
+  });
 
   const statusOptions = useMemo(
     () =>
@@ -164,7 +169,9 @@ export function PortalWithdrawPage() {
   const to = Math.min(total, (page + 1) * size);
 
   function applyFilters() {
-    const created = dateRangeToIsoBounds(createdRangeDraft);
+    const range = dateRangeOrToday(createdRangeDraft);
+    if (range !== createdRangeDraft) setCreatedRangeDraft(range);
+    const created = dateRangeToIsoBounds(range);
     const next = {
       q: qDraft.trim() || undefined,
       status: statusDraft ?? undefined,
@@ -176,11 +183,13 @@ export function PortalWithdrawPage() {
   }
 
   function onReset() {
+    const today = todayDateRange();
+    const created = dateRangeToIsoBounds(today);
     setQDraft("");
     setStatusDraft(null);
-    setCreatedRangeDraft(null);
+    setCreatedRangeDraft(today);
     setPage(0);
-    setFilters({});
+    setFilters({ createdFrom: created.from, createdTo: created.to });
   }
 
   async function onExport() {

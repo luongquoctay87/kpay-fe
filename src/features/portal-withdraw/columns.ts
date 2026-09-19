@@ -70,15 +70,10 @@ export const PORTAL_WITHDRAW_COLUMN_ALIGN: Record<PortalWithdrawColumn | "stt", 
   updatedAt: "text-center",
 };
 
-/** Default list scan: ID → amount → status → time. */
-export const DEFAULT_VISIBLE_COLUMNS: readonly PortalWithdrawColumn[] = [
-  "systemId",
-  "amount",
-  "status",
-  "createdAt",
-];
+/** Spec columns — all visible by default. */
+export const DEFAULT_VISIBLE_COLUMNS: readonly PortalWithdrawColumn[] = PORTAL_WITHDRAW_COLUMNS;
 
-export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.portal.withdraw.columns.v1";
+export const COLUMN_VISIBILITY_STORAGE_KEY = "kpay.portal.withdraw.columns.v2";
 
 export type ColumnVisibility = Record<PortalWithdrawColumn, boolean>;
 

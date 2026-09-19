@@ -1,12 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  AutoRefreshControl,
   ColumnHeader,
   CopyButton,
   DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
+  dateRangeOrToday,
+  todayDateRange,
+  isTodayDateRange,
   FilterField,
   PageHeader,
   Pagination,
@@ -33,15 +37,31 @@ import {
   type AgentLedgerEntryType,
   type AgentLedgerItem,
 } from "@/features/agent-balance/api";
+import {
+  AGENT_BALANCE_COLUMNS,
+  AGENT_BALANCE_COLUMN_ALIGN,
+  AGENT_BALANCE_COLUMN_MIN_PX,
+  AGENT_BALANCE_COLUMN_WIDTH,
+  defaultColumnVisibility,
+  loadColumnVisibility,
+  agentBalanceTableMinWidth,
+  saveColumnVisibility,
+  visibleColumnCount,
+  type ColumnVisibility,
+  type AgentBalanceColumn,
+} from "@/features/agent-balance/columns";
+import { ColumnPicker } from "@/features/agent-balance/components/ColumnPicker";
 import { LEDGER_ENTRY_TONE } from "@/features/portal-balance/ledger-entry";
 import { useI18n } from "@/i18n/use-i18n";
 import type { MessageKey } from "@/i18n/types";
+import {
+  useAutoRefresh,
+  type AutoRefreshSeconds,
+} from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { PORTAL_PAGE_CLASS } from "@/lib/constants/portal-layout";
 import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
-
-const COL_COUNT = 7;
 
 const EMPTY_LIST = {
   rows: [] as AgentLedgerItem[],
@@ -75,17 +95,25 @@ export function AgentBalancePage() {
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
-  const [exporting, setExporting] = useState<"xlsx" | "csv" | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
+    defaultColumnVisibility,
+  );
 
   const [entryTypeDraft, setEntryTypeDraft] = useState<AgentLedgerEntryType | null>(null);
-  const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(null);
+  const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(todayDateRange);
   const [qDraft, setQDraft] = useState("");
   const [filters, setFilters] = useState<{
     q?: string;
     entryType?: AgentLedgerEntryType;
     createdFrom?: string;
     createdTo?: string;
-  }>({});
+  }>(() => {
+    const created = dateRangeToIsoBounds(todayDateRange());
+    return { createdFrom: created.from, createdTo: created.to };
+  });
 
   const entryTypeOptions = useMemo(
     () =>
@@ -98,9 +126,34 @@ export function AgentBalancePage() {
 
   const canReset =
     entryTypeDraft != null ||
-    Boolean(createdRangeDraft?.[0] || createdRangeDraft?.[1]) ||
     Boolean(qDraft.trim()) ||
-    Object.keys(filters).length > 0;
+    !isTodayDateRange(createdRangeDraft);
+
+  useEffect(() => {
+    setColumnVisibility(loadColumnVisibility());
+  }, []);
+
+  function onColumnVisibilityChange(next: ColumnVisibility) {
+    setColumnVisibility(next);
+    saveColumnVisibility(next);
+  }
+
+  const colSpan = visibleColumnCount(columnVisibility);
+  const show = columnVisibility;
+
+  const flexCol: AgentBalanceColumn =
+    show.txnCode
+      ? "txnCode"
+      : show.entryType
+        ? "entryType"
+        : show.createdAt
+          ? "createdAt"
+          : (AGENT_BALANCE_COLUMNS.find((c) => show[c]) ?? "txnCode");
+
+  function colWidth(col: AgentBalanceColumn | "stt"): string | undefined {
+    if (col !== "stt" && col === flexCol) return undefined;
+    return `${AGENT_BALANCE_COLUMN_MIN_PX[col]}px`;
+  }
 
   const loadBalance = useCallback(async () => {
     try {
@@ -134,11 +187,20 @@ export function AgentBalancePage() {
     mapError,
   });
 
+  const refreshAll = useCallback(() => {
+    void loadBalance();
+    void refresh();
+  }, [loadBalance, refresh]);
+
+  useAutoRefresh(refreshAll, { enabled: autoRefresh, intervalSec: autoRefreshSec });
+
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
 
   function applyFilters() {
-    const created = dateRangeToIsoBounds(createdRangeDraft);
+    const range = dateRangeOrToday(createdRangeDraft);
+    if (range !== createdRangeDraft) setCreatedRangeDraft(range);
+    const created = dateRangeToIsoBounds(range);
     const q = qDraft.trim();
     setPage(0);
     setFilters({
@@ -154,23 +216,18 @@ export function AgentBalancePage() {
     applyFilters();
   }
 
-  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      applyFilters();
-    }
-  }
-
   function onReset() {
+    const today = todayDateRange();
+    const created = dateRangeToIsoBounds(today);
     setEntryTypeDraft(null);
-    setCreatedRangeDraft(null);
+    setCreatedRangeDraft(today);
     setQDraft("");
     setPage(0);
-    setFilters({});
+    setFilters({ createdFrom: created.from, createdTo: created.to });
   }
 
   async function onExport() {
-    setExporting("xlsx");
+    setExporting(true);
     try {
       await agentBalanceApi.exportLedgers(filters);
       toast.success(t("agentPortal.exportOk"));
@@ -178,20 +235,7 @@ export function AgentBalancePage() {
       const msg = e instanceof ApiError ? e.message : t("agentPortal.exportError");
       toast.error(t("agentPortal.exportError"), msg);
     } finally {
-      setExporting(null);
-    }
-  }
-
-  async function onExportCsv() {
-    setExporting("csv");
-    try {
-      await agentBalanceApi.exportLedgersCsv(filters);
-      toast.success(t("agentPortal.exportCsvOk"));
-    } catch (e) {
-      const msg = e instanceof ApiError ? e.message : t("agentPortal.exportCsvError");
-      toast.error(t("agentPortal.exportCsvError"), msg);
-    } finally {
-      setExporting(null);
+      setExporting(false);
     }
   }
 
@@ -207,18 +251,13 @@ export function AgentBalancePage() {
       <PageHeader
         title={t("pages.portalBalance")}
         actions={
-          <Button
-            type="button"
-            variant="secondary"
+          <AutoRefreshControl
+            enabled={autoRefresh}
+            intervalSec={autoRefreshSec}
+            onEnabledChange={setAutoRefresh}
+            onIntervalChange={setAutoRefreshSec}
             size="sm"
-            leftIcon={<IconRefresh width={15} height={15} />}
-            onClick={() => {
-              void loadBalance();
-              void refresh();
-            }}
-          >
-            {t("common.refresh")}
-          </Button>
+          />
         }
       />
 
@@ -258,7 +297,6 @@ export function AgentBalancePage() {
                   id="agent-balance-search"
                   value={qDraft}
                   onChange={setQDraft}
-                  onKeyDown={onSearchKeyDown}
                   placeholder={t("agentPortal.filterSearchPlaceholder")}
                   label={t("agentPortal.filterSearch")}
                 />
@@ -332,24 +370,13 @@ export function AgentBalancePage() {
                 type="button"
                 variant="secondary"
                 size="md"
-                loading={exporting === "xlsx"}
-                disabled={exporting !== null}
+                loading={exporting}
                 leftIcon={<IconDownload width={15} height={15} />}
                 onClick={() => void onExport()}
               >
                 {t("agentPortal.export")}
               </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                loading={exporting === "csv"}
-                disabled={exporting !== null}
-                leftIcon={<IconDownload width={15} height={15} />}
-                onClick={() => void onExportCsv()}
-              >
-                {t("agentPortal.exportCsv")}
-              </Button>
+              <ColumnPicker visibility={columnVisibility} onChange={onColumnVisibilityChange} />
             </div>
           }
           pagination={
@@ -367,83 +394,132 @@ export function AgentBalancePage() {
             />
           }
         >
-          <div className="min-w-0 overflow-x-auto">
-            <table className="w-full min-w-[880px] border-collapse text-left text-label">
-              <thead>
-                <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-                  <th className="w-[52px] px-3 py-2.5 text-center">
-                    <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
-                      {t("agentPortal.colStt")}
-                    </ColumnHeader>
-                  </th>
-                  <th className="min-w-[160px] px-3 py-2.5">
+          <table
+            className="w-full table-fixed border-separate border-spacing-0 text-left text-label"
+            style={{ minWidth: agentBalanceTableMinWidth(columnVisibility) }}
+          >
+            <colgroup>
+              <col style={{ width: colWidth("stt") }} />
+              {AGENT_BALANCE_COLUMNS.map((col) =>
+                show[col] ? <col key={col} style={{ width: colWidth(col) }} /> : null,
+              )}
+            </colgroup>
+            <thead>
+              <tr className="bg-surface text-label font-medium text-muted [&>th]:border-b [&>th]:border-edge [&>th]:bg-surface">
+                <th
+                  className={`${AGENT_BALANCE_COLUMN_WIDTH.stt} ${AGENT_BALANCE_COLUMN_ALIGN.stt} px-3 py-2.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                    {t("agentPortal.colStt")}
+                  </ColumnHeader>
+                </th>
+                {show.txnCode ? (
+                  <th
+                    className={`${AGENT_BALANCE_COLUMN_WIDTH.txnCode} ${AGENT_BALANCE_COLUMN_ALIGN.txnCode} px-3 py-2.5`}
+                  >
                     <ColumnHeader icon={<IconHash width={14} height={14} />}>
                       {t("agentPortal.colTxnCode")}
                     </ColumnHeader>
                   </th>
-                  <th className="min-w-[140px] px-3 py-2.5">
+                ) : null}
+                {show.entryType ? (
+                  <th
+                    className={`${AGENT_BALANCE_COLUMN_WIDTH.entryType} ${AGENT_BALANCE_COLUMN_ALIGN.entryType} px-3 py-2.5`}
+                  >
                     <ColumnHeader icon={<IconLayers width={14} height={14} />}>
                       {t("agentPortal.colEntryType")}
                     </ColumnHeader>
                   </th>
-                  <th className="min-w-[110px] px-3 py-2.5 text-right">
+                ) : null}
+                {show.balanceBefore ? (
+                  <th
+                    className={`${AGENT_BALANCE_COLUMN_WIDTH.balanceBefore} ${AGENT_BALANCE_COLUMN_ALIGN.balanceBefore} px-3 py-2.5`}
+                  >
                     <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
                       {t("agentPortal.colBalanceBefore")}
                     </ColumnHeader>
                   </th>
-                  <th className="min-w-[110px] px-3 py-2.5 text-right">
+                ) : null}
+                {show.change ? (
+                  <th
+                    className={`${AGENT_BALANCE_COLUMN_WIDTH.change} ${AGENT_BALANCE_COLUMN_ALIGN.change} px-3 py-2.5`}
+                  >
                     <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
                       {t("agentPortal.colChange")}
                     </ColumnHeader>
                   </th>
-                  <th className="min-w-[110px] px-3 py-2.5 text-right">
+                ) : null}
+                {show.balanceAfter ? (
+                  <th
+                    className={`${AGENT_BALANCE_COLUMN_WIDTH.balanceAfter} ${AGENT_BALANCE_COLUMN_ALIGN.balanceAfter} px-3 py-2.5`}
+                  >
                     <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
                       {t("agentPortal.colBalanceAfter")}
                     </ColumnHeader>
                   </th>
-                  <th className="min-w-[140px] px-3 py-2.5 text-center">
+                ) : null}
+                {show.createdAt ? (
+                  <th
+                    className={`${AGENT_BALANCE_COLUMN_WIDTH.createdAt} ${AGENT_BALANCE_COLUMN_ALIGN.createdAt} px-3 py-2.5`}
+                  >
                     <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                       {t("agentPortal.colCreatedAt")}
                     </ColumnHeader>
                   </th>
+                ) : null}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={colSpan} className="px-3 py-8 text-center text-muted">
+                    {t("common.loading")}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={COL_COUNT} className="px-3 py-8 text-center text-muted">
-                      {t("common.loading")}
-                    </td>
-                  </tr>
-                ) : rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={COL_COUNT} className="px-3 py-8 text-center text-muted">
-                      {t("common.noData")}
-                    </td>
-                  </tr>
-                ) : (
-                  rows.map((row, idx) => {
-                    const txnCode = txnCodeOf(row);
-                    const change = row.amount ?? 0;
-                    const before =
-                      row.balanceBefore ??
-                      (row.balanceAfter ?? 0) - change;
-                    return (
-                      <tr
-                        key={row.id}
-                        className="border-b border-edge last:border-b-0 hover:bg-surface/70"
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={colSpan} className="px-3 py-8 text-center text-muted">
+                    {t("common.noData")}
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row, idx) => {
+                  const txnCode = txnCodeOf(row);
+                  const change = row.amount ?? 0;
+                  const before = row.balanceBefore ?? (row.balanceAfter ?? 0) - change;
+                  const typed = row.entryType in LEDGER_LABEL_KEY;
+                  return (
+                    <tr
+                      key={row.id}
+                      className="[&>td]:border-b [&>td]:border-edge last:[&>td]:border-b-0 hover:bg-surface/70"
+                    >
+                      <td
+                        className={`${AGENT_BALANCE_COLUMN_ALIGN.stt} px-3 py-2.5 font-mono text-caption tabular-nums text-muted`}
                       >
-                        <td className="px-3 py-2.5 text-center tabular-nums text-muted">
-                          {from + idx}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex max-w-[16rem] items-center gap-1">
-                            <span className="truncate font-mono text-caption">{txnCode}</span>
-                            <CopyButton value={txnCode} label={t("agentPortal.copyTxnCode")} />
+                        {from + idx}
+                      </td>
+                      {show.txnCode ? (
+                        <td className={`${AGENT_BALANCE_COLUMN_ALIGN.txnCode} px-3 py-2.5`}>
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <span
+                              className="truncate font-mono text-label font-medium text-ink"
+                              title={txnCode || undefined}
+                            >
+                              {txnCode || "—"}
+                            </span>
+                            {txnCode ? (
+                              <CopyButton
+                                value={txnCode}
+                                label={t("agentPortal.copyTxnCode")}
+                                size="sm"
+                              />
+                            ) : null}
                           </div>
                         </td>
-                        <td className="px-3 py-2.5">
-                          {row.entryType in LEDGER_LABEL_KEY ? (
+                      ) : null}
+                      {show.entryType ? (
+                        <td className={`${AGENT_BALANCE_COLUMN_ALIGN.entryType} px-3 py-2.5`}>
+                          {typed ? (
                             <StatusBadge
                               tone={LEDGER_ENTRY_TONE[row.entryType as AgentLedgerEntryType]}
                             >
@@ -453,27 +529,41 @@ export function AgentBalancePage() {
                             entryLabel(row.entryType)
                           )}
                         </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums">
+                      ) : null}
+                      {show.balanceBefore ? (
+                        <td
+                          className={`${AGENT_BALANCE_COLUMN_ALIGN.balanceBefore} whitespace-nowrap px-3 py-2.5 tabular-nums`}
+                        >
                           {formatMoney(before)}
                         </td>
+                      ) : null}
+                      {show.change ? (
                         <td
-                          className={`px-3 py-2.5 text-right tabular-nums ${amountToneClass(change)}`}
+                          className={`${AGENT_BALANCE_COLUMN_ALIGN.change} whitespace-nowrap px-3 py-2.5 tabular-nums ${amountToneClass(change)}`}
                         >
                           {formatMoney(change)}
                         </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums">
+                      ) : null}
+                      {show.balanceAfter ? (
+                        <td
+                          className={`${AGENT_BALANCE_COLUMN_ALIGN.balanceAfter} whitespace-nowrap px-3 py-2.5 tabular-nums`}
+                        >
                           {formatMoney(row.balanceAfter)}
                         </td>
-                        <td className="px-3 py-2.5 text-center text-caption text-muted">
+                      ) : null}
+                      {show.createdAt ? (
+                        <td
+                          className={`${AGENT_BALANCE_COLUMN_ALIGN.createdAt} whitespace-nowrap px-3 py-2.5 text-caption text-muted`}
+                        >
                           <DateTimeText value={row.createdAt} />
                         </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                      ) : null}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </TableCard>
       </section>
     </div>

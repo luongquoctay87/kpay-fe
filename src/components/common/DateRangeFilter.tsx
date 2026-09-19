@@ -85,3 +85,21 @@ export function isoBoundsToDateRange(
   if (!start && !end) return null;
   return [start, end];
 }
+
+/** Today in the browser timezone — matches BE `defaultCreatedTodayIfUnset` for VN users. */
+export function todayDateRange(): NonNullable<DateRangeValue> {
+  const today = dayjs();
+  return [today.startOf("day"), today.endOf("day")];
+}
+
+export function isTodayDateRange(range: DateRangeValue): boolean {
+  if (!range?.[0] || !range?.[1]) return false;
+  const today = dayjs();
+  return range[0].isSame(today, "day") && range[1].isSame(today, "day");
+}
+
+/** Empty picker → today, so the UI matches BE `defaultCreatedTodayIfUnset`. */
+export function dateRangeOrToday(range: DateRangeValue): DateRangeValue {
+  if (range?.[0] || range?.[1]) return range;
+  return todayDateRange();
+}

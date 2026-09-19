@@ -1,5 +1,5 @@
 import { apiClient, unwrap } from "@/lib/api/client";
-import { downloadCsv, downloadXlsx } from "@/lib/api/download-blob";
+import { downloadXlsx } from "@/lib/api/download-blob";
 
 export type AgentBalance = {
   availableBalance: number;
@@ -83,26 +83,9 @@ export const agentBalanceApi = {
         entryType: params.entryType || undefined,
         createdFrom: params.createdFrom || undefined,
         createdTo: params.createdTo || undefined,
-        format: "xlsx",
       },
       responseType: "blob",
     });
     downloadXlsx(res.data, "balance-ledgers.xlsx");
-  },
-
-  async exportLedgersCsv(
-    params: Omit<AgentLedgerListParams, "page" | "size"> = {},
-  ): Promise<void> {
-    const res = await apiClient.get("/agent/balance/ledgers/export", {
-      params: {
-        q: params.q || undefined,
-        entryType: params.entryType || undefined,
-        createdFrom: params.createdFrom || undefined,
-        createdTo: params.createdTo || undefined,
-        format: "csv",
-      },
-      responseType: "blob",
-    });
-    downloadCsv(res.data, "balance-ledgers.csv");
   },
 };

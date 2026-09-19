@@ -80,7 +80,7 @@ export function AgentCommissionDetailDrawer({
             {merchantLabel || "—"}
           </DetailRow>
           <DetailRow label={t("agentPortal.colChannel")}>
-            {row.channelId ?? "—"}
+            {row.channelName || row.channelId || "—"}
           </DetailRow>
           <DetailRow label={t("agentPortal.colAcceptedAmount")}>
             {formatMoney(row.acceptedAmount ?? 0)}

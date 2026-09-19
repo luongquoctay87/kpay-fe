@@ -30,12 +30,14 @@ import { usePagedList } from "@/lib/async/use-paged-list";
 import { PORTAL_PAGE_CLASS } from "@/lib/constants/portal-layout";
 import { ApiError } from "@/lib/types/api";
 
-const COL_COUNT = 5;
-
 const EMPTY_LIST = {
   rows: [] as AgentRateItem[],
   total: 0,
 };
+
+const COL_COUNT = 5;
+
+const TABLE_MIN_WIDTH = 52 + 200 + 110 + 140 + 150;
 
 type ActiveFilter = "all" | "active" | "inactive";
 
@@ -66,8 +68,7 @@ export function AgentRatesPage() {
   const canReset =
     Boolean(qDraft.trim()) ||
     activeDraft !== "all" ||
-    Boolean(linkedRangeDraft?.[0] || linkedRangeDraft?.[1]) ||
-    Object.keys(filters).length > 0;
+    Boolean(linkedRangeDraft?.[0] || linkedRangeDraft?.[1]);
 
   const loadList = useCallback(async () => {
     const data = await agentRateApi.list({ ...filters, page, size });
@@ -82,7 +83,7 @@ export function AgentRatesPage() {
     [t],
   );
 
-  const { loading, error, rows, total, refresh } = usePagedList({
+  const { loading, error, rows, total } = usePagedList({
     load: loadList,
     empty: EMPTY_LIST,
     mapError,
@@ -113,20 +114,7 @@ export function AgentRatesPage() {
 
   return (
     <div className={PORTAL_PAGE_CLASS}>
-      <PageHeader
-        title={t("pages.agentRates")}
-        actions={
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            leftIcon={<IconRefresh width={14} height={14} />}
-            onClick={() => void refresh()}
-          >
-            {t("common.refresh")}
-          </Button>
-        }
-      />
+      <PageHeader title={t("pages.agentRates")} />
 
       <p className="text-body text-muted">{t("agentPortal.ratesHint")}</p>
 
@@ -177,6 +165,7 @@ export function AgentRatesPage() {
               type="button"
               variant="secondary"
               size="md"
+              className="min-w-0 flex-1 lg:flex-none lg:min-w-[6.5rem]"
               onClick={onReset}
               disabled={!canReset}
               leftIcon={<IconRefresh width={15} height={15} />}
@@ -187,6 +176,7 @@ export function AgentRatesPage() {
               type="submit"
               variant="soft"
               size="md"
+              className="min-h-9 min-w-0 flex-1 gap-2 px-3 lg:flex-none lg:min-w-[8.75rem] lg:px-4"
               leftIcon={<IconSearch width={16} height={16} />}
             >
               {t("common.search")}
@@ -213,92 +203,100 @@ export function AgentRatesPage() {
           />
         }
       >
-        <div className="min-w-0 overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-left text-label">
-            <thead>
-              <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-                <th className="w-[52px] px-3 py-2.5 text-center">
-                  <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
-                    {t("agentPortal.colStt")}
-                  </ColumnHeader>
-                </th>
-                <th className="px-3 py-2.5">
-                  <ColumnHeader icon={<IconStore width={14} height={14} />}>
-                    {t("agentPortal.colMerchant")}
-                  </ColumnHeader>
-                </th>
-                <th className="px-3 py-2.5 text-right">
-                  <ColumnHeader align="right" icon={<IconActivity width={14} height={14} />}>
-                    {t("agentPortal.colRate")}
-                  </ColumnHeader>
-                </th>
-                <th className="px-3 py-2.5">
-                  <ColumnHeader icon={<IconActivity width={14} height={14} />}>
-                    {t("agentPortal.colActive")}
-                  </ColumnHeader>
-                </th>
-                <th className="px-3 py-2.5">
-                  <ColumnHeader icon={<IconClock width={14} height={14} />}>
-                    {t("agentPortal.colLinkedAt")}
-                  </ColumnHeader>
-                </th>
+        <table
+          className="w-full table-fixed border-separate border-spacing-0 text-left text-label"
+          style={{ minWidth: TABLE_MIN_WIDTH }}
+        >
+          <colgroup>
+            <col style={{ width: "52px" }} />
+            <col />
+            <col style={{ width: "110px" }} />
+            <col style={{ width: "140px" }} />
+            <col style={{ width: "150px" }} />
+          </colgroup>
+          <thead>
+            <tr className="bg-surface text-label font-medium text-muted [&>th]:border-b [&>th]:border-edge [&>th]:bg-surface">
+              <th className="w-[52px] px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("agentPortal.colStt")}
+                </ColumnHeader>
+              </th>
+              <th className="px-3 py-2.5 text-left">
+                <ColumnHeader icon={<IconStore width={14} height={14} />}>
+                  {t("agentPortal.colMerchant")}
+                </ColumnHeader>
+              </th>
+              <th className="w-[110px] px-3 py-2.5 text-right">
+                <ColumnHeader align="right" icon={<IconActivity width={14} height={14} />}>
+                  {t("agentPortal.colRate")}
+                </ColumnHeader>
+              </th>
+              <th className="w-[140px] px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
+                  {t("agentPortal.colActive")}
+                </ColumnHeader>
+              </th>
+              <th className="w-[150px] px-3 py-2.5 text-center">
+                <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
+                  {t("agentPortal.colLinkedAt")}
+                </ColumnHeader>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={COL_COUNT} className="px-3 py-8 text-center text-muted">
+                  {t("common.loading")}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={COL_COUNT} className="px-3 py-8 text-center text-muted">
-                    {t("common.loading")}
-                  </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan={COL_COUNT} className="px-3 py-8 text-center text-muted">
-                    {t("common.noData")}
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row, idx) => {
-                  const merchantLabel = [row.merchantName, row.merchantCode]
-                    .filter(Boolean)
-                    .join(" · ");
-                  const channel = row.channelName || row.channelId;
-                  return (
-                    <tr
-                      key={row.id}
-                      className="border-b border-edge last:border-b-0 hover:bg-surface/70"
-                    >
-                      <td className="px-3 py-2.5 text-center tabular-nums text-muted">
-                        {from + idx}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex flex-col gap-0.5">
-                          <span>{merchantLabel || "—"}</span>
-                          {channel ? (
-                            <span className="text-caption text-muted">{channel}</span>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-medium">
-                        {bpsToPercent(row.commissionRateBps)}%
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <StatusBadge tone={row.active ? "active" : "neutral"}>
-                          {row.active
-                            ? t("agentPortal.statusActive")
-                            : t("agentPortal.statusInactive")}
-                        </StatusBadge>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-caption text-muted">
-                        <DateTimeText value={row.linkedAt} />
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={COL_COUNT} className="px-3 py-8 text-center text-muted">
+                  {t("common.noData")}
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, idx) => {
+                const merchantLabel = [row.merchantName, row.merchantCode]
+                  .filter(Boolean)
+                  .join(" · ");
+                const channel = row.channelName || row.channelId;
+                return (
+                  <tr
+                    key={row.id}
+                    className="[&>td]:border-b [&>td]:border-edge last:[&>td]:border-b-0 hover:bg-surface/70"
+                  >
+                    <td className="px-3 py-2.5 text-center font-mono text-caption tabular-nums text-muted">
+                      {from + idx}
+                    </td>
+                    <td className="truncate px-3 py-2.5" title={merchantLabel || undefined}>
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className="truncate">{merchantLabel || "—"}</span>
+                        {channel ? (
+                          <span className="truncate text-caption text-muted">{channel}</span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right font-medium tabular-nums">
+                      {bpsToPercent(row.commissionRateBps)}%
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <StatusBadge tone={row.active ? "active" : "neutral"}>
+                        {row.active
+                          ? t("agentPortal.statusActive")
+                          : t("agentPortal.statusInactive")}
+                      </StatusBadge>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-center text-caption text-muted">
+                      <DateTimeText value={row.linkedAt} />
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </TableCard>
     </div>
   );
