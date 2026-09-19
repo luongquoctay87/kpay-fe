@@ -45,7 +45,7 @@ export function AgentOverviewPage() {
 
       {error ? <p className="text-body text-danger">{error}</p> : null}
 
-      <div className="grid max-w-md gap-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           label={t("agentPortal.availableBalance")}
           value={formatMoney(balance?.availableBalance ?? 0)}
@@ -54,9 +54,16 @@ export function AgentOverviewPage() {
           label={t("agentPortal.reservedBalance")}
           value={formatMoney(balance?.reservedBalance ?? 0)}
         />
+        <StatCard
+          label={t("agentPortal.totalBalance")}
+          value={formatMoney(
+            balance?.totalBalance ??
+              (balance?.availableBalance ?? 0) + (balance?.reservedBalance ?? 0),
+          )}
+        />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           href={ROUTES.portalCommissions}
           className="rounded-lg border border-edge bg-elevated p-4 no-underline transition hover:bg-hover"
@@ -65,11 +72,25 @@ export function AgentOverviewPage() {
           <p className="mt-1 text-caption text-muted">{t("agentPortal.shortcutCommissions")}</p>
         </Link>
         <Link
+          href={ROUTES.portalWithdraw}
+          className="rounded-lg border border-edge bg-elevated p-4 no-underline transition hover:bg-hover"
+        >
+          <p className="text-label font-medium text-ink">{t("nav.portalWithdraw")}</p>
+          <p className="mt-1 text-caption text-muted">{t("agentPortal.shortcutWithdraw")}</p>
+        </Link>
+        <Link
           href={ROUTES.portalBalance}
           className="rounded-lg border border-edge bg-elevated p-4 no-underline transition hover:bg-hover"
         >
           <p className="text-label font-medium text-ink">{t("nav.portalBalance")}</p>
           <p className="mt-1 text-caption text-muted">{t("agentPortal.shortcutBalance")}</p>
+        </Link>
+        <Link
+          href={ROUTES.portalRates}
+          className="rounded-lg border border-edge bg-elevated p-4 no-underline transition hover:bg-hover"
+        >
+          <p className="text-label font-medium text-ink">{t("nav.agentRates")}</p>
+          <p className="mt-1 text-caption text-muted">{t("agentPortal.shortcutRates")}</p>
         </Link>
       </div>
     </div>

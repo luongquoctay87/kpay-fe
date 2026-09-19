@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   ColumnHeader,
+  CopyButton,
   DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
@@ -15,10 +16,10 @@ import {
   filterControlClass,
   type DateRangeValue,
 } from "@/components/common";
-import { Button, Select, StatusBadge } from "@/components/ui";
+import { Button, Select, StatusBadge, toast } from "@/components/ui";
 import {
   IconClock,
-  IconFileText,
+  IconDownload,
   IconHash,
   IconLayers,
   IconRefresh,
@@ -40,6 +41,8 @@ import { PORTAL_PAGE_CLASS } from "@/lib/constants/portal-layout";
 import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 
+const COL_COUNT = 7;
+
 const EMPTY_LIST = {
   rows: [] as AgentLedgerItem[],
   total: 0,
@@ -60,12 +63,19 @@ function amountToneClass(amount: number) {
   return "";
 }
 
+function txnCodeOf(row: AgentLedgerItem) {
+  if (row.txnCode?.trim()) return row.txnCode.trim();
+  if (row.refId) return row.refId;
+  return String(row.id);
+}
+
 export function AgentBalancePage() {
   const { t } = useI18n();
   const [balance, setBalance] = useState<AgentBalance | null>(null);
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
+  const [exporting, setExporting] = useState<"xlsx" | "csv" | null>(null);
 
   const [entryTypeDraft, setEntryTypeDraft] = useState<AgentLedgerEntryType | null>(null);
   const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(null);
@@ -130,14 +140,13 @@ export function AgentBalancePage() {
   function applyFilters() {
     const created = dateRangeToIsoBounds(createdRangeDraft);
     const q = qDraft.trim();
-    const next = {
+    setPage(0);
+    setFilters({
       q: q || undefined,
       entryType: entryTypeDraft ?? undefined,
       createdFrom: created.from,
       createdTo: created.to,
-    };
-    setPage(0);
-    setFilters(next);
+    });
   }
 
   function onSearch(e: FormEvent) {
@@ -158,6 +167,32 @@ export function AgentBalancePage() {
     setQDraft("");
     setPage(0);
     setFilters({});
+  }
+
+  async function onExport() {
+    setExporting("xlsx");
+    try {
+      await agentBalanceApi.exportLedgers(filters);
+      toast.success(t("agentPortal.exportOk"));
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : t("agentPortal.exportError");
+      toast.error(t("agentPortal.exportError"), msg);
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  async function onExportCsv() {
+    setExporting("csv");
+    try {
+      await agentBalanceApi.exportLedgersCsv(filters);
+      toast.success(t("agentPortal.exportCsvOk"));
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : t("agentPortal.exportCsvError");
+      toast.error(t("agentPortal.exportCsvError"), msg);
+    } finally {
+      setExporting(null);
+    }
   }
 
   function entryLabel(type: string) {
@@ -199,6 +234,13 @@ export function AgentBalancePage() {
           label={t("agentPortal.reservedBalance")}
           value={formatMoney(balance?.reservedBalance ?? 0)}
           tone="warning"
+        />
+        <StatCard
+          label={t("agentPortal.totalBalance")}
+          value={formatMoney(
+            balance?.totalBalance ??
+              (balance?.availableBalance ?? 0) + (balance?.reservedBalance ?? 0),
+          )}
         />
       </div>
 
@@ -284,6 +326,32 @@ export function AgentBalancePage() {
         {error ? <p className="text-body text-danger">{error}</p> : null}
 
         <TableCard
+          toolbar={
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                loading={exporting === "xlsx"}
+                disabled={exporting !== null}
+                leftIcon={<IconDownload width={15} height={15} />}
+                onClick={() => void onExport()}
+              >
+                {t("agentPortal.export")}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                loading={exporting === "csv"}
+                disabled={exporting !== null}
+                leftIcon={<IconDownload width={15} height={15} />}
+                onClick={() => void onExportCsv()}
+              >
+                {t("agentPortal.exportCsv")}
+              </Button>
+            </div>
+          }
           pagination={
             <Pagination
               page={page}
@@ -300,42 +368,42 @@ export function AgentBalancePage() {
           }
         >
           <div className="min-w-0 overflow-x-auto">
-            <table className="w-full min-w-[520px] border-collapse text-left text-label">
+            <table className="w-full min-w-[880px] border-collapse text-left text-label">
               <thead>
                 <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-                  <th className="whitespace-nowrap px-3 py-2.5">
-                    <ColumnHeader icon={<IconClock width={14} height={14} />}>
-                      {t("agentPortal.colCreatedAt")}
+                  <th className="w-[52px] px-3 py-2.5 text-center">
+                    <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                      {t("agentPortal.colStt")}
                     </ColumnHeader>
                   </th>
-                  <th className="px-3 py-2.5">
+                  <th className="min-w-[160px] px-3 py-2.5">
+                    <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                      {t("agentPortal.colTxnCode")}
+                    </ColumnHeader>
+                  </th>
+                  <th className="min-w-[140px] px-3 py-2.5">
                     <ColumnHeader icon={<IconLayers width={14} height={14} />}>
                       {t("agentPortal.colEntryType")}
                     </ColumnHeader>
                   </th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-right">
+                  <th className="min-w-[110px] px-3 py-2.5 text-right">
                     <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
-                      {t("agentPortal.colAmount")}
+                      {t("agentPortal.colBalanceBefore")}
                     </ColumnHeader>
                   </th>
-                  <th className="hidden px-3 py-2.5 md:table-cell">
-                    <ColumnHeader icon={<IconFileText width={14} height={14} />}>
-                      {t("agentPortal.colMovementNote")}
+                  <th className="min-w-[110px] px-3 py-2.5 text-right">
+                    <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
+                      {t("agentPortal.colChange")}
                     </ColumnHeader>
                   </th>
-                  <th className="hidden whitespace-nowrap px-3 py-2.5 text-right sm:table-cell">
+                  <th className="min-w-[110px] px-3 py-2.5 text-right">
                     <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
                       {t("agentPortal.colBalanceAfter")}
                     </ColumnHeader>
                   </th>
-                  <th className="hidden whitespace-nowrap px-3 py-2.5 text-right md:table-cell">
-                    <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
-                      {t("agentPortal.reservedBalance")}
-                    </ColumnHeader>
-                  </th>
-                  <th className="hidden px-3 py-2.5 lg:table-cell">
-                    <ColumnHeader icon={<IconHash width={14} height={14} />}>
-                      {t("agentPortal.colRef")}
+                  <th className="min-w-[140px] px-3 py-2.5 text-center">
+                    <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
+                      {t("agentPortal.colCreatedAt")}
                     </ColumnHeader>
                   </th>
                 </tr>
@@ -343,54 +411,65 @@ export function AgentBalancePage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-muted">
+                    <td colSpan={COL_COUNT} className="px-3 py-8 text-center text-muted">
                       {t("common.loading")}
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-muted">
+                    <td colSpan={COL_COUNT} className="px-3 py-8 text-center text-muted">
                       {t("common.noData")}
                     </td>
                   </tr>
                 ) : (
-                  rows.map((row) => (
-                    <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
-                      <td className="whitespace-nowrap px-3 py-2.5 text-caption text-muted">
-                        <DateTimeText value={row.createdAt} />
-                      </td>
-                      <td className="max-w-[12rem] px-3 py-2.5 sm:max-w-none">
-                        {row.entryType in LEDGER_LABEL_KEY ? (
-                          <StatusBadge
-                            tone={LEDGER_ENTRY_TONE[row.entryType as AgentLedgerEntryType]}
-                          >
-                            {entryLabel(row.entryType)}
-                          </StatusBadge>
-                        ) : (
-                          entryLabel(row.entryType)
-                        )}
-                      </td>
-                      <td
-                        className={`whitespace-nowrap px-3 py-2.5 text-right tabular-nums ${amountToneClass(row.amount)}`}
+                  rows.map((row, idx) => {
+                    const txnCode = txnCodeOf(row);
+                    const change = row.amount ?? 0;
+                    const before =
+                      row.balanceBefore ??
+                      (row.balanceAfter ?? 0) - change;
+                    return (
+                      <tr
+                        key={row.id}
+                        className="border-b border-edge last:border-b-0 hover:bg-surface/70"
                       >
-                        {formatMoney(row.amount)}
-                      </td>
-                      <td className="hidden max-w-[12rem] truncate px-3 py-2.5 text-muted md:table-cell">
-                        {row.note?.trim() ? row.note : "—"}
-                      </td>
-                      <td className="hidden whitespace-nowrap px-3 py-2.5 text-right tabular-nums sm:table-cell">
-                        {formatMoney(row.balanceAfter)}
-                      </td>
-                      <td className="hidden whitespace-nowrap px-3 py-2.5 text-right tabular-nums md:table-cell">
-                        {formatMoney(row.reservedAfter ?? 0)}
-                      </td>
-                      <td className="hidden max-w-[8rem] truncate px-3 py-2.5 font-mono text-caption lg:table-cell">
-                        {row.refType && row.refId
-                          ? `${row.refType}:${row.refId.slice(0, 8)}…`
-                          : "—"}
-                      </td>
-                    </tr>
-                  ))
+                        <td className="px-3 py-2.5 text-center tabular-nums text-muted">
+                          {from + idx}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex max-w-[16rem] items-center gap-1">
+                            <span className="truncate font-mono text-caption">{txnCode}</span>
+                            <CopyButton value={txnCode} label={t("agentPortal.copyTxnCode")} />
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          {row.entryType in LEDGER_LABEL_KEY ? (
+                            <StatusBadge
+                              tone={LEDGER_ENTRY_TONE[row.entryType as AgentLedgerEntryType]}
+                            >
+                              {entryLabel(row.entryType)}
+                            </StatusBadge>
+                          ) : (
+                            entryLabel(row.entryType)
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">
+                          {formatMoney(before)}
+                        </td>
+                        <td
+                          className={`px-3 py-2.5 text-right tabular-nums ${amountToneClass(change)}`}
+                        >
+                          {formatMoney(change)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">
+                          {formatMoney(row.balanceAfter)}
+                        </td>
+                        <td className="px-3 py-2.5 text-center text-caption text-muted">
+                          <DateTimeText value={row.createdAt} />
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

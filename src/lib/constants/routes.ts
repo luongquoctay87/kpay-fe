@@ -12,6 +12,7 @@ export const ROUTES = {
   portalWithdraw: "/portal/withdraw",
   portalBalance: "/portal/balance",
   portalCommissions: "/portal/commissions",
+  portalRates: "/portal/rates",
   portalProfile: "/portal/profile",
   merchants: "/merchants",
   merchantNew: "/merchants/new",

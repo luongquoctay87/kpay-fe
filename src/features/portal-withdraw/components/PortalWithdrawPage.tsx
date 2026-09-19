@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ColumnHeader,
+  CopyButton,
   DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
@@ -15,7 +16,7 @@ import {
   filterControlClass,
   type DateRangeValue,
 } from "@/components/common";
-import { Button, Field, Input, Select, StatusBadge, toast } from "@/components/ui";
+import { Button, Select, StatusBadge, toast } from "@/components/ui";
 import {
   IconActivity,
   IconBank,
@@ -30,8 +31,22 @@ import {
 } from "@/components/icons/NavIcons";
 import { isAgentUser } from "@/features/auth/portal-role";
 import { useAuthStore } from "@/features/auth/store";
-import type { BankOption } from "@/features/bank-accounts/types";
 import { portalWithdrawApi } from "@/features/portal-withdraw/api";
+import {
+  PORTAL_WITHDRAW_COLUMNS,
+  PORTAL_WITHDRAW_COLUMN_ALIGN,
+  PORTAL_WITHDRAW_COLUMN_MIN_PX,
+  PORTAL_WITHDRAW_COLUMN_WIDTH,
+  defaultColumnVisibility,
+  loadColumnVisibility,
+  portalWithdrawTableMinWidth,
+  saveColumnVisibility,
+  visibleColumnCount,
+  type ColumnVisibility,
+  type PortalWithdrawColumn,
+} from "@/features/portal-withdraw/columns";
+import { ColumnPicker } from "@/features/portal-withdraw/components/ColumnPicker";
+import { CreatePortalWithdrawModal } from "@/features/portal-withdraw/components/CreatePortalWithdrawModal";
 import type {
   WithdrawOrderListItem,
   WithdrawStatus,
@@ -45,14 +60,14 @@ import { useI18n } from "@/i18n/use-i18n";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { PORTAL_PAGE_CLASS } from "@/lib/constants/portal-layout";
 import { formatMoney } from "@/lib/format/datetime";
-import { formatMoneyInput, parseMoneyDigits, parseMoneyNumber } from "@/lib/format/money";
-import { useRequiredFields } from "@/lib/forms/use-required-fields";
 import { ApiError } from "@/lib/types/api";
 
 const EMPTY_LIST = {
   rows: [] as WithdrawOrderListItem[],
   total: 0,
   pendingCount: 0,
+  successCount: 0,
+  successAmount: 0,
 };
 
 export function PortalWithdrawPage() {
@@ -69,6 +84,11 @@ export function PortalWithdrawPage() {
 
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
+  const [exporting, setExporting] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
+    defaultColumnVisibility,
+  );
   const [qDraft, setQDraft] = useState("");
   const [statusDraft, setStatusDraft] = useState<WithdrawStatus | null>(null);
   const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(null);
@@ -79,20 +99,6 @@ export function PortalWithdrawPage() {
     createdTo?: string;
   }>({});
 
-  const [banks, setBanks] = useState<BankOption[]>([]);
-  const [bankCode, setBankCode] = useState<string | null>(null);
-  const [beneficiaryName, setBeneficiaryName] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [amountDigits, setAmountDigits] = useState("");
-  const [transferContent, setTransferContent] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-
-  const required = useRequiredFields(
-    { bankCode, beneficiaryName, accountNumber, amountDigits, transferContent },
-    { selectKeys: ["bankCode"] },
-  );
-
   const statusOptions = useMemo(
     () =>
       WITHDRAW_STATUS_OPTIONS.map((v) => ({
@@ -102,30 +108,33 @@ export function PortalWithdrawPage() {
     [t],
   );
 
-  const bankOptions = useMemo(
-    () =>
-      banks.map((b) => ({
-        value: b.code,
-        label: `${b.code} — ${b.name}`,
-        keywords: `${b.code} ${b.name}`,
-      })),
-    [banks],
-  );
-
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await portalWithdrawApi.listBanks(isAgent);
-        if (!cancelled) setBanks(data ?? []);
-      } catch {
-        if (!cancelled) setBanks([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isAgent]);
+    setColumnVisibility(loadColumnVisibility());
+  }, []);
+
+  function onColumnVisibilityChange(next: ColumnVisibility) {
+    setColumnVisibility(next);
+    saveColumnVisibility(next);
+  }
+
+  const colSpan = visibleColumnCount(columnVisibility);
+  const show = columnVisibility;
+
+  const flexCol: PortalWithdrawColumn =
+    show.transferContent
+      ? "transferContent"
+      : show.systemId
+        ? "systemId"
+        : show.accountName
+          ? "accountName"
+          : show.createdAt
+            ? "createdAt"
+            : (PORTAL_WITHDRAW_COLUMNS.find((c) => show[c]) ?? "systemId");
+
+  function colWidth(col: PortalWithdrawColumn | "stt"): string | undefined {
+    if (col !== "stt" && col === flexCol) return undefined;
+    return `${PORTAL_WITHDRAW_COLUMN_MIN_PX[col]}px`;
+  }
 
   const loadList = useCallback(async () => {
     const data = await portalWithdrawApi.list(isAgent, { ...filters, page, size });
@@ -133,6 +142,8 @@ export function PortalWithdrawPage() {
       rows: data.items ?? [],
       total: data.totalElements ?? 0,
       pendingCount: data.pendingCount ?? 0,
+      successCount: data.successCount ?? 0,
+      successAmount: data.successAmount ?? 0,
     };
   }, [filters, isAgent, page, size]);
 
@@ -147,6 +158,8 @@ export function PortalWithdrawPage() {
     mapError,
   });
   const pendingCount = data.pendingCount;
+  const successCount = data.successCount;
+  const successAmount = data.successAmount;
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
 
@@ -170,59 +183,16 @@ export function PortalWithdrawPage() {
     setFilters({});
   }
 
-  async function onCreate(e: FormEvent) {
-    e.preventDefault();
-    if (!canCreate) {
-      toast.error(t("withdraw.viewerCannotCreate"));
-      return;
-    }
-    if (required.hasMissing || !bankCode) {
-      required.reveal();
-      return;
-    }
-    const amount = parseMoneyNumber(amountDigits);
-    if (amount <= 0) {
-      required.reveal();
-      return;
-    }
-    if (transferContent.trim().length > 50) {
-      setCreateError(t("withdraw.transferContentTooLong"));
-      return;
-    }
-    setCreating(true);
-    setCreateError(null);
-    try {
-      await portalWithdrawApi.create(isAgent, {
-        bankCode,
-        beneficiaryName: beneficiaryName.trim(),
-        accountNumber: accountNumber.replace(/\D/g, ""),
-        amount,
-        transferContent: transferContent.trim(),
-      });
-      toast.success(t("withdraw.createOk"));
-      setBankCode(null);
-      setBeneficiaryName("");
-      setAccountNumber("");
-      setAmountDigits("");
-      setTransferContent("");
-      required.hide();
-      void refresh();
-    } catch (err) {
-      const msg = err instanceof ApiError ? err.message : t("withdraw.createError");
-      setCreateError(msg);
-      toast.error(t("withdraw.createError"), msg);
-    } finally {
-      setCreating(false);
-    }
-  }
-
   async function onExport() {
+    setExporting(true);
     try {
       await portalWithdrawApi.export(isAgent, filters);
       toast.success(t("withdraw.exportOk"));
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : t("withdraw.exportError");
       toast.error(t("withdraw.exportError"), msg);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -231,138 +201,32 @@ export function PortalWithdrawPage() {
       <PageHeader
         title={t("pages.portalWithdraw")}
         actions={
-          <div className="flex flex-wrap gap-2">
+          canCreate ? (
             <Button
               type="button"
-              variant="secondary"
+              variant="primary"
               size="sm"
-              leftIcon={<IconRefresh width={14} height={14} />}
-              onClick={() => void refresh()}
+              leftIcon={<IconWithdraw width={15} height={15} />}
+              onClick={() => setShowCreate(true)}
             >
-              {t("withdraw.refresh")}
+              {t("withdraw.createTitle")}
             </Button>
-            {canCreate ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                leftIcon={<IconDownload width={14} height={14} />}
-                onClick={() => void onExport()}
-              >
-                {t("withdraw.export")}
-              </Button>
-            ) : null}
-          </div>
+          ) : undefined
         }
       />
 
-      {canCreate ? (
-        <form
-          noValidate
-          onSubmit={(e) => void onCreate(e)}
-          className="mb-4 grid gap-3 rounded-lg border border-edge bg-elevated p-4 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          <p className="sm:col-span-2 lg:col-span-3 kpay-text-title font-semibold">
-            {t("withdraw.createTitle")}
-          </p>
-          <Field
-            label={t("withdraw.createBank")}
-            htmlFor="wd-bank"
-            required
-            error={required.errorOf("bankCode")}
-          >
-            <Select
-              id="wd-bank"
-              options={bankOptions}
-              value={bankCode}
-              onChange={setBankCode}
-              placeholder={t("withdraw.createBankPlaceholder")}
-              disabled={creating}
-              clearable={false}
-              invalid={Boolean(required.errorOf("bankCode"))}
-            />
-          </Field>
-          <Field
-            label={t("withdraw.createBeneficiary")}
-            htmlFor="wd-name"
-            required
-            error={required.errorOf("beneficiaryName")}
-          >
-            <Input
-              id="wd-name"
-              value={beneficiaryName}
-              onChange={(e) => setBeneficiaryName(e.target.value)}
-              disabled={creating}
-              invalid={Boolean(required.errorOf("beneficiaryName"))}
-            />
-          </Field>
-          <Field
-            label={t("withdraw.createAccount")}
-            htmlFor="wd-acc"
-            required
-            error={required.errorOf("accountNumber")}
-          >
-            <Input
-              id="wd-acc"
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value.replace(/[^\d]/g, ""))}
-              disabled={creating}
-              invalid={Boolean(required.errorOf("accountNumber"))}
-              inputMode="numeric"
-            />
-          </Field>
-          <Field
-            label={t("withdraw.createAmount")}
-            htmlFor="wd-amount"
-            required
-            error={required.errorOf("amountDigits")}
-          >
-            <Input
-              id="wd-amount"
-              value={formatMoneyInput(amountDigits)}
-              onChange={(e) => setAmountDigits(parseMoneyDigits(e.target.value))}
-              disabled={creating}
-              invalid={Boolean(required.errorOf("amountDigits"))}
-              inputMode="numeric"
-            />
-          </Field>
-          <Field
-            label={t("withdraw.createContent")}
-            htmlFor="wd-content"
-            required
-            error={required.errorOf("transferContent")}
-          >
-            <Input
-              id="wd-content"
-              value={transferContent}
-              onChange={(e) => setTransferContent(e.target.value)}
-              disabled={creating}
-              maxLength={50}
-              invalid={Boolean(required.errorOf("transferContent"))}
-            />
-          </Field>
-          <div className="flex items-end">
-            <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              loading={creating}
-              className="w-full"
-              leftIcon={<IconWithdraw width={15} height={15} />}
-            >
-              {t("withdraw.createSubmit")}
-            </Button>
-          </div>
-          {createError ? (
-            <p role="alert" className="sm:col-span-2 lg:col-span-3 text-label text-danger">
-              {createError}
-            </p>
-          ) : null}
-        </form>
-      ) : null}
-
-      <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label={t("withdraw.statPending")} value={String(pendingCount)} />
+      <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          label={t("withdraw.statSuccessCount")}
+          value={String(successCount)}
+          tone="success"
+        />
+        <StatCard
+          label={t("withdraw.statSuccessAmount")}
+          value={formatMoney(successAmount)}
+          tone="info"
+        />
+        <StatCard label={t("withdraw.statPending")} value={String(pendingCount)} tone="warning" />
       </div>
 
       <form
@@ -370,49 +234,68 @@ export function PortalWithdrawPage() {
           e.preventDefault();
           applyFilters();
         }}
-        className="mb-3 grid gap-3 rounded-lg border border-edge bg-elevated p-3 sm:grid-cols-2 lg:grid-cols-4"
+        className="mb-3 min-w-0 rounded-xl border border-edge bg-elevated px-3 py-3.5 sm:px-5 sm:py-4"
       >
-        <FilterField label={t("withdraw.filterSearch")} htmlFor="wd-portal-search">
-          <SearchInput
-            id="wd-portal-search"
-            value={qDraft}
-            onChange={setQDraft}
-            placeholder={t("withdraw.filterSearchPlaceholder")}
-            label={t("withdraw.filterSearch")}
-            className={filterControlClass}
-          />
-        </FilterField>
-        <FilterField label={t("withdraw.filterStatus")} htmlFor="wd-portal-status">
-          <Select
-            id="wd-portal-status"
-            options={statusOptions}
-            value={statusDraft}
-            onChange={(v) => setStatusDraft(v)}
-            placeholder={t("withdraw.filterStatusPlaceholder")}
-            clearable
-          />
-        </FilterField>
-        <FilterField label={t("withdraw.filterCreated")} htmlFor="wd-portal-created">
-          <DateRangeFilter value={createdRangeDraft} onChange={setCreatedRangeDraft} />
-        </FilterField>
-        <div className="flex items-end gap-2">
-          <Button
-            type="submit"
-            variant="primary"
-            size="sm"
-            leftIcon={<IconSearch width={14} height={14} />}
-          >
-            {t("withdraw.search")}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            leftIcon={<IconRefresh width={14} height={14} />}
-            onClick={onReset}
-          >
-            {t("withdraw.reset")}
-          </Button>
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-end lg:gap-3">
+          <div className="min-w-0 w-full flex-1">
+            <FilterField label={t("withdraw.filterSearch")} htmlFor="wd-portal-search">
+              <SearchInput
+                id="wd-portal-search"
+                value={qDraft}
+                onChange={setQDraft}
+                placeholder={t("withdraw.filterSearchPlaceholder")}
+                label={t("withdraw.filterSearch")}
+                className={filterControlClass}
+              />
+            </FilterField>
+          </div>
+          <div className="w-full min-w-0 lg:w-[13rem] lg:shrink-0">
+            <FilterField label={t("withdraw.filterStatus")} htmlFor="wd-portal-status">
+              <Select
+                id="wd-portal-status"
+                options={statusOptions}
+                value={statusDraft}
+                onChange={(v) => setStatusDraft(v)}
+                placeholder={t("withdraw.filterStatusPlaceholder")}
+                clearable
+                triggerClassName={filterControlClass}
+              />
+            </FilterField>
+          </div>
+          <div className="w-full min-w-0 lg:w-[17rem] lg:shrink-0">
+            <FilterField label={t("withdraw.filterCreated")} htmlFor="wd-portal-created">
+              <DateRangeFilter
+                id="wd-portal-created"
+                value={createdRangeDraft}
+                onChange={setCreatedRangeDraft}
+                placeholder={[
+                  t("withdraw.filterCreatedFromPlaceholder"),
+                  t("withdraw.filterCreatedToPlaceholder"),
+                ]}
+              />
+            </FilterField>
+          </div>
+          <div className="flex w-full shrink-0 items-center gap-1.5 lg:w-auto">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              className="min-w-0 flex-1 lg:flex-none lg:min-w-[6.5rem]"
+              onClick={onReset}
+              leftIcon={<IconRefresh width={15} height={15} />}
+            >
+              {t("withdraw.reset")}
+            </Button>
+            <Button
+              type="submit"
+              variant="soft"
+              size="md"
+              className="min-h-9 min-w-0 flex-1 gap-2 px-3 lg:flex-none lg:min-w-[8.75rem] lg:px-4"
+              leftIcon={<IconSearch width={16} height={16} />}
+            >
+              {t("withdraw.search")}
+            </Button>
+          </div>
         </div>
       </form>
 
@@ -423,6 +306,21 @@ export function PortalWithdrawPage() {
       ) : null}
 
       <TableCard
+        toolbar={
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              loading={exporting}
+              leftIcon={<IconDownload width={15} height={15} />}
+              onClick={() => void onExport()}
+            >
+              {t("withdraw.export")}
+            </Button>
+            <ColumnPicker visibility={columnVisibility} onChange={onColumnVisibilityChange} />
+          </div>
+        }
         pagination={
           <Pagination
             page={page}
@@ -438,97 +336,232 @@ export function PortalWithdrawPage() {
           />
         }
       >
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-full border-collapse text-left">
-            <thead>
-              <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-                <th className="px-3 py-2.5">
+        <table
+          className="w-full table-fixed border-separate border-spacing-0 text-left text-label"
+          style={{ minWidth: portalWithdrawTableMinWidth(columnVisibility) }}
+        >
+          <colgroup>
+            <col style={{ width: colWidth("stt") }} />
+            {PORTAL_WITHDRAW_COLUMNS.map((col) =>
+              show[col] ? <col key={col} style={{ width: colWidth(col) }} /> : null,
+            )}
+          </colgroup>
+          <thead>
+            <tr className="bg-surface text-label font-medium text-muted [&>th]:border-b [&>th]:border-edge [&>th]:bg-surface">
+              <th
+                className={`${PORTAL_WITHDRAW_COLUMN_WIDTH.stt} ${PORTAL_WITHDRAW_COLUMN_ALIGN.stt} px-3 py-2.5`}
+              >
+                <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                  {t("withdraw.colStt")}
+                </ColumnHeader>
+              </th>
+              {show.systemId ? (
+                <th
+                  className={`${PORTAL_WITHDRAW_COLUMN_WIDTH.systemId} ${PORTAL_WITHDRAW_COLUMN_ALIGN.systemId} px-3 py-2.5`}
+                >
                   <ColumnHeader icon={<IconHash width={14} height={14} />}>
-                    {t("withdraw.colStt")}
+                    {t("withdraw.colSystemId")}
                   </ColumnHeader>
                 </th>
-                <th className="px-3 py-2.5">
-                  <ColumnHeader icon={<IconActivity width={14} height={14} />}>
-                    {t("withdraw.colStatus")}
-                  </ColumnHeader>
-                </th>
-                <th className="px-3 py-2.5">
-                  <ColumnHeader icon={<IconWithdraw width={14} height={14} />}>
-                    {t("withdraw.colAmount")}
-                  </ColumnHeader>
-                </th>
-                <th className="px-3 py-2.5">
-                  <ColumnHeader icon={<IconBank width={14} height={14} />}>
-                    {t("withdraw.colBank")}
-                  </ColumnHeader>
-                </th>
-                <th className="px-3 py-2.5">
+              ) : null}
+              {show.accountName ? (
+                <th
+                  className={`${PORTAL_WITHDRAW_COLUMN_WIDTH.accountName} ${PORTAL_WITHDRAW_COLUMN_ALIGN.accountName} px-3 py-2.5`}
+                >
                   <ColumnHeader icon={<IconUser width={14} height={14} />}>
-                    {t("withdraw.colBeneficiaryName")}
+                    {t("withdraw.colAccountName")}
                   </ColumnHeader>
                 </th>
-                <th className="px-3 py-2.5">
+              ) : null}
+              {show.accountNumber ? (
+                <th
+                  className={`${PORTAL_WITHDRAW_COLUMN_WIDTH.accountNumber} ${PORTAL_WITHDRAW_COLUMN_ALIGN.accountNumber} px-3 py-2.5`}
+                >
                   <ColumnHeader icon={<IconHash width={14} height={14} />}>
                     {t("withdraw.colAccountNumber")}
                   </ColumnHeader>
                 </th>
-                <th className="px-3 py-2.5">
+              ) : null}
+              {show.bank ? (
+                <th
+                  className={`${PORTAL_WITHDRAW_COLUMN_WIDTH.bank} ${PORTAL_WITHDRAW_COLUMN_ALIGN.bank} px-3 py-2.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconBank width={14} height={14} />}>
+                    {t("withdraw.colBank")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.transferContent ? (
+                <th
+                  className={`${PORTAL_WITHDRAW_COLUMN_WIDTH.transferContent} ${PORTAL_WITHDRAW_COLUMN_ALIGN.transferContent} px-3 py-2.5`}
+                >
                   <ColumnHeader icon={<IconFileText width={14} height={14} />}>
                     {t("withdraw.colTransferContent")}
                   </ColumnHeader>
                 </th>
-                <th className="px-3 py-2.5">
-                  <ColumnHeader icon={<IconFileText width={14} height={14} />}>
-                    {t("withdraw.colRejectReason")}
+              ) : null}
+              {show.amount ? (
+                <th
+                  className={`${PORTAL_WITHDRAW_COLUMN_WIDTH.amount} ${PORTAL_WITHDRAW_COLUMN_ALIGN.amount} px-3 py-2.5`}
+                >
+                  <ColumnHeader align="right" icon={<IconWithdraw width={14} height={14} />}>
+                    {t("withdraw.colAmount")}
                   </ColumnHeader>
                 </th>
-                <th className="px-3 py-2.5">
-                  <ColumnHeader icon={<IconClock width={14} height={14} />}>
+              ) : null}
+              {show.status ? (
+                <th
+                  className={`${PORTAL_WITHDRAW_COLUMN_WIDTH.status} ${PORTAL_WITHDRAW_COLUMN_ALIGN.status} px-3 py-2.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
+                    {t("withdraw.colStatus")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+              {show.createdAt ? (
+                <th
+                  className={`${PORTAL_WITHDRAW_COLUMN_WIDTH.createdAt} ${PORTAL_WITHDRAW_COLUMN_ALIGN.createdAt} px-3 py-2.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
                     {t("withdraw.colCreatedAt")}
                   </ColumnHeader>
                 </th>
+              ) : null}
+              {show.updatedAt ? (
+                <th
+                  className={`${PORTAL_WITHDRAW_COLUMN_WIDTH.updatedAt} ${PORTAL_WITHDRAW_COLUMN_ALIGN.updatedAt} px-3 py-2.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
+                    {t("withdraw.colUpdatedAt")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={colSpan} className="px-3 py-8 text-center text-muted">
+                  {t("withdraw.loading")}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={9} className="px-3 py-8 text-center text-muted">
-                    {t("withdraw.loading")}
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={colSpan} className="px-3 py-8 text-center text-muted">
+                  {Object.keys(filters).length ? t("withdraw.emptyFiltered") : t("withdraw.empty")}
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, idx) => (
+                <tr
+                  key={row.id}
+                  className="[&>td]:border-b [&>td]:border-edge last:[&>td]:border-b-0 hover:bg-surface/70"
+                >
+                  <td
+                    className={`${PORTAL_WITHDRAW_COLUMN_ALIGN.stt} px-3 py-2.5 font-mono text-caption tabular-nums text-muted`}
+                  >
+                    {from + idx}
                   </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-3 py-8 text-center text-muted">
-                    {Object.keys(filters).length ? t("withdraw.emptyFiltered") : t("withdraw.empty")}
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row, idx) => (
-                  <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
-                    <td className="px-3 py-2.5">{page * size + idx + 1}</td>
-                    <td className="px-3 py-2.5">
+                  {show.systemId ? (
+                    <td className={`${PORTAL_WITHDRAW_COLUMN_ALIGN.systemId} px-3 py-2.5`}>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span
+                          className="truncate font-mono text-label font-medium text-ink"
+                          title={row.id}
+                        >
+                          {row.id}
+                        </span>
+                        <CopyButton
+                          value={row.id}
+                          label={t("withdraw.copySystemId")}
+                          size="sm"
+                        />
+                      </div>
+                    </td>
+                  ) : null}
+                  {show.accountName ? (
+                    <td
+                      className={`${PORTAL_WITHDRAW_COLUMN_ALIGN.accountName} truncate px-3 py-2.5`}
+                      title={row.beneficiaryName || undefined}
+                    >
+                      {row.beneficiaryName || "—"}
+                    </td>
+                  ) : null}
+                  {show.accountNumber ? (
+                    <td
+                      className={`${PORTAL_WITHDRAW_COLUMN_ALIGN.accountNumber} truncate px-3 py-2.5 font-mono text-caption`}
+                      title={row.accountNumber || undefined}
+                    >
+                      {row.accountNumber || "—"}
+                    </td>
+                  ) : null}
+                  {show.bank ? (
+                    <td className={`${PORTAL_WITHDRAW_COLUMN_ALIGN.bank} px-3 py-2.5`}>
+                      {row.bankCode || row.bankName ? (
+                        <span
+                          className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
+                          title={row.bankName ?? row.bankCode ?? undefined}
+                        >
+                          {row.bankCode ?? row.bankName}
+                        </span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
+                  ) : null}
+                  {show.transferContent ? (
+                    <td
+                      className={`${PORTAL_WITHDRAW_COLUMN_ALIGN.transferContent} truncate px-3 py-2.5 text-ink-secondary`}
+                      title={row.transferContent || undefined}
+                    >
+                      {row.transferContent || "—"}
+                    </td>
+                  ) : null}
+                  {show.amount ? (
+                    <td
+                      className={`${PORTAL_WITHDRAW_COLUMN_ALIGN.amount} whitespace-nowrap px-3 py-2.5 font-medium tabular-nums`}
+                    >
+                      {formatMoney(row.amount)}
+                    </td>
+                  ) : null}
+                  {show.status ? (
+                    <td className={`${PORTAL_WITHDRAW_COLUMN_ALIGN.status} px-3 py-2.5`}>
                       <StatusBadge tone={WITHDRAW_STATUS_TONE[row.status]}>
                         {t(WITHDRAW_STATUS_LABEL_KEY[row.status])}
                       </StatusBadge>
                     </td>
-                    <td className="px-3 py-2.5 font-medium">{formatMoney(row.amount)}</td>
-                    <td className="px-3 py-2.5">{row.bankName ?? row.bankCode}</td>
-                    <td className="px-3 py-2.5">{row.beneficiaryName}</td>
-                    <td className="px-3 py-2.5 font-mono text-caption">{row.accountNumber}</td>
-                    <td className="px-3 py-2.5 max-w-[14rem] truncate">{row.transferContent}</td>
-                    <td className="px-3 py-2.5 max-w-[12rem] truncate text-danger">
-                      {row.rejectReason}
-                    </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
+                  ) : null}
+                  {show.createdAt ? (
+                    <td
+                      className={`${PORTAL_WITHDRAW_COLUMN_ALIGN.createdAt} whitespace-nowrap px-3 py-2.5 text-caption text-muted`}
+                    >
                       <DateTimeText value={row.createdAt} />
                     </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ) : null}
+                  {show.updatedAt ? (
+                    <td
+                      className={`${PORTAL_WITHDRAW_COLUMN_ALIGN.updatedAt} whitespace-nowrap px-3 py-2.5 text-caption text-muted`}
+                    >
+                      <DateTimeText value={row.updatedAt} />
+                    </td>
+                  ) : null}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </TableCard>
+
+      {showCreate ? (
+        <CreatePortalWithdrawModal
+          isAgent={isAgent}
+          onClose={() => setShowCreate(false)}
+          onCreated={() => {
+            setShowCreate(false);
+            void refresh();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

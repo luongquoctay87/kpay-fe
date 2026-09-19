@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
+  AutoRefreshControl,
   ColumnHeader,
+  CopyButton,
   DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
@@ -15,10 +17,10 @@ import {
   filterControlClass,
   type DateRangeValue,
 } from "@/components/common";
-import { Button, Select, StatusBadge } from "@/components/ui";
+import { Button, Select, StatusBadge, toast } from "@/components/ui";
 import {
   IconClock,
-  IconFileText,
+  IconDownload,
   IconHash,
   IconLayers,
   IconRefresh,
@@ -33,10 +35,28 @@ import {
   type PortalLedgerItem,
 } from "@/features/portal-balance/api";
 import {
+  PORTAL_BALANCE_COLUMNS,
+  PORTAL_BALANCE_COLUMN_ALIGN,
+  PORTAL_BALANCE_COLUMN_MIN_PX,
+  PORTAL_BALANCE_COLUMN_WIDTH,
+  defaultColumnVisibility,
+  loadColumnVisibility,
+  portalBalanceTableMinWidth,
+  saveColumnVisibility,
+  visibleColumnCount,
+  type ColumnVisibility,
+  type PortalBalanceColumn,
+} from "@/features/portal-balance/columns";
+import { ColumnPicker } from "@/features/portal-balance/components/ColumnPicker";
+import {
   LEDGER_ENTRY_LABEL_KEY,
   LEDGER_ENTRY_TONE,
 } from "@/features/portal-balance/ledger-entry";
 import { useI18n } from "@/i18n/use-i18n";
+import {
+  useAutoRefresh,
+  type AutoRefreshSeconds,
+} from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
 import { PORTAL_PAGE_CLASS } from "@/lib/constants/portal-layout";
 import { formatMoney } from "@/lib/format/datetime";
@@ -53,12 +73,37 @@ function amountToneClass(amount: number) {
   return "";
 }
 
+function balanceBeforeOf(row: PortalLedgerItem): number {
+  if (row.balanceBefore != null) return row.balanceBefore;
+  const after = row.balanceAfter ?? row.availableAfter ?? 0;
+  if (row.entryType === "payout_capture" || row.entryType === "withdraw_capture") {
+    return after;
+  }
+  return after - (row.amount ?? 0);
+}
+
+function balanceAfterOf(row: PortalLedgerItem): number {
+  return row.balanceAfter ?? row.availableAfter ?? 0;
+}
+
+function txnCodeOf(row: PortalLedgerItem): string {
+  if (row.txnCode?.trim()) return row.txnCode.trim();
+  if (row.refId) return row.refId;
+  return String(row.id);
+}
+
 export function PortalBalancePage() {
   const { t } = useI18n();
   const [balance, setBalance] = useState<PortalBalance | null>(null);
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
+  const [exporting, setExporting] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
+    defaultColumnVisibility,
+  );
 
   const [entryTypeDraft, setEntryTypeDraft] = useState<LedgerEntryType | null>(null);
   const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(null);
@@ -84,6 +129,32 @@ export function PortalBalancePage() {
     Boolean(createdRangeDraft?.[0] || createdRangeDraft?.[1]) ||
     Boolean(qDraft.trim()) ||
     Object.keys(filters).length > 0;
+
+  useEffect(() => {
+    setColumnVisibility(loadColumnVisibility());
+  }, []);
+
+  function onColumnVisibilityChange(next: ColumnVisibility) {
+    setColumnVisibility(next);
+    saveColumnVisibility(next);
+  }
+
+  const colSpan = visibleColumnCount(columnVisibility);
+  const show = columnVisibility;
+
+  const flexCol: PortalBalanceColumn =
+    show.txnCode
+      ? "txnCode"
+      : show.entryType
+        ? "entryType"
+        : show.createdAt
+          ? "createdAt"
+          : (PORTAL_BALANCE_COLUMNS.find((c) => show[c]) ?? "txnCode");
+
+  function colWidth(col: PortalBalanceColumn | "stt"): string | undefined {
+    if (col !== "stt" && col === flexCol) return undefined;
+    return `${PORTAL_BALANCE_COLUMN_MIN_PX[col]}px`;
+  }
 
   const loadBalance = useCallback(async () => {
     try {
@@ -116,6 +187,13 @@ export function PortalBalancePage() {
     empty: EMPTY_LIST,
     mapError,
   });
+
+  const refreshAll = useCallback(() => {
+    void loadBalance();
+    void refresh();
+  }, [loadBalance, refresh]);
+
+  useAutoRefresh(refreshAll, { enabled: autoRefresh, intervalSec: autoRefreshSec });
 
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);
@@ -153,23 +231,31 @@ export function PortalBalancePage() {
     setFilters({});
   }
 
+  async function onExport() {
+    setExporting(true);
+    try {
+      await portalBalanceApi.exportLedgers(filters);
+      toast.success(t("portal.exportOk"));
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : t("portal.exportError");
+      toast.error(t("portal.exportError"), msg);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className={PORTAL_PAGE_CLASS}>
       <PageHeader
         title={t("pages.portalBalance")}
         actions={
-          <Button
-            type="button"
-            variant="secondary"
+          <AutoRefreshControl
+            enabled={autoRefresh}
+            intervalSec={autoRefreshSec}
+            onEnabledChange={setAutoRefresh}
+            onIntervalChange={setAutoRefreshSec}
             size="sm"
-            leftIcon={<IconRefresh width={15} height={15} />}
-            onClick={() => {
-              void loadBalance();
-              void refresh();
-            }}
-          >
-            {t("common.refresh")}
-          </Button>
+          />
         }
       />
 
@@ -271,6 +357,21 @@ export function PortalBalancePage() {
         {error ? <p className="text-body text-danger">{error}</p> : null}
 
         <TableCard
+          toolbar={
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                loading={exporting}
+                leftIcon={<IconDownload width={15} height={15} />}
+                onClick={() => void onExport()}
+              >
+                {t("portal.export")}
+              </Button>
+              <ColumnPicker visibility={columnVisibility} onChange={onColumnVisibilityChange} />
+            </div>
+          }
           pagination={
             <Pagination
               page={page}
@@ -286,100 +387,172 @@ export function PortalBalancePage() {
             />
           }
         >
-          <div className="min-w-0 overflow-x-auto">
-            <table className="w-full min-w-[560px] border-collapse text-left text-label">
-              <thead>
-                <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-                  <th className="whitespace-nowrap px-3 py-2.5">
-                    <ColumnHeader icon={<IconClock width={14} height={14} />}>
-                      {t("portal.colCreatedAt")}
+          <table
+            className="w-full table-fixed border-separate border-spacing-0 text-left text-label"
+            style={{ minWidth: portalBalanceTableMinWidth(columnVisibility) }}
+          >
+            <colgroup>
+              <col style={{ width: colWidth("stt") }} />
+              {PORTAL_BALANCE_COLUMNS.map((col) =>
+                show[col] ? <col key={col} style={{ width: colWidth(col) }} /> : null,
+              )}
+            </colgroup>
+            <thead>
+              <tr className="bg-surface text-label font-medium text-muted [&>th]:border-b [&>th]:border-edge [&>th]:bg-surface">
+                <th
+                  className={`${PORTAL_BALANCE_COLUMN_WIDTH.stt} ${PORTAL_BALANCE_COLUMN_ALIGN.stt} px-3 py-2.5`}
+                >
+                  <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                    {t("portal.colStt")}
+                  </ColumnHeader>
+                </th>
+                {show.txnCode ? (
+                  <th
+                    className={`${PORTAL_BALANCE_COLUMN_WIDTH.txnCode} ${PORTAL_BALANCE_COLUMN_ALIGN.txnCode} px-3 py-2.5`}
+                  >
+                    <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                      {t("portal.colTxnCode")}
                     </ColumnHeader>
                   </th>
-                  <th className="px-3 py-2.5">
+                ) : null}
+                {show.entryType ? (
+                  <th
+                    className={`${PORTAL_BALANCE_COLUMN_WIDTH.entryType} ${PORTAL_BALANCE_COLUMN_ALIGN.entryType} px-3 py-2.5`}
+                  >
                     <ColumnHeader icon={<IconLayers width={14} height={14} />}>
                       {t("portal.colEntryType")}
                     </ColumnHeader>
                   </th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-right">
+                ) : null}
+                {show.balanceBefore ? (
+                  <th
+                    className={`${PORTAL_BALANCE_COLUMN_WIDTH.balanceBefore} ${PORTAL_BALANCE_COLUMN_ALIGN.balanceBefore} px-3 py-2.5`}
+                  >
                     <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
-                      {t("portal.colAmount")}
+                      {t("portal.colBalanceBefore")}
                     </ColumnHeader>
                   </th>
-                  <th className="hidden px-3 py-2.5 md:table-cell">
-                    <ColumnHeader icon={<IconFileText width={14} height={14} />}>
-                      {t("portal.colNote")}
-                    </ColumnHeader>
-                  </th>
-                  <th className="hidden whitespace-nowrap px-3 py-2.5 text-right sm:table-cell">
+                ) : null}
+                {show.change ? (
+                  <th
+                    className={`${PORTAL_BALANCE_COLUMN_WIDTH.change} ${PORTAL_BALANCE_COLUMN_ALIGN.change} px-3 py-2.5`}
+                  >
                     <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
-                      {t("portal.colAvailableAfter")}
+                      {t("portal.colChange")}
                     </ColumnHeader>
                   </th>
-                  <th className="hidden whitespace-nowrap px-3 py-2.5 text-right lg:table-cell">
+                ) : null}
+                {show.balanceAfter ? (
+                  <th
+                    className={`${PORTAL_BALANCE_COLUMN_WIDTH.balanceAfter} ${PORTAL_BALANCE_COLUMN_ALIGN.balanceAfter} px-3 py-2.5`}
+                  >
                     <ColumnHeader align="right" icon={<IconWallet width={14} height={14} />}>
-                      {t("portal.colReservedAfter")}
+                      {t("portal.colBalanceAfter")}
                     </ColumnHeader>
                   </th>
-                  <th className="hidden px-3 py-2.5 lg:table-cell">
-                    <ColumnHeader icon={<IconHash width={14} height={14} />}>
-                      {t("portal.colRef")}
+                ) : null}
+                {show.createdAt ? (
+                  <th
+                    className={`${PORTAL_BALANCE_COLUMN_WIDTH.createdAt} ${PORTAL_BALANCE_COLUMN_ALIGN.createdAt} px-3 py-2.5`}
+                  >
+                    <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
+                      {t("portal.colCreatedAt")}
                     </ColumnHeader>
                   </th>
+                ) : null}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={colSpan} className="px-3 py-8 text-center text-muted">
+                    {t("common.loading")}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-muted">
-                      {t("common.loading")}
-                    </td>
-                  </tr>
-                ) : rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-muted">
-                      {t("common.noData")}
-                    </td>
-                  </tr>
-                ) : (
-                  rows.map((row) => (
-                    <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
-                      <td className="whitespace-nowrap px-3 py-2.5 text-caption text-muted">
-                        <DateTimeText value={row.createdAt} />
-                      </td>
-                      <td className="max-w-[12rem] px-3 py-2.5 sm:max-w-none">
-                        {row.entryType in LEDGER_ENTRY_LABEL_KEY ? (
-                          <StatusBadge tone={LEDGER_ENTRY_TONE[row.entryType]}>
-                            {t(LEDGER_ENTRY_LABEL_KEY[row.entryType])}
-                          </StatusBadge>
-                        ) : (
-                          row.entryType
-                        )}
-                      </td>
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={colSpan} className="px-3 py-8 text-center text-muted">
+                    {t("common.noData")}
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row, idx) => {
+                  const txnCode = txnCodeOf(row);
+                  const change = row.amount ?? 0;
+                  return (
+                    <tr
+                      key={row.id}
+                      className="[&>td]:border-b [&>td]:border-edge last:[&>td]:border-b-0 hover:bg-surface/70"
+                    >
                       <td
-                        className={`whitespace-nowrap px-3 py-2.5 text-right tabular-nums ${amountToneClass(row.amount)}`}
+                        className={`${PORTAL_BALANCE_COLUMN_ALIGN.stt} px-3 py-2.5 font-mono text-caption tabular-nums text-muted`}
                       >
-                        {formatMoney(row.amount)}
+                        {from + idx}
                       </td>
-                      <td className="hidden max-w-[12rem] truncate px-3 py-2.5 text-muted md:table-cell">
-                        {row.note?.trim() ? row.note : "—"}
-                      </td>
-                      <td className="hidden whitespace-nowrap px-3 py-2.5 text-right tabular-nums sm:table-cell">
-                        {formatMoney(row.availableAfter)}
-                      </td>
-                      <td className="hidden whitespace-nowrap px-3 py-2.5 text-right tabular-nums lg:table-cell">
-                        {formatMoney(row.reservedAfter)}
-                      </td>
-                      <td className="hidden max-w-[8rem] truncate px-3 py-2.5 font-mono text-caption lg:table-cell">
-                        {row.refType && row.refId
-                          ? `${row.refType}:${row.refId.slice(0, 8)}…`
-                          : "—"}
-                      </td>
+                      {show.txnCode ? (
+                        <td className={`${PORTAL_BALANCE_COLUMN_ALIGN.txnCode} px-3 py-2.5`}>
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <span
+                              className="truncate font-mono text-label font-medium text-ink"
+                              title={txnCode || undefined}
+                            >
+                              {txnCode || "—"}
+                            </span>
+                            {txnCode ? (
+                              <CopyButton
+                                value={txnCode}
+                                label={t("portal.copyTxnCode")}
+                                size="sm"
+                              />
+                            ) : null}
+                          </div>
+                        </td>
+                      ) : null}
+                      {show.entryType ? (
+                        <td className={`${PORTAL_BALANCE_COLUMN_ALIGN.entryType} px-3 py-2.5`}>
+                          {row.entryType in LEDGER_ENTRY_LABEL_KEY ? (
+                            <StatusBadge tone={LEDGER_ENTRY_TONE[row.entryType]}>
+                              {t(LEDGER_ENTRY_LABEL_KEY[row.entryType])}
+                            </StatusBadge>
+                          ) : (
+                            row.entryType
+                          )}
+                        </td>
+                      ) : null}
+                      {show.balanceBefore ? (
+                        <td
+                          className={`${PORTAL_BALANCE_COLUMN_ALIGN.balanceBefore} whitespace-nowrap px-3 py-2.5 tabular-nums`}
+                        >
+                          {formatMoney(balanceBeforeOf(row))}
+                        </td>
+                      ) : null}
+                      {show.change ? (
+                        <td
+                          className={`${PORTAL_BALANCE_COLUMN_ALIGN.change} whitespace-nowrap px-3 py-2.5 tabular-nums ${amountToneClass(change)}`}
+                        >
+                          {formatMoney(change)}
+                        </td>
+                      ) : null}
+                      {show.balanceAfter ? (
+                        <td
+                          className={`${PORTAL_BALANCE_COLUMN_ALIGN.balanceAfter} whitespace-nowrap px-3 py-2.5 tabular-nums`}
+                        >
+                          {formatMoney(balanceAfterOf(row))}
+                        </td>
+                      ) : null}
+                      {show.createdAt ? (
+                        <td
+                          className={`${PORTAL_BALANCE_COLUMN_ALIGN.createdAt} whitespace-nowrap px-3 py-2.5 text-caption text-muted`}
+                        >
+                          <DateTimeText value={row.createdAt} />
+                        </td>
+                      ) : null}
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </TableCard>
       </section>
     </div>

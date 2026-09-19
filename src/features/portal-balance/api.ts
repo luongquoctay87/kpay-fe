@@ -1,4 +1,5 @@
 import { apiClient, unwrap } from "@/lib/api/client";
+import { downloadXlsx } from "@/lib/api/download-blob";
 
 export type PortalBalance = {
   availableBalance: number;
@@ -24,8 +25,11 @@ export type PortalLedgerItem = {
   id: number;
   entryType: LedgerEntryType;
   amount: number;
+  balanceBefore?: number | null;
+  balanceAfter?: number | null;
   availableAfter: number;
   reservedAfter: number;
+  txnCode?: string | null;
   refType?: string | null;
   refId?: string | null;
   note?: string | null;
@@ -81,5 +85,18 @@ export const portalBalanceApi = {
         },
       }),
     );
+  },
+
+  async exportLedgers(params: Omit<PortalLedgerListParams, "page" | "size"> = {}): Promise<void> {
+    const res = await apiClient.get("/portal/balance/ledgers/export", {
+      params: {
+        q: params.q || undefined,
+        entryType: params.entryType || undefined,
+        createdFrom: params.createdFrom || undefined,
+        createdTo: params.createdTo || undefined,
+      },
+      responseType: "blob",
+    });
+    downloadXlsx(res.data, "balance-ledgers.xlsx");
   },
 };

@@ -60,7 +60,7 @@ export function PortalOverviewPage() {
         />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           href={ROUTES.portalPayin}
           className="rounded-lg border border-edge bg-elevated p-4 no-underline transition hover:bg-hover"
@@ -74,6 +74,13 @@ export function PortalOverviewPage() {
         >
           <p className="text-label font-medium text-ink">{t("nav.portalPayout")}</p>
           <p className="mt-1 text-caption text-muted">{t("portal.shortcutPayout")}</p>
+        </Link>
+        <Link
+          href={ROUTES.portalWithdraw}
+          className="rounded-lg border border-edge bg-elevated p-4 no-underline transition hover:bg-hover"
+        >
+          <p className="text-label font-medium text-ink">{t("nav.portalWithdraw")}</p>
+          <p className="mt-1 text-caption text-muted">{t("portal.shortcutWithdraw")}</p>
         </Link>
         <Link
           href={ROUTES.portalBalance}

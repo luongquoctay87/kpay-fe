@@ -43,6 +43,8 @@ export type WithdrawOrderListItem = {
 export type WithdrawOrderListResp = {
   items: WithdrawOrderListItem[];
   pendingCount?: number;
+  successCount?: number;
+  successAmount?: number;
   page: number;
   size: number;
   totalElements: number;

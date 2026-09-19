@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent, type Keyboar
 import {
   AutoRefreshControl,
   ColumnHeader,
+  CopyButton,
   DateTimeText,
   DateRangeFilter,
   dateRangeToIsoBounds,
@@ -16,17 +17,20 @@ import {
   filterControlClass,
   type DateRangeValue,
 } from "@/components/common";
-import { Button, Select, StatusBadge } from "@/components/ui";
+import { Button, Select, StatusBadge, toast } from "@/components/ui";
 import {
   IconActivity,
   IconArrowIn,
+  IconBank,
   IconChevron,
   IconClock,
+  IconDownload,
   IconFileText,
   IconHash,
   IconLink,
   IconRefresh,
   IconSearch,
+  IconUser,
   IconWebhook,
 } from "@/components/icons/NavIcons";
 import { PayinDetailDrawer } from "@/features/payin/components/PayinDetailDrawer";
@@ -42,21 +46,29 @@ import type {
   PayinOrderListItem,
   PayinStatus,
 } from "@/features/payin/types";
-import {
-  CALLBACK_STATUS_OPTIONS,
-  EMPTY_PAYIN_STATS,
-  PAYIN_STATUS_OPTIONS,
-} from "@/features/payin/types";
+import { CALLBACK_STATUS_OPTIONS, EMPTY_PAYIN_STATS } from "@/features/payin/types";
 import { portalPayinApi } from "@/features/portal-payin/api";
+import {
+  PORTAL_PAYIN_COLUMNS,
+  PORTAL_PAYIN_COLUMN_ALIGN,
+  PORTAL_PAYIN_COLUMN_MIN_PX,
+  PORTAL_PAYIN_COLUMN_WIDTH,
+  defaultColumnVisibility,
+  loadColumnVisibility,
+  portalPayinTableMinWidth,
+  saveColumnVisibility,
+  visibleColumnCount,
+  type ColumnVisibility,
+  type PortalPayinColumn,
+} from "@/features/portal-payin/columns";
+import { ColumnPicker } from "@/features/portal-payin/components/ColumnPicker";
 import { useI18n } from "@/i18n/use-i18n";
 import {
   useAutoRefresh,
   type AutoRefreshSeconds,
 } from "@/lib/async/use-auto-refresh";
 import { usePagedList } from "@/lib/async/use-paged-list";
-import {
-  PORTAL_PAGE_CLASS,
-} from "@/lib/constants/portal-layout";
+import { PORTAL_PAGE_CLASS } from "@/lib/constants/portal-layout";
 import { formatMoney } from "@/lib/format/datetime";
 import { ApiError } from "@/lib/types/api";
 
@@ -65,6 +77,19 @@ const EMPTY_LIST = {
   total: 0,
   stats: EMPTY_PAYIN_STATS,
 };
+
+/** Requirement: Chờ xử lý, Thành công, Sai mệnh giá, Hết hạn. */
+const PORTAL_PAYIN_STATUS_OPTIONS: PayinStatus[] = [
+  "pending",
+  "success",
+  "wrong_denomination",
+  "expired",
+];
+
+/** Requirement: Callback Thành công, Thất bại. */
+const PORTAL_CALLBACK_OPTIONS = CALLBACK_STATUS_OPTIONS.filter(
+  (v): v is OrderCallbackStatus => v === "success" || v === "failed",
+);
 
 export function PortalPayinListPage() {
   const { t } = useI18n();
@@ -75,12 +100,17 @@ export function PortalPayinListPage() {
   const [expanded, setExpanded] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [autoRefreshSec, setAutoRefreshSec] = useState<AutoRefreshSeconds>(15);
+  const [exporting, setExporting] = useState(false);
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
+    defaultColumnVisibility,
+  );
 
   const [qDraft, setQDraft] = useState("");
   const [channelDraft, setChannelDraft] = useState<string | null>(null);
   const [statusDraft, setStatusDraft] = useState<PayinStatus | null>(null);
   const [callbackDraft, setCallbackDraft] = useState<OrderCallbackStatus | null>(null);
   const [createdRangeDraft, setCreatedRangeDraft] = useState<DateRangeValue>(null);
+  const [updatedRangeDraft, setUpdatedRangeDraft] = useState<DateRangeValue>(null);
 
   const [filters, setFilters] = useState<{
     q?: string;
@@ -89,6 +119,8 @@ export function PortalPayinListPage() {
     callbackStatus?: OrderCallbackStatus;
     createdFrom?: string;
     createdTo?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
   }>({});
 
   const [channelOptions, setChannelOptions] = useState<PayinChannelOption[]>([]);
@@ -108,13 +140,45 @@ export function PortalPayinListPage() {
     };
   }, []);
 
+  useEffect(() => {
+    setColumnVisibility(loadColumnVisibility());
+  }, []);
+
+  function onColumnVisibilityChange(next: ColumnVisibility) {
+    setColumnVisibility(next);
+    saveColumnVisibility(next);
+  }
+
+  const colSpan = visibleColumnCount(columnVisibility);
+  const show = columnVisibility;
+
+  const flexCol: PortalPayinColumn =
+    show.description
+      ? "description"
+      : show.requestId
+        ? "requestId"
+        : show.accountName
+          ? "accountName"
+          : show.createdAt
+            ? "createdAt"
+            : (PORTAL_PAYIN_COLUMNS.find((c) => show[c]) ?? "requestId");
+
+  function colWidth(col: PortalPayinColumn | "stt"): string | undefined {
+    if (col !== "stt" && col === flexCol) return undefined;
+    return `${PORTAL_PAYIN_COLUMN_MIN_PX[col]}px`;
+  }
+
   const statusOptions = useMemo(
-    () => PAYIN_STATUS_OPTIONS.map((v) => ({ value: v, label: t(PAYIN_STATUS_LABEL_KEY[v]) })),
+    () =>
+      PORTAL_PAYIN_STATUS_OPTIONS.map((v) => ({
+        value: v,
+        label: t(PAYIN_STATUS_LABEL_KEY[v]),
+      })),
     [t],
   );
   const callbackOptions = useMemo(
     () =>
-      CALLBACK_STATUS_OPTIONS.map((v) => ({
+      PORTAL_CALLBACK_OPTIONS.map((v) => ({
         value: v,
         label: t(CALLBACK_STATUS_LABEL_KEY[v]),
       })),
@@ -131,6 +195,7 @@ export function PortalPayinListPage() {
     statusDraft != null ||
     callbackDraft != null ||
     Boolean(createdRangeDraft?.[0] || createdRangeDraft?.[1]) ||
+    Boolean(updatedRangeDraft?.[0] || updatedRangeDraft?.[1]) ||
     Object.keys(filters).length > 0;
 
   const loadList = useCallback(async () => {
@@ -166,6 +231,7 @@ export function PortalPayinListPage() {
   function applyFilters() {
     setPage(0);
     const created = dateRangeToIsoBounds(createdRangeDraft);
+    const updated = dateRangeToIsoBounds(updatedRangeDraft);
     const next = {
       q: qDraft.trim() || undefined,
       channelId: channelDraft ?? undefined,
@@ -173,6 +239,8 @@ export function PortalPayinListPage() {
       callbackStatus: callbackDraft ?? undefined,
       createdFrom: created.from,
       createdTo: created.to,
+      updatedFrom: updated.from,
+      updatedTo: updated.to,
     };
     setFilters(next);
   }
@@ -189,8 +257,22 @@ export function PortalPayinListPage() {
     setStatusDraft(null);
     setCallbackDraft(null);
     setCreatedRangeDraft(null);
+    setUpdatedRangeDraft(null);
     setPage(0);
     setFilters({});
+  }
+
+  async function onExport() {
+    setExporting(true);
+    try {
+      await portalPayinApi.export(filters);
+      toast.success(t("payin.exportOk"));
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : t("payin.exportError");
+      toast.error(t("payin.exportError"), msg);
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -198,24 +280,13 @@ export function PortalPayinListPage() {
       <PageHeader
         title={t("pages.portalPayin")}
         actions={
-          <>
-            <AutoRefreshControl
-              enabled={autoRefresh}
-              intervalSec={autoRefreshSec}
-              onEnabledChange={setAutoRefresh}
-              onIntervalChange={setAutoRefreshSec}
-              size="sm"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              leftIcon={<IconRefresh width={15} height={15} />}
-              onClick={() => void refresh()}
-            >
-              {t("common.refresh")}
-            </Button>
-          </>
+          <AutoRefreshControl
+            enabled={autoRefresh}
+            intervalSec={autoRefreshSec}
+            onEnabledChange={setAutoRefresh}
+            onIntervalChange={setAutoRefreshSec}
+            size="sm"
+          />
         }
       />
 
@@ -232,7 +303,7 @@ export function PortalPayinListPage() {
       >
         {expanded ? (
           <div className="flex flex-col gap-3.5">
-            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               <FilterField label={t("payin.filterChannel")} htmlFor="portal-payin-channel">
                 <Select
                   id="portal-payin-channel"
@@ -281,6 +352,18 @@ export function PortalPayinListPage() {
                   aria-label={t("payin.filterCreated")}
                 />
               </FilterField>
+              <FilterField label={t("payin.filterUpdated")} htmlFor="portal-payin-updated-range">
+                <DateRangeFilter
+                  id="portal-payin-updated-range"
+                  value={updatedRangeDraft}
+                  onChange={setUpdatedRangeDraft}
+                  placeholder={[
+                    t("payin.filterUpdatedFromPlaceholder"),
+                    t("payin.filterUpdatedToPlaceholder"),
+                  ]}
+                  aria-label={t("payin.filterUpdated")}
+                />
+              </FilterField>
             </div>
 
             <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
@@ -290,7 +373,7 @@ export function PortalPayinListPage() {
                   value={qDraft}
                   onChange={setQDraft}
                   onKeyDown={onSearchKeyDown}
-                  placeholder={t("payin.filterSearchPlaceholder")}
+                  placeholder={t("payin.filterSearchPlaceholderPortal")}
                   label={t("payin.filterSearch")}
                 />
               </div>
@@ -335,7 +418,7 @@ export function PortalPayinListPage() {
                 value={qDraft}
                 onChange={setQDraft}
                 onKeyDown={onSearchKeyDown}
-                placeholder={t("payin.filterSearchPlaceholder")}
+                placeholder={t("payin.filterSearchPlaceholderPortal")}
                 label={t("payin.filterSearch")}
               />
             </div>
@@ -377,6 +460,21 @@ export function PortalPayinListPage() {
       {error ? <p className="text-body text-danger">{error}</p> : null}
 
       <TableCard
+        toolbar={
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              loading={exporting}
+              leftIcon={<IconDownload width={15} height={15} />}
+              onClick={() => void onExport()}
+            >
+              {t("payin.export")}
+            </Button>
+            <ColumnPicker visibility={columnVisibility} onChange={onColumnVisibilityChange} />
+          </div>
+        }
         pagination={
           <Pagination
             page={page}
@@ -392,99 +490,320 @@ export function PortalPayinListPage() {
           />
         }
       >
-        <table className="w-full min-w-[640px] border-collapse text-left text-label">
-          <thead>
-            <tr className="border-b border-edge bg-surface text-label font-medium text-muted">
-              <th className="px-3 py-2.5">
-                <ColumnHeader icon={<IconHash width={14} height={14} />}>
-                  {t("payin.colRequestId")}
-                </ColumnHeader>
-              </th>
-              <th className="hidden px-3 py-2.5 sm:table-cell">
-                <ColumnHeader icon={<IconFileText width={14} height={14} />}>
-                  {t("payin.colDescription")}
-                </ColumnHeader>
-              </th>
-              <th className="hidden px-3 py-2.5 md:table-cell">
-                <ColumnHeader icon={<IconLink width={14} height={14} />}>
-                  {t("payin.colChannel")}
-                </ColumnHeader>
-              </th>
-              <th className="px-3 py-2.5">
-                <ColumnHeader icon={<IconArrowIn width={14} height={14} />}>
-                  {t("payin.colRequestValue")}
-                </ColumnHeader>
-              </th>
-              <th className="px-3 py-2.5">
-                <ColumnHeader icon={<IconActivity width={14} height={14} />}>
-                  {t("payin.colStatus")}
-                </ColumnHeader>
-              </th>
-              <th className="hidden px-3 py-2.5 sm:table-cell">
-                <ColumnHeader icon={<IconWebhook width={14} height={14} />}>
-                  {t("payin.colCallback")}
-                </ColumnHeader>
-              </th>
-              <th className="hidden px-3 py-2.5 lg:table-cell">
-                <ColumnHeader icon={<IconClock width={14} height={14} />}>
-                  {t("payin.colCreatedAt")}
-                </ColumnHeader>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-muted">
-                  {t("common.loading")}
-                </td>
-              </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-muted">
-                  {t("common.noData")}
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="cursor-pointer border-b border-edge last:border-b-0 hover:bg-surface/70"
-                  onClick={() => setDetailRow(row)}
+        <table
+          className="w-full table-fixed border-separate border-spacing-0 text-left text-label"
+          style={{ minWidth: portalPayinTableMinWidth(columnVisibility) }}
+        >
+            <colgroup>
+              <col style={{ width: colWidth("stt") }} />
+              {PORTAL_PAYIN_COLUMNS.map((col) =>
+                show[col] ? <col key={col} style={{ width: colWidth(col) }} /> : null,
+              )}
+            </colgroup>
+            <thead>
+              <tr className="bg-surface text-label font-medium text-muted [&>th]:border-b [&>th]:border-edge [&>th]:bg-surface">
+                <th
+                  className={`${PORTAL_PAYIN_COLUMN_WIDTH.stt} ${PORTAL_PAYIN_COLUMN_ALIGN.stt} px-3 py-2.5`}
                 >
-                  <td className="max-w-[8rem] truncate px-3 py-2.5 font-mono text-caption sm:max-w-[12rem] md:max-w-none">
-                    {row.requestId}
-                  </td>
-                  <td
-                    className="hidden max-w-[10rem] truncate px-3 py-2.5 text-ink-secondary sm:table-cell md:max-w-[14rem]"
-                    title={row.transferContent ?? undefined}
+                  <ColumnHeader align="center" icon={<IconHash width={14} height={14} />}>
+                    {t("payin.colStt")}
+                  </ColumnHeader>
+                </th>
+                {show.requestId ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.requestId} ${PORTAL_PAYIN_COLUMN_ALIGN.requestId} px-3 py-2.5`}
                   >
-                    {row.transferContent ?? "—"}
-                  </td>
-                  <td className="hidden max-w-[8rem] truncate px-3 py-2.5 md:table-cell">
-                    {row.channelName ?? "—"}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">
-                    {formatMoney(row.requestValue)}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <StatusBadge tone={PAYIN_STATUS_TONE[row.status]}>
-                      {t(PAYIN_STATUS_LABEL_KEY[row.status])}
-                    </StatusBadge>
-                  </td>
-                  <td className="hidden px-3 py-2.5 sm:table-cell">
-                    <StatusBadge tone={CALLBACK_STATUS_TONE[row.callbackStatus]}>
-                      {t(CALLBACK_STATUS_LABEL_KEY[row.callbackStatus])}
-                    </StatusBadge>
-                  </td>
-                  <td className="hidden whitespace-nowrap px-3 py-2.5 text-caption text-muted lg:table-cell">
-                    <DateTimeText value={row.createdAt} />
+                    <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                      {t("payin.colOrderId")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.channel ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.channel} ${PORTAL_PAYIN_COLUMN_ALIGN.channel} px-3 py-2.5`}
+                  >
+                    <ColumnHeader align="center" icon={<IconLink width={14} height={14} />}>
+                      {t("payin.colChannel")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.accountName ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.accountName} ${PORTAL_PAYIN_COLUMN_ALIGN.accountName} px-3 py-2.5`}
+                  >
+                    <ColumnHeader icon={<IconUser width={14} height={14} />}>
+                      {t("payin.colAccountName")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.accountNumber ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.accountNumber} ${PORTAL_PAYIN_COLUMN_ALIGN.accountNumber} px-3 py-2.5`}
+                  >
+                    <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                      {t("payin.colAccountNumber")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.bank ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.bank} ${PORTAL_PAYIN_COLUMN_ALIGN.bank} px-3 py-2.5`}
+                  >
+                    <ColumnHeader align="center" icon={<IconBank width={14} height={14} />}>
+                      {t("payin.colBank")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.description ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.description} ${PORTAL_PAYIN_COLUMN_ALIGN.description} px-3 py-2.5`}
+                  >
+                    <ColumnHeader icon={<IconFileText width={14} height={14} />}>
+                      {t("payin.colDescription")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.requestValue ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.requestValue} ${PORTAL_PAYIN_COLUMN_ALIGN.requestValue} px-3 py-2.5`}
+                  >
+                    <ColumnHeader align="right" icon={<IconArrowIn width={14} height={14} />}>
+                      {t("payin.colRequestValue")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.receivedAmount ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.receivedAmount} ${PORTAL_PAYIN_COLUMN_ALIGN.receivedAmount} px-3 py-2.5`}
+                  >
+                    <ColumnHeader align="right" icon={<IconArrowIn width={14} height={14} />}>
+                      {t("payin.colReceivedAmount")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.acceptedAmount ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.acceptedAmount} ${PORTAL_PAYIN_COLUMN_ALIGN.acceptedAmount} px-3 py-2.5`}
+                  >
+                    <ColumnHeader align="right" icon={<IconArrowIn width={14} height={14} />}>
+                      {t("payin.colAcceptedAmount")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.fee ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.fee} ${PORTAL_PAYIN_COLUMN_ALIGN.fee} px-3 py-2.5`}
+                  >
+                    <ColumnHeader align="right" icon={<IconActivity width={14} height={14} />}>
+                      {t("payin.colFee")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.netAmount ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.netAmount} ${PORTAL_PAYIN_COLUMN_ALIGN.netAmount} px-3 py-2.5`}
+                  >
+                    <ColumnHeader align="right" icon={<IconArrowIn width={14} height={14} />}>
+                      {t("payin.colNetAmount")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.status ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.status} ${PORTAL_PAYIN_COLUMN_ALIGN.status} px-3 py-2.5`}
+                  >
+                    <ColumnHeader align="center" icon={<IconActivity width={14} height={14} />}>
+                      {t("payin.colStatus")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.callback ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.callback} ${PORTAL_PAYIN_COLUMN_ALIGN.callback} px-3 py-2.5`}
+                  >
+                    <ColumnHeader align="center" icon={<IconWebhook width={14} height={14} />}>
+                      {t("payin.colCallback")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.createdAt ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.createdAt} ${PORTAL_PAYIN_COLUMN_ALIGN.createdAt} px-3 py-2.5`}
+                  >
+                    <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
+                      {t("payin.colCreatedAt")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+                {show.updatedAt ? (
+                  <th
+                    className={`${PORTAL_PAYIN_COLUMN_WIDTH.updatedAt} ${PORTAL_PAYIN_COLUMN_ALIGN.updatedAt} px-3 py-2.5`}
+                  >
+                    <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
+                      {t("payin.colUpdatedAt")}
+                    </ColumnHeader>
+                  </th>
+                ) : null}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={colSpan} className="px-3 py-8 text-center text-muted">
+                    {t("common.loading")}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={colSpan} className="px-3 py-8 text-center text-muted">
+                    {t("common.noData")}
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row, index) => (
+                  <tr
+                    key={row.id}
+                    className="cursor-pointer [&>td]:border-b [&>td]:border-edge last:[&>td]:border-b-0 hover:bg-surface/70"
+                    onClick={() => setDetailRow(row)}
+                  >
+                    <td
+                      className={`${PORTAL_PAYIN_COLUMN_ALIGN.stt} px-3 py-2.5 font-mono text-caption tabular-nums text-muted`}
+                    >
+                      {page * size + index + 1}
+                    </td>
+                    {show.requestId ? (
+                      <td className={`${PORTAL_PAYIN_COLUMN_ALIGN.requestId} px-3 py-2.5`}>
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <span
+                            className="truncate font-mono text-label font-medium text-ink"
+                            title={row.requestId}
+                          >
+                            {row.requestId}
+                          </span>
+                          <span
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          >
+                            <CopyButton value={row.requestId} label={t("payin.copyRequestId")} />
+                          </span>
+                        </div>
+                      </td>
+                    ) : null}
+                    {show.channel ? (
+                      <td className={`${PORTAL_PAYIN_COLUMN_ALIGN.channel} px-3 py-2.5`}>
+                        {row.channelName ? (
+                          <StatusBadge tone="neutral">{row.channelName}</StatusBadge>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                    ) : null}
+                    {show.accountName ? (
+                      <td
+                        className={`${PORTAL_PAYIN_COLUMN_ALIGN.accountName} truncate px-3 py-2.5`}
+                        title={row.accountName ?? undefined}
+                      >
+                        {row.accountName ?? "—"}
+                      </td>
+                    ) : null}
+                    {show.accountNumber ? (
+                      <td
+                        className={`${PORTAL_PAYIN_COLUMN_ALIGN.accountNumber} truncate px-3 py-2.5 font-mono text-caption`}
+                        title={row.bankAccountNumber ?? undefined}
+                      >
+                        {row.bankAccountNumber ?? "—"}
+                      </td>
+                    ) : null}
+                    {show.bank ? (
+                      <td className={`${PORTAL_PAYIN_COLUMN_ALIGN.bank} px-3 py-2.5`}>
+                        {row.bankCode || row.bankName ? (
+                          <span
+                            className="inline-flex max-w-full truncate rounded-md bg-panel px-1.5 py-0.5 font-mono text-caption font-medium text-ink ring-1 ring-inset ring-edge"
+                            title={row.bankName ?? row.bankCode ?? undefined}
+                          >
+                            {row.bankCode ?? row.bankName}
+                          </span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                    ) : null}
+                    {show.description ? (
+                      <td
+                        className={`${PORTAL_PAYIN_COLUMN_ALIGN.description} truncate px-3 py-2.5 text-ink-secondary`}
+                        title={row.transferContent ?? undefined}
+                      >
+                        {row.transferContent ?? "—"}
+                      </td>
+                    ) : null}
+                    {show.requestValue ? (
+                      <td
+                        className={`${PORTAL_PAYIN_COLUMN_ALIGN.requestValue} whitespace-nowrap px-3 py-2.5 tabular-nums`}
+                      >
+                        {formatMoney(row.requestValue)}
+                      </td>
+                    ) : null}
+                    {show.receivedAmount ? (
+                      <td
+                        className={`${PORTAL_PAYIN_COLUMN_ALIGN.receivedAmount} whitespace-nowrap px-3 py-2.5 tabular-nums`}
+                      >
+                        {formatMoney(row.receivedAmount)}
+                      </td>
+                    ) : null}
+                    {show.acceptedAmount ? (
+                      <td
+                        className={`${PORTAL_PAYIN_COLUMN_ALIGN.acceptedAmount} whitespace-nowrap px-3 py-2.5 tabular-nums`}
+                      >
+                        {formatMoney(row.acceptedAmount)}
+                      </td>
+                    ) : null}
+                    {show.fee ? (
+                      <td
+                        className={`${PORTAL_PAYIN_COLUMN_ALIGN.fee} whitespace-nowrap px-3 py-2.5 tabular-nums`}
+                      >
+                        {formatMoney(row.fee)}
+                      </td>
+                    ) : null}
+                    {show.netAmount ? (
+                      <td
+                        className={`${PORTAL_PAYIN_COLUMN_ALIGN.netAmount} whitespace-nowrap px-3 py-2.5 tabular-nums`}
+                      >
+                        {formatMoney(row.netAmount)}
+                      </td>
+                    ) : null}
+                    {show.status ? (
+                      <td className={`${PORTAL_PAYIN_COLUMN_ALIGN.status} px-3 py-2.5`}>
+                        <StatusBadge tone={PAYIN_STATUS_TONE[row.status]}>
+                          {t(PAYIN_STATUS_LABEL_KEY[row.status])}
+                        </StatusBadge>
+                      </td>
+                    ) : null}
+                    {show.callback ? (
+                      <td className={`${PORTAL_PAYIN_COLUMN_ALIGN.callback} px-3 py-2.5`}>
+                        <StatusBadge tone={CALLBACK_STATUS_TONE[row.callbackStatus]}>
+                          {t(CALLBACK_STATUS_LABEL_KEY[row.callbackStatus])}
+                        </StatusBadge>
+                      </td>
+                    ) : null}
+                    {show.createdAt ? (
+                      <td
+                        className={`${PORTAL_PAYIN_COLUMN_ALIGN.createdAt} whitespace-nowrap px-3 py-2.5 text-caption text-muted`}
+                      >
+                        <DateTimeText value={row.createdAt} />
+                      </td>
+                    ) : null}
+                    {show.updatedAt ? (
+                      <td
+                        className={`${PORTAL_PAYIN_COLUMN_ALIGN.updatedAt} whitespace-nowrap px-3 py-2.5 text-caption text-muted`}
+                      >
+                        <DateTimeText value={row.updatedAt} />
+                      </td>
+                    ) : null}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
       </TableCard>
 
       {detailRow ? (

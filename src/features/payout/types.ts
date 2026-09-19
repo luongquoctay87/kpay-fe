@@ -69,6 +69,7 @@ export interface PayoutOrderListParams {
   merchantId?: string;
   sourceBankAccountId?: string;
   gateway?: string;
+  bankCode?: string;
   status?: PayoutStatus;
   callbackStatus?: OrderCallbackStatus;
   createdFrom?: string;

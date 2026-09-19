@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import {
   IconArrowIn,
+  IconActivity,
   IconWithdraw,
   IconChevronLeft,
   IconHome,
@@ -36,6 +37,11 @@ const NAV: NavLeaf[] = [
   },
   { href: ROUTES.portalWithdraw, labelKey: "nav.portalWithdraw", icon: <IconWithdraw /> },
   { href: ROUTES.portalBalance, labelKey: "nav.portalBalance", icon: <IconStore /> },
+  {
+    href: ROUTES.portalRates,
+    labelKey: "nav.agentRates",
+    icon: <IconActivity />,
+  },
 ];
 
 const ROW =

@@ -1,8 +1,10 @@
 import { apiClient, unwrap } from "@/lib/api/client";
+import { downloadCsv, downloadXlsx } from "@/lib/api/download-blob";
 
 export type AgentBalance = {
   availableBalance: number;
   reservedBalance?: number;
+  totalBalance?: number;
   currency: string;
 };
 
@@ -18,8 +20,10 @@ export type AgentLedgerItem = {
   id: number;
   entryType: AgentLedgerEntryType | string;
   amount: number;
+  balanceBefore?: number;
   balanceAfter: number;
   reservedAfter?: number;
+  txnCode?: string | null;
   refType?: string | null;
   refId?: string | null;
   note?: string | null;
@@ -70,5 +74,35 @@ export const agentBalanceApi = {
         },
       }),
     );
+  },
+
+  async exportLedgers(params: Omit<AgentLedgerListParams, "page" | "size"> = {}): Promise<void> {
+    const res = await apiClient.get("/agent/balance/ledgers/export", {
+      params: {
+        q: params.q || undefined,
+        entryType: params.entryType || undefined,
+        createdFrom: params.createdFrom || undefined,
+        createdTo: params.createdTo || undefined,
+        format: "xlsx",
+      },
+      responseType: "blob",
+    });
+    downloadXlsx(res.data, "balance-ledgers.xlsx");
+  },
+
+  async exportLedgersCsv(
+    params: Omit<AgentLedgerListParams, "page" | "size"> = {},
+  ): Promise<void> {
+    const res = await apiClient.get("/agent/balance/ledgers/export", {
+      params: {
+        q: params.q || undefined,
+        entryType: params.entryType || undefined,
+        createdFrom: params.createdFrom || undefined,
+        createdTo: params.createdTo || undefined,
+        format: "csv",
+      },
+      responseType: "blob",
+    });
+    downloadCsv(res.data, "balance-ledgers.csv");
   },
 };
