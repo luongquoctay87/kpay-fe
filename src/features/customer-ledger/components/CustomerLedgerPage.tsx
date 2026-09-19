@@ -51,7 +51,7 @@ import { CUSTOMER_OWNER_TONE } from "@/features/customers/status";
 import { customerLedgerApi } from "@/features/customer-ledger/api";
 import { ColumnPicker } from "@/features/customer-ledger/components/ColumnPicker";
 import {
-  CUSTOMER_LEDGER_COLUMN_MIN_PX,
+  CUSTOMER_LEDGER_COLUMN_TRACK,
   CUSTOMER_LEDGER_COLUMN_WIDTH,
   CUSTOMER_LEDGER_COLUMNS,
   customerLedgerTableMinWidth,
@@ -135,7 +135,11 @@ function readLedgerStateFromSearch(searchParams: {
   const createdTo = searchParams.get("createdTo") || undefined;
   const entryRaw = searchParams.get("entryType");
   const entryType =
-    entryRaw && isCustomerLedgerEntryType(entryRaw) ? entryRaw : undefined;
+    entryRaw &&
+    isCustomerLedgerEntryType(entryRaw) &&
+    entryRaw !== "payout_reserve"
+      ? entryRaw
+      : undefined;
   const filters: LedgerFilters = {
     q: searchParams.get("q")?.trim() || undefined,
     ownerType,
@@ -197,18 +201,12 @@ export function CustomerLedgerPage() {
   const colSpan = visibleColumnCount(columnVisibility);
   const show = columnVisibility;
 
-  const flexCol: CustomerLedgerColumn =
-    show.note ? "note" : show.owner ? "owner" : show.ownerType ? "ownerType" : show.entry ? "entry" : "created";
-
   function colClass(col: CustomerLedgerColumn | "stt"): string {
-    if (col !== "stt" && col === flexCol) return "min-w-0";
     return CUSTOMER_LEDGER_COLUMN_WIDTH[col];
   }
 
-  /** `100%` on the flex column so leftover table width goes to Ghi chú, not Tài khoản. */
   function colWidth(col: CustomerLedgerColumn | "stt"): string {
-    if (col !== "stt" && col === flexCol) return "100%";
-    return `${CUSTOMER_LEDGER_COLUMN_MIN_PX[col]}px`;
+    return CUSTOMER_LEDGER_COLUMN_TRACK[col];
   }
 
   const [qDraft, setQDraft] = useState(boot.filters.q ?? "");
@@ -473,7 +471,7 @@ export function CustomerLedgerPage() {
       >
         {expanded ? (
           <div className="flex flex-col gap-3.5">
-            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-[repeat(auto-fill,minmax(16rem,20rem))]">
               <FilterField label={t("customerLedger.filterOwner")} htmlFor="cl-owner">
                 <Select
                   id="cl-owner"
@@ -610,6 +608,13 @@ export function CustomerLedgerPage() {
                   {t("customerLedger.colStt")}
                 </ColumnHeader>
               </th>
+              {show.id ? (
+                <th className={`${colClass("id")} px-3 py-2`}>
+                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                    {t("customerLedger.colId")}
+                  </ColumnHeader>
+                </th>
+              ) : null}
               {show.created ? (
                 <th className={`${colClass("created")} px-3 py-2 text-center`}>
                   <ColumnHeader align="center" icon={<IconClock width={14} height={14} />}>
@@ -617,16 +622,9 @@ export function CustomerLedgerPage() {
                   </ColumnHeader>
                 </th>
               ) : null}
-              {show.ownerType ? (
-                <th className={`${colClass("ownerType")} px-3 py-2`}>
-                  <ColumnHeader icon={<IconStore width={14} height={14} />}>
-                    {t("customerLedger.colOwnerType")}
-                  </ColumnHeader>
-                </th>
-              ) : null}
               {show.owner ? (
                 <th className={`${colClass("owner")} px-3 py-2`}>
-                  <ColumnHeader icon={<IconHash width={14} height={14} />}>
+                  <ColumnHeader icon={<IconStore width={14} height={14} />}>
                     {t("customerLedger.colOwner")}
                   </ColumnHeader>
                 </th>
@@ -652,17 +650,31 @@ export function CustomerLedgerPage() {
                   </ColumnHeader>
                 </th>
               ) : null}
-              {show.available ? (
-                <th className={`${colClass("available")} px-3 py-2 text-right`}>
-                  <ColumnHeader align="right" icon={<IconArrowIn width={14} height={14} />}>
-                    {t("customerLedger.colAvailableAfter")}
+              {show.opening ? (
+                <th
+                  className={`${colClass("opening")} px-3 py-2 text-right`}
+                  title={t("customerLedger.colOpeningTooltip")}
+                >
+                  <ColumnHeader
+                    align="right"
+                    icon={<IconArrowOut width={14} height={14} />}
+                    title={t("customerLedger.colOpeningTooltip")}
+                  >
+                    {t("customerLedger.colOpening")}
                   </ColumnHeader>
                 </th>
               ) : null}
-              {show.reserved ? (
-                <th className={`${colClass("reserved")} px-3 py-2 text-right`}>
-                  <ColumnHeader align="right" icon={<IconArrowOut width={14} height={14} />}>
-                    {t("customerLedger.colReservedAfter")}
+              {show.available ? (
+                <th
+                  className={`${colClass("available")} px-3 py-2 text-right`}
+                  title={t("customerLedger.colAvailableAfterTooltip")}
+                >
+                  <ColumnHeader
+                    align="right"
+                    icon={<IconArrowIn width={14} height={14} />}
+                    title={t("customerLedger.colAvailableAfterTooltip")}
+                  >
+                    {t("customerLedger.colAvailableAfter")}
                   </ColumnHeader>
                 </th>
               ) : null}
@@ -728,69 +740,71 @@ export function CustomerLedgerPage() {
               const href = ownerHref(row);
               const ownerCode = row.ownerCode?.trim() || null;
               const ownerName = row.ownerName?.trim() || null;
-              const ownerPrimary = ownerCode ?? ownerName ?? "—";
+              const ownerLabel = ownerName ?? ownerCode ?? "—";
+              const ownerTypeLabel =
+                row.ownerType === "agent"
+                  ? t("customerLedger.ownerAgent")
+                  : t("customerLedger.ownerMerchant");
 
               return (
                 <tr key={row.id} className="border-b border-edge last:border-b-0 hover:bg-surface/70">
                   <td className="px-3 py-2 text-center font-mono text-caption tabular-nums text-muted">
                     {page * size + idx + 1}
                   </td>
+                  {show.id ? (
+                    <td className="min-w-0 overflow-hidden px-3 py-2">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span
+                          className="min-w-0 truncate font-mono text-label font-medium text-ink"
+                          title={row.id}
+                        >
+                          {row.id}
+                        </span>
+                        {row.id ? (
+                          <CopyButton
+                            value={row.id}
+                            size="sm"
+                            label={t("customerLedger.copyId")}
+                          />
+                        ) : null}
+                      </div>
+                    </td>
+                  ) : null}
                   {show.created ? (
                     <td className="whitespace-nowrap px-3 py-2 text-center text-label text-muted">
                       <DateTimeText value={row.createdAt} />
                     </td>
                   ) : null}
-                  {show.ownerType ? (
-                    <td className="px-3 py-2">
-                      <StatusBadge tone={CUSTOMER_OWNER_TONE[row.ownerType]} className="w-fit gap-1">
-                        {row.ownerType === "agent" ? (
-                          <IconHeadset width={11} height={11} />
-                        ) : (
-                          <IconStore width={11} height={11} />
-                        )}
-                        {row.ownerType === "agent"
-                          ? t("customerLedger.ownerAgent")
-                          : t("customerLedger.ownerMerchant")}
-                      </StatusBadge>
-                    </td>
-                  ) : null}
                   {show.owner ? (
-                    <td className={`${colClass("owner")} overflow-hidden px-3 py-2`}>
-                      <div className="flex min-w-0 items-center gap-1">
-                        {!show.ownerType ? (
-                          <StatusBadge
-                            tone={CUSTOMER_OWNER_TONE[row.ownerType]}
-                            className="w-fit shrink-0 gap-1"
-                          >
+                    <td className="min-w-0 overflow-hidden px-3 py-2">
+                      <div
+                        className="flex min-w-0 items-center gap-1.5"
+                        title={ownerCode ?? undefined}
+                      >
+                        <StatusBadge
+                          tone={CUSTOMER_OWNER_TONE[row.ownerType]}
+                          className="w-fit shrink-0 gap-0 px-1"
+                        >
+                          <span aria-label={ownerTypeLabel}>
                             {row.ownerType === "agent" ? (
                               <IconHeadset width={11} height={11} />
                             ) : (
                               <IconStore width={11} height={11} />
                             )}
-                            {row.ownerType === "agent"
-                              ? t("customerLedger.ownerAgent")
-                              : t("customerLedger.ownerMerchant")}
-                          </StatusBadge>
-                        ) : null}
+                          </span>
+                        </StatusBadge>
                         {href ? (
                           <Link
                             href={href}
-                            className="min-w-0 truncate font-mono text-label font-medium text-ink transition hover:text-link-hover hover:underline"
-                            title={ownerName ?? undefined}
+                            className="min-w-0 truncate text-label font-medium text-ink transition hover:text-link-hover hover:underline"
                           >
-                            {ownerPrimary}
+                            {ownerLabel}
                           </Link>
                         ) : (
-                          <span
-                            className="min-w-0 truncate font-mono text-label font-medium text-ink"
-                            title={ownerName ?? undefined}
-                          >
-                            {ownerPrimary}
+                          <span className="min-w-0 truncate text-label font-medium text-ink">
+                            {ownerLabel}
                           </span>
                         )}
-                        {ownerCode ? (
-                          <CopyButton value={ownerCode} label={t("customerLedger.copyCode")} />
-                        ) : null}
                       </div>
                     </td>
                   ) : null}
@@ -819,14 +833,14 @@ export function CustomerLedgerPage() {
                       {formatMoney(row.amount ?? 0)}
                     </td>
                   ) : null}
+                  {show.opening ? (
+                    <td className="px-3 py-2 text-right font-mono text-label tabular-nums text-ink">
+                      {formatMoney(row.availableBefore ?? 0)}
+                    </td>
+                  ) : null}
                   {show.available ? (
                     <td className="px-3 py-2 text-right font-mono text-label tabular-nums text-ink">
                       {formatMoney(row.availableAfter ?? 0)}
-                    </td>
-                  ) : null}
-                  {show.reserved ? (
-                    <td className="px-3 py-2 text-right font-mono text-label tabular-nums text-ink">
-                      {formatMoney(row.reservedAfter ?? 0)}
                     </td>
                   ) : null}
                   {show.note ? (
@@ -849,8 +863,8 @@ export function CustomerLedgerPage() {
             {!loading && rows.length > 0 ? (
               <tr className="border-t border-edge bg-surface/50">
                 <td className="px-3 py-2 text-label font-semibold text-ink">{t("customerLedger.totalRow")}</td>
+                {show.id ? <td /> : null}
                 {show.created ? <td /> : null}
-                {show.ownerType ? <td /> : null}
                 {show.owner ? <td /> : null}
                 {show.entry ? <td /> : null}
                 {show.direction ? <td /> : null}
@@ -859,8 +873,8 @@ export function CustomerLedgerPage() {
                     {formatMoney(pageStats.net)}
                   </td>
                 ) : null}
+                {show.opening ? <td /> : null}
                 {show.available ? <td /> : null}
-                {show.reserved ? <td /> : null}
                 {show.note ? <td /> : null}
                 {show.createdBy ? <td /> : null}
               </tr>

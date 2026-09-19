@@ -51,6 +51,10 @@ export const PAYIN_COLUMN_LABEL_KEY: Record<PayinColumn, MessageKey> = {
   gateway: "payin.colGateway",
 };
 
+/**
+ * Explicit widths so `table-fixed` scales every column with the viewport.
+ * Mins must fit Vietnamese headers (`ColumnHeader` is nowrap).
+ */
 export const PAYIN_COLUMN_MIN_PX: Record<PayinColumn | "stt", number> = {
   stt: 52,
   requestId: 220,

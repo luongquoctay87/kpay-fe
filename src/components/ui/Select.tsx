@@ -336,7 +336,7 @@ export function Select<T extends string = string>({
             aria-activedescendant={
               activeIndex >= 0 ? `${listboxId}-opt-${activeIndex}` : undefined
             }
-            className="max-h-60 overflow-auto py-1"
+            className="max-h-[min(12rem,calc(100dvh-12rem))] overflow-auto py-1"
           >
             {filteredOptions.length === 0 ? (
               <li className="px-3 py-2 text-label text-muted">{t("common.selectNoOptions")}</li>

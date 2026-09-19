@@ -5,6 +5,8 @@ export type ColumnHeaderProps = {
   /** Leading icon — required for consistent table headers. Size is normalized by CSS. */
   icon: ReactNode;
   children: ReactNode;
+  /** Native hover tooltip on the header label. */
+  title?: string;
   /** Match table column text alignment. */
   align?: "left" | "center" | "right";
   className?: string;
@@ -18,11 +20,13 @@ export type ColumnHeaderProps = {
 export function ColumnHeader({
   icon,
   children,
+  title,
   align = "left",
   className,
 }: ColumnHeaderProps) {
   return (
     <span
+      title={title}
       className={cn(
         "inline-flex items-center gap-1.5 whitespace-nowrap text-label font-medium text-muted",
         align === "center" && "justify-center",
